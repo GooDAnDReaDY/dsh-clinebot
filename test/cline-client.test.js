@@ -5,6 +5,9 @@ import {
   resolveApiKey,
   smokeChat,
   buildPiAiProvider,
+  fetchUsageLimits,
+  saveCredentialKey,
+  clearUsageCache,
   DEFAULT_BASE_URL,
   DEFAULT_API_KEY_ENV,
 } from '../lib/cline-client.js'
@@ -35,28 +38,94 @@ test('cline-client: resolveApiKey', () => {
   assert.equal(missing.value, '')
 })
 
-test('cline-client: buildPiAiProvider', () => {
+test('cline-client: buildPiAiProvider with custom models', () => {
+  const customModels = [
+    { id: 'cline-pass/deepseek-v4-moe', name: 'DeepSeek V4 MoE', input: ['text', 'vision'] },
+  ]
   const provider = buildPiAiProvider({
     baseUrl: 'https://api.cline.bot/api/v1',
     apiKeyEnv: 'MY_KEY',
-    models: ['cline-pass/deepseek-v4-flash', 'cline-pass/glm-5.2'],
+    models: ['cline-pass/deepseek-v4-moe', 'cline-pass/glm-5.2'],
+    customModels,
   })
 
   assert.equal(provider.api, 'openai-completions')
   assert.equal(provider.baseURL, 'https://api.cline.bot/api/v1')
   assert.equal(provider.apiKeyEnv, 'MY_KEY')
   assert.equal(provider.models.length, 2)
-  assert.equal(provider.models[0].id, 'cline-pass/deepseek-v4-flash')
+  assert.equal(provider.models[0].id, 'cline-pass/deepseek-v4-moe')
   assert.equal(provider.models[0].provider, PROVIDER_ID)
 })
 
+test('cline-client: fetchUsageLimits parsing and caching', async () => {
+  clearUsageCache()
+
+  const mockFetch = async (url) => {
+    if (url.includes('/users/me/plan/usage-limits')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            limits: [
+              { type: '5-hour', percentUsed: 25.4, resetsAt: '2026-09-04T18:00:00Z' },
+              { type: 'weekly', percentUsed: 50.0, resetsAt: '2026-09-08T00:00:00Z' },
+              { type: 'monthly', percentUsed: 10.0, resetsAt: '2026-09-30T00:00:00Z' },
+            ],
+          },
+        }),
+      }
+    }
+    if (url.includes('/users/me')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: { email: 'developer@example.com', createdAt: '2026-08-01T00:00:00Z' },
+        }),
+      }
+    }
+    return { ok: false, status: 404 }
+  }
+
+  const res = await fetchUsageLimits('https://api.cline.bot/api/v1', 'valid-key', {
+    fetchImpl: mockFetch,
+    bypassCache: true,
+  })
+
+  assert.equal(res.ok, true)
+  assert.equal(res.user.email, 'developer@example.com')
+  assert.equal(res.windows.fiveHour.percentUsed, 25.4)
+  assert.equal(res.windows.fiveHour.remainingPercent, 74.6)
+  assert.equal(res.windows.weekly.percentUsed, 50)
+  assert.equal(res.windows.weekly.remainingPercent, 50)
+})
+
+test('cline-client: saveCredentialKey integration', async () => {
+  const mockCredentials = {
+    set: async (ref, value) => {
+      assert.ok(ref)
+      assert.equal(value, 'secret-cline-key-123')
+    },
+  }
+  const ctx = { credentials: mockCredentials }
+
+  const res = await saveCredentialKey(ctx, 'CLINEBOT_API_KEY', 'secret-cline-key-123')
+  assert.equal(res.ok, true)
+  assert.equal(res.envName, 'CLINEBOT_API_KEY')
+
+  // Empty key throws
+  await assert.rejects(
+    () => saveCredentialKey(ctx, 'CLINEBOT_API_KEY', ''),
+    /API key cannot be empty/
+  )
+})
+
 test('cline-client: smokeChat validation and error handling', async () => {
-  // Missing key
   const noKey = await smokeChat('https://api.cline.bot/api/v1', '')
   assert.equal(noKey.ok, false)
   assert.match(noKey.error, /Missing API key/i)
 
-  // Mocked successful 200 response
   const mockFetchSuccess = async (url, opts) => {
     assert.ok(url.endsWith('/chat/completions'))
     assert.equal(opts.method, 'POST')
@@ -79,7 +148,6 @@ test('cline-client: smokeChat validation and error handling', async () => {
   assert.equal(okResult.preview, 'pong hello')
   assert.ok(typeof okResult.latencyMs === 'number')
 
-  // Mocked 401 response
   const mockFetchUnauthorized = async () => ({
     ok: false,
     status: 401,

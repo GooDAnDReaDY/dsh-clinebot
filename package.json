@@ -1,7 +1,7 @@
 {
   "name": "@goodandready/dsh-clinebot",
-  "version": "0.1.0",
-  "description": "DeepSeek Harness companion for ClineBot / ClinePass: OpenAI-compatible routing, static ClinePass models catalog, Settings card, credentials resolution, and smoke probes.",
+  "version": "0.2.0",
+  "description": "DeepSeek Harness companion for ClineBot / ClinePass: dedicated settings page, live quota usage limits dashboard, in-UI credentials saving, static & custom models catalog, model picker control, and /cline slash-command.",
   "license": "MIT",
   "type": "module",
   "main": "./lib/index.js",
@@ -27,7 +27,9 @@
     "clinebot",
     "clinepass",
     "openai-compatible",
-    "llm-provider"
+    "llm-provider",
+    "usage-dashboard",
+    "quota-limits"
   ],
   "repository": {
     "type": "git",

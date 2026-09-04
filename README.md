@@ -28,18 +28,21 @@
 
 ## ⚡ Overview & The Problem
 
-**ClinePass** (`https://cline.bot`) is a flat-rate subscription service providing developers with 2–5x higher rate limits across premier open-weights coding and reasoning models through a single OpenAI-compatible endpoint (`https://api.cline.bot/api/v1`).
+**ClinePass** (`https://cline.bot`) is a flat-rate subscription service ($9.99/mo) providing developers with 2–5x higher rate limits across premier open-weights coding and reasoning models through a single OpenAI-compatible endpoint (`https://api.cline.bot/api/v1`).
 
-However, integrating ClinePass into DeepSeek Harness (DSH) natively encounters key hurdles:
+Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 1. **No `/v1/models` Discovery**: `GET /v1/models` on `api.cline.bot` returns `404 Not Found`. Dynamic discovery fails silently or leaves the provider with 0 models.
 2. **Model Identifier Formats**: Models require the specific prefix `cline-pass/` (e.g. `cline-pass/deepseek-v4-flash`, `cline-pass/kimi-k3`).
-3. **Credential Security**: Storing API keys directly in plain settings is a security antipattern.
+3. **Quota Tracking**: Rolling 5-hour and weekly limits need clear in-browser visualization.
+4. **Credential Security**: Storing API keys directly in plain settings is insecure.
 
-**`@goodandready/dsh-clinebot`** solves all these challenges:
-* 🎯 Provides an official, pre-curated static catalogue of all 11 ClinePass models.
-* 🔐 Safely resolves keys from DSH credentials (`~/.dsh/.credentials.yaml`) without leaking secrets into settings.
-* 🔄 One-click registration directly into DSH's `llm-pi-ai` provider registry.
-* 🩺 Built-in live latency and Smoke Test chat completions directly from the Settings UI.
+**`@goodandready/dsh-clinebot`** provides a complete solution:
+* 🖥️ **Dedicated Settings Page**: Full-width page in DSH Settings (`Settings → ClineBot`).
+* 📊 **Live Quota Dashboard**: Visual progress bars for 5-hour rolling limits and weekly windows from the official `GET /users/me/plan/usage-limits` API.
+* 🔑 **In-UI Key Storage**: Paste your API key directly in the UI; it is saved securely via `ctx.credentials.set()` into `~/.dsh/.credentials.yaml`.
+* 🎯 **Model Picker Management**: Granular checkboxes to choose which models appear in the chat picker.
+* ➕ **Add Custom Models**: Add newly released ClinePass models directly from the UI without waiting for plugin updates.
+* 💬 **Slash-Command `/cline`**: Check quota, limits, latency, and active model directly from the DSH chat console.
 
 ---
 
@@ -48,15 +51,17 @@ However, integrating ClinePass into DeepSeek Harness (DSH) natively encounters k
 ```mermaid
 graph LR
     subgraph UI [DSH Web Interface]
-        Card["ClineBot Settings Card"]
-        SmokeAction["Smoke Test Action"]
-        SyncAction["Register & Sync Action"]
+        Page["Dedicated Page (Settings -> ClineBot)"]
+        QuotaBar["5-Hour & Weekly Progress Bars"]
+        KeyInput["Direct Key Paste & Save"]
+        ModelPick["Model Picker Controls & Custom Models"]
     end
 
     subgraph PluginHost [dsh-clinebot Host Runtime]
         HttpEndpoints["API: /api/plugins/dsh-clinebot/*"]
         ClientCore["lib/cline-client.js"]
-        ModelCatalog["lib/models.js (Static 11 Models)"]
+        ModelCatalog["lib/models.js (Curated + Custom)"]
+        SlashCmd["Command: /cline"]
     end
 
     subgraph DSHCore [DeepSeek Harness Services]
@@ -66,16 +71,18 @@ graph LR
 
     subgraph Upstream [Cline Cloud]
         ClinePass["api.cline.bot/api/v1/chat/completions"]
+        ClineQuota["api.cline.bot/api/v1/users/me/plan/usage-limits"]
     end
 
-    Card -->|GET /status| HttpEndpoints
-    SmokeAction -->|POST /smoke| HttpEndpoints
-    SyncAction -->|POST /register| HttpEndpoints
+    Page -->|GET /status & /usage| HttpEndpoints
+    KeyInput -->|POST /save-key| HttpEndpoints
+    ModelPick -->|POST /register & /models| HttpEndpoints
     HttpEndpoints --> Credentials
     HttpEndpoints --> ClientCore
     ClientCore --> ModelCatalog
     HttpEndpoints -->|Atomic Mutate| PiAi
-    ClientCore -->|Bearer Auth| ClinePass
+    ClientCore -->|Chat| ClinePass
+    ClientCore -->|Usage Limits| ClineQuota
 ```
 
 ---
@@ -83,42 +90,40 @@ graph LR
 ## ✨ Features & Module Breakdown
 
 * **`lib/models.js`**:
-  Defines the curated ClinePass catalogue with context window sizes (200k tokens), token limits, and input modalities (`text` and `vision`).
+  Manages the curated catalog (11 built-in models) and user-added custom models (`getAllModels`, `validateCustomModel`).
 * **`lib/cline-client.js`**:
-  Normalizes base URLs, formats the `llm-pi-ai` provider object (`api: 'openai-completions'`), executes network health probes, and performs non-streaming smoke chat completions (`max_tokens: 8`) to measure endpoint latency.
+  * `fetchUsageLimits`: queries `GET /users/me/plan/usage-limits` and `GET /users/me` with in-memory caching.
+  * `saveCredentialKey`: writes credentials directly into `~/.dsh/.credentials.yaml`.
+  * `smokeChat`: tests latency via non-streaming ping.
+  * `buildPiAiProvider`: builds the DSH `llm-pi-ai` structure (`api: 'openai-completions'`).
 * **`lib/index.js`**:
-  Cordis service module that injects `['settings', 'webServer', 'credentials']`, manages schema persistence, and exposes REST endpoints.
+  Cordis service module managing routes, credentials, and registering the `/cline` slash command.
 * **`lib/client.js`**:
-  Zero-build native UI registered in the `settings.plugin.item` and `settings.section` slots, featuring health badges, interactive model selectors, and live smoke test response previews.
+  Full-featured dedicated Settings section (`settings.section`, order 28) and plugin accordion (`settings.plugin.item`).
 
 ---
 
 ## 📦 Installation
 
-Install into your active DeepSeek Harness profile:
-
 ```bash
 dsh plugin --profile web add @goodandready/dsh-clinebot
 ```
 
-Or for local development:
-```bash
-pnpm add /path/to/dsh-clinebot
-```
-
 ---
 
-## 🔑 Credential Configuration
+## 💬 Slash-Command `/cline`
 
-Add your ClinePass API key to your DSH credentials file (`~/.dsh/.credentials.yaml`):
+From any DSH chat session, type `/cline` to inspect quota:
 
-```yaml
-CLINEBOT_API_KEY: "your-clinepass-api-key"
-```
+```text
+### 🤖 ClinePass Status (ClinePass ($9.99/mo))
+* Пинг хоста: ✅ 210 мс
+* Активный ключ: CLINEBOT_API_KEY (credentials)
+* Модель по умолчанию: `cline-pass/deepseek-v4-flash`
 
-Or export it in your environment:
-```bash
-export CLINEBOT_API_KEY="your-clinepass-api-key"
+⏱ 5-часовое окно: [████░░░░░░] 42% (сброс: 18:00)
+📅 Недельное окно: [██████░░░░] 60% (сброс: 08.09)
+* Аккаунт: `developer@example.com`
 ```
 
 ---
@@ -136,38 +141,10 @@ dsh-clinebot:
   enabledModels:
     - cline-pass/deepseek-v4-flash
     - cline-pass/deepseek-v4-pro
-    - cline-pass/glm-5.2
     - cline-pass/kimi-k3
-    - cline-pass/kimi-k2.7-code
-    - cline-pass/kimi-k2.6
     - cline-pass/qwen3.7-max
-    - cline-pass/qwen3.7-plus
-    - cline-pass/minimax-m3
-    - cline-pass/mimo-v2.5
-    - cline-pass/mimo-v2.5-pro
+  customModels: []
 ```
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `enabled` | `boolean` | `true` | Enables or disables the ClineBot companion plugin. |
-| `baseUrl` | `string` | `https://api.cline.bot/api/v1` | Base OpenAI-compatible URL for ClinePass. |
-| `apiKeyEnv` | `string` | `CLINEBOT_API_KEY` | Credential reference name (never put plain keys here). |
-| `defaultModel` | `string` | `cline-pass/deepseek-v4-flash` | Default model used for initial chat and smoke tests. |
-| `enabledModels` | `string[]` | *All 11 models* | Subset of ClinePass models exposed in DSH. |
-| `timeoutMs` | `number` | `15000` | Network probe timeout in milliseconds. |
-| `smokeTimeoutMs`| `number` | `25000` | Chat completion smoke test timeout in milliseconds. |
-
----
-
-## 🔌 HTTP API Reference
-
-All plugin endpoints are mounted under `/api/plugins/dsh-clinebot`:
-
-* **`GET /status`**: Returns health, key resolution status, and active models list.
-* **`POST /register`**: Registers or updates the provider within DSH `llm-pi-ai`.
-* **`POST /unregister`**: Safely removes the provider entry from DSH `llm-pi-ai`.
-* **`POST /smoke`**: Executes a ping chat completion and returns latency and preview text.
-* **`POST /models`**: Updates the enabled models list in plugin settings.
 
 ---
 

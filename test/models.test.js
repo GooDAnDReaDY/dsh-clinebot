@@ -8,6 +8,7 @@ import {
   isSupportedModel,
   getAllModels,
   getDefaultModelIds,
+  validateCustomModel,
 } from '../lib/models.js'
 
 test('models: catalog integrity', () => {
@@ -42,4 +43,32 @@ test('models: lookup functions', () => {
   const defaultIds = getDefaultModelIds()
   assert.equal(defaultIds.length, CLINE_MODELS.length)
   assert.ok(defaultIds.includes(DEFAULT_MODEL_ID))
+})
+
+test('models: custom models support and validation', () => {
+  // Valid custom model
+  const valid = validateCustomModel({
+    id: 'deepseek-v4-moe',
+    name: 'DeepSeek V4 MoE Custom',
+    contextLength: 250000,
+    hasVision: true,
+    category: 'coding',
+  })
+  assert.equal(valid.ok, true)
+  assert.equal(valid.model.id, 'cline-pass/deepseek-v4-moe')
+  assert.equal(valid.model.name, 'DeepSeek V4 MoE Custom')
+  assert.equal(valid.model.contextLength, 250000)
+  assert.deepEqual(valid.model.input, ['text', 'vision'])
+  assert.equal(valid.model.isCustom, true)
+
+  // Invalid custom model
+  const invalid = validateCustomModel({})
+  assert.equal(invalid.ok, false)
+
+  // Merging custom models into catalogue
+  const customList = [valid.model]
+  const merged = getAllModels(customList)
+  assert.equal(merged.length, CLINE_MODELS.length + 1)
+  assert.ok(findModel('cline-pass/deepseek-v4-moe', customList))
+  assert.ok(isSupportedModel('cline-pass/deepseek-v4-moe', customList))
 })
