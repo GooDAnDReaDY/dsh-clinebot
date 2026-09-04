@@ -3,7 +3,7 @@
 @goodandready/dsh-clinebot — компаньон DeepSeek Harness для провайдера ClineBot/ClinePass: карточка настроек, лимиты подписки, каталог моделей, слэш-команда /cline.
 
 - Источник: Gitea goodandready/dsh-clinebot. Публикация: npm @goodandready/dsh-clinebot после явного ок владельца.
-- Контуры: тестовый — MiniPC (dsh-test-web, 127.0.0.1:3082); боевой — MiniAI, сервис dsh-web, профиль web.
+- Контуры: тестовый — изолированный DSH test host (профиль web, 127.0.0.1:3082); боевой — production DSH web (профиль web).
 
 | Проверка | Команда / критерий |
 | --- | --- |
