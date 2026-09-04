@@ -1,0 +1,6 @@
+# @goodandready/dsh-clinebot — ClineBot (ClinePass) companion for DSH.
+# name must be the FULL package specifier (scoped).
+- insert:
+    - id: dsh-clinebot
+      name: '@goodandready/dsh-clinebot'
+      config: {}

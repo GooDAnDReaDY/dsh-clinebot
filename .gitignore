@@ -1,0 +1,14 @@
+node_modules/
+*.tgz
+.DS_Store
+*.log
+.env
+.env.*
+*.pem
+*.key
+*.crt
+credentials.yaml
+.credentials.yaml
+dist/
+coverage/
+.worktrees/
