@@ -58,7 +58,7 @@ test('models: custom models support and validation', () => {
   assert.equal(valid.model.id, 'cline-pass/deepseek-v4-moe')
   assert.equal(valid.model.name, 'DeepSeek V4 MoE Custom')
   assert.equal(valid.model.contextLength, 250000)
-  assert.deepEqual(valid.model.input, ['text', 'vision'])
+  assert.deepEqual(valid.model.input, ['text', 'image'])
   assert.equal(valid.model.isCustom, true)
 
   // Invalid custom model
