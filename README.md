@@ -38,11 +38,13 @@ Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 
 **`@goodandready/dsh-clinebot`** provides a complete solution:
 * 🖥️ **Dedicated Settings Page**: Full-width page in DSH Settings (`Settings → ClineBot`).
+* 🔄 **Dynamic Subscription Model Sync**: Automatically pulls real models included in your ClinePass plan directly from `GET /api/v1/users/me/plan` with one-click DSH provider sync.
+* ⚠️ **Quota Exhaustion Alerts**: Real-time visual warning banners when 5-hour rolling limit reaches 80% (warning) and 95% (exhausted), complete with countdown to reset.
+* 📈 **Session Metrics Telemetry**: Live dashboard tracking request counts, token consumption estimates, latency, and last-request timestamp.
 * 📊 **Live Quota Dashboard**: Visual progress bars for 5-hour rolling limits and weekly windows from the official `GET /users/me/plan/usage-limits` API.
 * 🔑 **In-UI Key Storage**: Paste your API key directly in the UI; it is saved securely via `ctx.credentials.set()` into `~/.dsh/.credentials.yaml`.
 * 🎯 **Model Picker Management**: Granular checkboxes to choose which models appear in the chat picker.
-* ➕ **Add Custom Models**: Add newly released ClinePass models directly from the UI without waiting for plugin updates.
-* 💬 **Slash-Command `/cline`**: Check quota, limits, latency, and active model directly from the DSH chat console.
+* 💬 **Slash-Command `/cline`**: Check quota, limits, warnings, session metrics, latency, and active model directly from the DSH chat console.
 
 ---
 
@@ -52,15 +54,16 @@ Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 graph LR
     subgraph UI [DSH Web Interface]
         Page["Dedicated Page (Settings -> ClineBot)"]
-        QuotaBar["5-Hour & Weekly Progress Bars"]
+        QuotaBar["5-Hour & Weekly Progress Bars & Warning Banner"]
         KeyInput["Direct Key Paste & Save"]
-        ModelPick["Model Picker Controls & Custom Models"]
+        ModelPick["Dynamic Model Sync & Picker Controls"]
+        StatsCard["Session Metrics Telemetry"]
     end
 
     subgraph PluginHost [dsh-clinebot Host Runtime]
         HttpEndpoints["API: /api/plugins/dsh-clinebot/*"]
         ClientCore["lib/cline-client.js"]
-        ModelCatalog["lib/models.js (Curated + Custom)"]
+        ModelCatalog["lib/models.js (Curated + Dynamic Plan)"]
         SlashCmd["Command: /cline"]
     end
 
@@ -72,17 +75,19 @@ graph LR
     subgraph Upstream [Cline Cloud]
         ClinePass["api.cline.bot/api/v1/chat/completions"]
         ClineQuota["api.cline.bot/api/v1/users/me/plan/usage-limits"]
+        ClinePlan["api.cline.bot/api/v1/users/me/plan"]
     end
 
     Page -->|GET /status & /usage| HttpEndpoints
     KeyInput -->|POST /save-key| HttpEndpoints
-    ModelPick -->|POST /register & /models| HttpEndpoints
+    ModelPick -->|POST /models/sync| HttpEndpoints
     HttpEndpoints --> Credentials
     HttpEndpoints --> ClientCore
     ClientCore --> ModelCatalog
     HttpEndpoints -->|Atomic Mutate| PiAi
     ClientCore -->|Chat| ClinePass
     ClientCore -->|Usage Limits| ClineQuota
+    ClientCore -->|Plan Features| ClinePlan
 ```
 
 ---
@@ -90,16 +95,17 @@ graph LR
 ## ✨ Features & Module Breakdown
 
 * **`lib/models.js`**:
-  Manages the curated catalog (11 built-in models) and user-added custom models (`getAllModels`, `validateCustomModel`).
+  Manages the curated catalog (11 built-in models) and dynamically parses subscription plan models (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **`lib/cline-client.js`**:
-  * `fetchUsageLimits`: queries `GET /users/me/plan/usage-limits` and `GET /users/me` with in-memory caching.
+  * `fetchUsageLimits`: queries `GET /users/me/plan/usage-limits`, `GET /users/me/plan`, and `GET /users/me` with in-memory caching.
+  * `sessionStats` / `recordSessionRequest`: in-memory telemetry recording requests count, tokens, latency, and timestamps.
   * `saveCredentialKey`: writes credentials directly into `~/.dsh/.credentials.yaml`.
-  * `smokeChat`: tests latency via non-streaming ping.
+  * `smokeChat`: tests latency via non-streaming ping and updates session metrics.
   * `buildPiAiProvider`: builds the DSH `llm-pi-ai` structure (`api: 'openai-completions'`).
 * **`lib/index.js`**:
-  Cordis service module managing routes, credentials, and registering the `/cline` slash command.
+  Cordis service module managing routes (including `POST /dsh-clinebot/models/sync`), quota warnings threshold evaluation, credentials, and registering the `/cline` slash command.
 * **`lib/client.js`**:
-  Full-featured dedicated Settings section (`settings.section`, order 28) and plugin accordion (`settings.plugin.item`).
+  Full-featured dedicated Settings section (`settings.section`, order 28) with live quota bars, exhaustion warning banner, session metrics telemetry card, one-click plan sync button, and plugin accordion (`settings.plugin.item`).
 
 ---
 
@@ -115,7 +121,7 @@ Restart your DeepSeek Harness instance and refresh the browser.
 
 ## 💬 Slash-Command `/cline`
 
-From any DSH chat session, type `/cline` to inspect quota and status:
+From any DSH chat session, type `/cline` to inspect quota, warning alerts, and session telemetry:
 
 ```text
 ### 🤖 ClinePass Status (ClinePass ($9.99/mo))
@@ -126,6 +132,11 @@ From any DSH chat session, type `/cline` to inspect quota and status:
 ⏱ 5-Hour Window: [████░░░░░░] 42% (resets: 18:00)
 📅 Weekly Window: [██████░░░░] 60% (resets: Sep 8)
 * Account: `developer@example.com`
+
+📈 Session Metrics:
+* Requests: 14 calls
+* Tokens: ~8,450 (Prompt: 6,100 | Completion: 2,350)
+* Last Latency: 210 ms
 ```
 
 ---
@@ -147,7 +158,7 @@ dsh-clinebot:
     - cline-pass/deepseek-v4-pro
     - cline-pass/kimi-k3
     - cline-pass/qwen3.7-max
-  customModels: []
+  dynamicModels: []
 ```
 
 ### Configuration Parameters
@@ -161,7 +172,7 @@ dsh-clinebot:
 | `timeoutMs` | `number` | `15000` | HTTP request timeout in milliseconds |
 | `smokeTimeoutMs` | `number` | `25000` | Smoke test latency ping timeout |
 | `enabledModels` | `array` | `[...]` | List of models exposed in the DSH chat picker |
-| `customModels` | `array` | `[]` | User-defined custom model entries |
+| `dynamicModels` | `array` | `[]` | Dynamic models automatically synced from the official plan |
 
 ---
 

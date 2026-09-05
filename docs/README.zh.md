@@ -38,11 +38,13 @@
 
 **`@goodandready/dsh-clinebot`** 完美解决以上痛点：
 * 🖥️ **专属设置大页**：在 DSH 设置中提供全宽独立页面（`设置 → ClineBot`）。
+* 🔄 **订阅模型动态同步**：从官方 `GET /api/v1/users/me/plan` 自动提取真实包含模型，一键原子级同步至 DSH 提供商配置，无需等待插件更新。
+* ⚠️ **额度耗尽实时预警**：当 5 小时滑动窗口达到 80%（警告黄色）和 95%（即将耗尽红色）时展示醒目预警横幅与重置倒计时。
+* 📈 **会话统计与指标看板**：实时追踪请求调用次数、预估 Token（Prompt / Completion）、最近延迟及最后调用时间。
 * 📊 **实时用量仪表盘**：调用官方 `GET /users/me/plan/usage-limits` API，实时渲染 5 小时与每周额度进度条及重置倒计时。
 * 🔑 **界面直存密钥**：在 UI 中直接粘贴 API 密钥，通过 `ctx.credentials.set()` 自动安全保存至 `~/.dsh/.credentials.yaml`。
 * 🎯 **模型选择器管理**：支持勾选开启/关闭特定模型在聊天选择器中的显示。
-* ➕ **自定义新模型**：支持直接在界面新增官方新推出的模型（ID、名称、上下文、Vision），无需等待插件发版。
-* 💬 **聊天斜杠指令 `/cline`**：在任意聊天框快速查询当前配额、网络延迟与活跃模型。
+* 💬 **聊天斜杠指令 `/cline`**：在任意聊天框快速查询当前配额、预警横幅、会话指标统计、网络延迟与活跃模型。
 
 ---
 
@@ -52,15 +54,16 @@
 graph LR
     subgraph UI [DSH Web 前端界面]
         Page["独立配置页 (设置 -> ClineBot)"]
-        QuotaBar["5小时与每周额度进度条"]
+        QuotaBar["5小时与每周额度进度条 + 额度预警横幅"]
         KeyInput["API 密钥直填与安全保存"]
-        ModelPick["模型选择器管控与自定义模型"]
+        ModelPick["模型动态同步与选择器管控"]
+        StatsCard["会话指标监控看板"]
     end
 
     subgraph PluginHost [dsh-clinebot 宿主运行环境]
         HttpEndpoints["API 路由: /api/plugins/dsh-clinebot/*"]
         ClientCore["lib/cline-client.js"]
-        ModelCatalog["lib/models.js (内置精选 + 用户自定义)"]
+        ModelCatalog["lib/models.js (内置精选 + 动态订阅解析)"]
         SlashCmd["斜杠指令: /cline"]
     end
 
@@ -72,31 +75,34 @@ graph LR
     subgraph Upstream [Cline 官方云端]
         ClinePass["api.cline.bot/api/v1/chat/completions"]
         ClineQuota["api.cline.bot/api/v1/users/me/plan/usage-limits"]
+        ClinePlan["api.cline.bot/api/v1/users/me/plan"]
     end
 
     Page -->|GET /status & /usage| HttpEndpoints
     KeyInput -->|POST /save-key| HttpEndpoints
-    ModelPick -->|POST /register & /models| HttpEndpoints
+    ModelPick -->|POST /models/sync| HttpEndpoints
     HttpEndpoints --> Credentials
     HttpEndpoints --> ClientCore
     ClientCore --> ModelCatalog
     HttpEndpoints -->|原子级写入| PiAi
     ClientCore -->|模型对话| ClinePass
     ClientCore -->|额度查询| ClineQuota
+    ClientCore -->|套餐信息| ClinePlan
 ```
 
 ---
 
 ## ✨ 核心模块与功能
 
-* **`lib/models.js`**：管理 11 款官方精选内置模型以及用户自定义模型（`getAllModels`, `validateCustomModel`）。
+* **`lib/models.js`**：管理 11 款官方精选内置模型以及套餐模型动态解析器（`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`）。
 * **`lib/cline-client.js`**：
-  * `fetchUsageLimits`：高效轮询 `GET /users/me/plan/usage-limits` 与 `GET /users/me` 并进行内存缓存。
+  * `fetchUsageLimits`：高效并发轮询 `GET /users/me/plan/usage-limits`、`GET /users/me/plan` 与 `GET /users/me` 并进行内存缓存。
+  * `sessionStats` / `recordSessionRequest`：内存级会话度量记录器（请求次数、Token 估算、延迟、时间戳）。
   * `saveCredentialKey`：将密钥安全写入 `~/.dsh/.credentials.yaml`。
-  * `smokeChat`：毫秒级网络探活与非流式延迟测试。
+  * `smokeChat`：毫秒级网络探活与非流式延迟测试，并记录会话指标。
   * `buildPiAiProvider`：构建 DSH `llm-pi-ai` 兼容的服务商定义 (`api: 'openai-completions'`)。
-* **`lib/index.js`**：Cordis 插件主生命周期服务，注册后端 REST API 路由与 `/cline` 聊天斜杠指令。
-* **`lib/client.js`**：前端设置面板（`settings.section` 序号 28）与插件折叠卡片。
+* **`lib/index.js`**：Cordis 插件主生命周期服务，注册后端 REST API 路由（含 `/dsh-clinebot/models/sync`）、额度预警计算与 `/cline` 聊天斜杠指令。
+* **`lib/client.js`**：前端设置面板（`settings.section` 序号 28），内含预警横幅、会话指标卡片、一键模型同步按钮及插件折叠卡片。
 
 ---
 
@@ -114,7 +120,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 
 ## 💬 聊天斜杠指令 `/cline`
 
-在任何聊天会话中输入 `/cline` 即可即时检查配额：
+在任何聊天会话中输入 `/cline` 即可即时检查配额、预警状态与会话指标：
 
 ```text
 ### 🤖 ClinePass Status (ClinePass ($9.99/mo))
@@ -125,6 +131,11 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 ⏱ 5 小时窗口: [████░░░░░░] 42% (重置时间: 18:00)
 📅 每周窗口:   [██████░░░░] 60% (重置时间: 09月08日)
 * 绑定账号: `developer@example.com`
+
+📈 当前会话统计:
+* 请求次数: 14 次
+* Token 估算: ~8,450 (Prompt: 6,100 | Completion: 2,350)
+* 最近延迟: 210 ms
 ```
 
 ---
@@ -144,7 +155,7 @@ dsh-clinebot:
     - cline-pass/deepseek-v4-pro
     - cline-pass/kimi-k3
     - cline-pass/qwen3.7-max
-  customModels: []
+  dynamicModels: []
 ```
 
 ### 配置参数说明
@@ -158,7 +169,7 @@ dsh-clinebot:
 | `timeoutMs` | `number` | `15000` | HTTP 请求超时时间（毫秒） |
 | `smokeTimeoutMs` | `number` | `25000` | 探活测试超时时间（毫秒） |
 | `enabledModels` | `array` | `[...]` | 允许在聊天下拉框中显示的可用模型列表 |
-| `customModels` | `array` | `[]` | 用户在界面中自定义新增的模型定义列表 |
+| `dynamicModels` | `array` | `[]` | 从官方套餐中自动同步的动态模型列表 |
 
 ---
 

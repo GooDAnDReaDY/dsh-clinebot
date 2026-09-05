@@ -163,3 +163,25 @@ test('cline-client: smokeChat validation and error handling', async () => {
   assert.equal(failResult.status, 401)
   assert.match(failResult.error, /Invalid API key/i)
 })
+
+test('cline-client: sessionStats and request recording', async () => {
+  const { sessionStats, recordSessionRequest, resetSessionStats } = await import('../lib/cline-client.js')
+  resetSessionStats()
+
+  assert.equal(sessionStats.totalRequests, 0)
+  recordSessionRequest({ latencyMs: 150, ok: true, promptTokens: 10, completionTokens: 25 })
+  assert.equal(sessionStats.totalRequests, 1)
+  assert.equal(sessionStats.successfulRequests, 1)
+  assert.equal(sessionStats.failedRequests, 0)
+  assert.equal(sessionStats.totalTokensEst, 35)
+  assert.equal(sessionStats.lastLatencyMs, 150)
+
+  recordSessionRequest({ ok: false, error: 'Network timeout' })
+  assert.equal(sessionStats.totalRequests, 2)
+  assert.equal(sessionStats.failedRequests, 1)
+  assert.equal(sessionStats.lastError, 'Network timeout')
+
+  resetSessionStats()
+  assert.equal(sessionStats.totalRequests, 0)
+})
+

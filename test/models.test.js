@@ -8,7 +8,7 @@ import {
   isSupportedModel,
   getAllModels,
   getDefaultModelIds,
-  validateCustomModel,
+  parsePlanIncludedModels,
 } from '../lib/models.js'
 
 test('models: catalog integrity', () => {
@@ -45,30 +45,27 @@ test('models: lookup functions', () => {
   assert.ok(defaultIds.includes(DEFAULT_MODEL_ID))
 })
 
-test('models: custom models support and validation', () => {
-  // Valid custom model
-  const valid = validateCustomModel({
-    id: 'deepseek-v4-moe',
-    name: 'DeepSeek V4 MoE Custom',
-    contextLength: 250000,
-    hasVision: true,
-    category: 'coding',
-  })
-  assert.equal(valid.ok, true)
-  assert.equal(valid.model.id, 'cline-pass/deepseek-v4-moe')
-  assert.equal(valid.model.name, 'DeepSeek V4 MoE Custom')
-  assert.equal(valid.model.contextLength, 250000)
-  assert.deepEqual(valid.model.input, ['text', 'image'])
-  assert.equal(valid.model.isCustom, true)
+test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
+  const sampleIncluded =
+    'Includes Kimi K3, GLM 5.2, Kimi K2.6, Kimi K2.7 Code, Mimo v2.5, Mimo v2.5 Pro, Minimax M3, Qwen3.7 Plus, Qwen3.7 Max, DeepSeek V4 Pro, and DeepSeek V4 Flash'
 
-  // Invalid custom model
-  const invalid = validateCustomModel({})
-  assert.equal(invalid.ok, false)
+  const parsed = parsePlanIncludedModels(sampleIncluded)
+  assert.ok(parsed.length >= 10, 'Should parse all models in list')
+  assert.ok(parsed.some((m) => m.id === 'cline-pass/deepseek-v4-flash'))
+  assert.ok(parsed.some((m) => m.id === 'cline-pass/kimi-k3'))
+  assert.ok(parsed.some((m) => m.id === 'cline-pass/qwen3.7-max'))
 
-  // Merging custom models into catalogue
-  const customList = [valid.model]
-  const merged = getAllModels(customList)
+  // Handles new unseen models gracefully
+  const newModelText = 'Includes NewSuperModel V1, and DeepSeek V4 Flash'
+  const withNew = parsePlanIncludedModels(newModelText)
+  assert.equal(withNew.length, 2)
+  assert.equal(withNew[0].id, 'cline-pass/newsupermodel-v1')
+  assert.equal(withNew[0].name, 'NewSuperModel V1')
+
+  // Dynamic models merge into catalogue
+  const dynamicList = [withNew[0]]
+  const merged = getAllModels(dynamicList)
   assert.equal(merged.length, CLINE_MODELS.length + 1)
-  assert.ok(findModel('cline-pass/deepseek-v4-moe', customList))
-  assert.ok(isSupportedModel('cline-pass/deepseek-v4-moe', customList))
+  assert.ok(findModel('cline-pass/newsupermodel-v1', dynamicList))
+  assert.ok(isSupportedModel('cline-pass/newsupermodel-v1', dynamicList))
 })

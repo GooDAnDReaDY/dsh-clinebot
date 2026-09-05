@@ -31,7 +31,7 @@ test('routes: lib/index.js registers webServer routes with kind exact and /dsh-c
     '/dsh-clinebot/register',
     '/dsh-clinebot/unregister',
     '/dsh-clinebot/smoke',
-    '/dsh-clinebot/models/custom',
+    '/dsh-clinebot/models/sync',
     '/dsh-clinebot/models/toggle',
   ]
 

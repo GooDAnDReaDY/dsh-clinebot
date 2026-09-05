@@ -1,7 +1,7 @@
 {
   "name": "@goodandready/dsh-clinebot",
-  "version": "0.2.1",
-  "description": "DeepSeek Harness companion for ClineBot / ClinePass: dedicated settings page, live quota usage limits dashboard, in-UI credentials saving, static & custom models catalog, model picker control, and /cline slash-command.",
+  "version": "0.3.0",
+  "description": "DeepSeek Harness companion for ClineBot / ClinePass: dynamic subscription models sync, quota exhaustion warnings, session metrics, dedicated settings page, live usage limits, and /cline slash-command.",
   "license": "MIT",
   "type": "module",
   "main": "./lib/index.js",

@@ -38,11 +38,13 @@
 
 Плагин **`@goodandready/dsh-clinebot`** решает эти задачи «из коробки»:
 * 🖥️ **Отдельная страница в Настройках**: собственная полноэкранная страница в меню Настроек DSH (`Настройки → ClineBot`).
-* 📊 **Дашборд лимитов подписки (Usage)**: наглядные прогресс-бары расхода 5-часового и недельного скользящего окна из официального API `GET /users/me/plan/usage-limits` с таймером сброса.
+* 🔄 **Динамическая синхронизация моделей подписки**: автоматическое получение реального списка моделей из `GET /api/v1/users/me/plan` и мгновенное обновление провайдера DSH в один клик.
+* ⚠️ **Предупреждения об исчерпании квоты**: баннеры предупреждения при достижении 80% (внимание) и 95% (исчерпано) 5-часового лимита с таймером сброса.
+* 📈 **Метрики сессии**: учет количества запросов, расчетных токенов (Prompt / Completion), задержки и времени последнего вызова.
+* 📊 **Дашборд лимитов подписки (Usage)**: наглядные прогресс-бары расхода 5-часового и недельного скользящего окна из официального API `GET /users/me/plan/usage-limits`.
 * 🔑 **Сохранение ключа прямо из UI**: поле ввода ключа с маскировкой; сохранение напрямую в системный сервис `credentials` (`~/.dsh/.credentials.yaml`) без ручной правки файлов на сервере.
 * 🎯 **Управление моделями в пикере**: включение/выключение отображения конкретных моделей в диалогах чата.
-* ➕ **Добавление кастомных моделей**: форма добавления новых моделей подписки (ID, имя, контекст, Vision) без необходимости ждать обновления плагина.
-* 💬 **Слэш-команда `/cline` в чате**: просмотр остатка квот, задержки и активной модели прямо из чата.
+* 💬 **Слэш-команда `/cline` в чате**: просмотр остатка квот, предупреждений, статистики сессии, задержки и активной модели прямо из чата.
 
 ---
 
@@ -52,15 +54,16 @@
 graph LR
     subgraph UI [Интерфейс DSH]
         Page["Отдельная страница (Настройки -> ClineBot)"]
-        QuotaBar["Прогресс-бары 5h и недельного лимита"]
+        QuotaBar["Прогресс-бары 5h и недельного лимита + Баннер предупреждений"]
         KeyInput["Ввод и сохранение API-ключа"]
-        ModelPick["Управление пикером и новые модели"]
+        ModelPick["Динамическая синхронизация моделей и пикер"]
+        StatsCard["Метрики и статистика текущей сессии"]
     end
 
     subgraph PluginHost [Хост-часть dsh-clinebot]
         HttpEndpoints["API: /api/plugins/dsh-clinebot/*"]
         ClientCore["lib/cline-client.js"]
-        ModelCatalog["lib/models.js (Встроенные + Кастомные)"]
+        ModelCatalog["lib/models.js (Встроенные + Динамические из плана)"]
         SlashCmd["Слэш-команда: /cline"]
     end
 
@@ -72,31 +75,34 @@ graph LR
     subgraph Upstream [Сервер Cline]
         ClinePass["api.cline.bot/api/v1/chat/completions"]
         ClineQuota["api.cline.bot/api/v1/users/me/plan/usage-limits"]
+        ClinePlan["api.cline.bot/api/v1/users/me/plan"]
     end
 
     Page -->|GET /status & /usage| HttpEndpoints
     KeyInput -->|POST /save-key| HttpEndpoints
-    ModelPick -->|POST /register & /models| HttpEndpoints
+    ModelPick -->|POST /models/sync| HttpEndpoints
     HttpEndpoints --> Credentials
     HttpEndpoints --> ClientCore
     ClientCore --> ModelCatalog
     HttpEndpoints -->|Атомарная мутация| PiAi
     ClientCore -->|Чат| ClinePass
     ClientCore -->|Квоты| ClineQuota
+    ClientCore -->|Тарифный план| ClinePlan
 ```
 
 ---
 
 ## ✨ Структура модулей и возможности
 
-* **`lib/models.js`**: каталог встроенных моделей ClinePass (11 моделей) и управление пользовательскими моделями (`getAllModels`, `validateCustomModel`).
+* **`lib/models.js`**: каталог встроенных моделей ClinePass (11 моделей) и парсер моделей подписки (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **`lib/cline-client.js`**:
-  * `fetchUsageLimits`: опрос `GET /users/me/plan/usage-limits` и `GET /users/me` с кэшированием в памяти.
+  * `fetchUsageLimits`: параллельный опрос `GET /users/me/plan/usage-limits`, `GET /users/me/plan` и `GET /users/me` с кэшированием в памяти.
+  * `sessionStats` / `recordSessionRequest`: счетчики сессии (запросы, токены, задержка, время).
   * `saveCredentialKey`: атомарная запись ключей в `~/.dsh/.credentials.yaml`.
-  * `smokeChat`: замер задержки и тестовый пинг.
+  * `smokeChat`: замер задержки и тестовый пинг с фиксацией статистики.
   * `buildPiAiProvider`: генерация конфигурации провайдера для `llm-pi-ai` (`api: 'openai-completions'`).
-* **`lib/index.js`**: сервис Cordis, регистрация системных маршрутов и слэш-команды `/cline`.
-* **`lib/client.js`**: полнофункциональный раздел настроек (`settings.section`, order 28) и аккордеон плагина (`settings.plugin.item`).
+* **`lib/index.js`**: сервис Cordis, регистрация системных маршрутов (включая `/dsh-clinebot/models/sync`), расчет порогов предупреждения квоты и слэш-команды `/cline`.
+* **`lib/client.js`**: полнофункциональный раздел настроек (`settings.section`, order 28) с баннерами предупреждений, карточкой статистики сессии, кнопкой синхронизации моделей плана и аккордеоном плагина (`settings.plugin.item`).
 
 ---
 
@@ -112,7 +118,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 
 ## 💬 Слэш-команда `/cline` в чате
 
-В любой сессии чата введите команду `/cline` для проверки остатка лимитов:
+В любой сессии чата введите команду `/cline` для проверки остатка лимитов, предупреждений и статистики:
 
 ```text
 ### 🤖 ClinePass Status (ClinePass ($9.99/mo))
@@ -123,6 +129,11 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 ⏱ 5-часовое окно: [████░░░░░░] 42% (сброс: 18:00)
 📅 Недельное окно: [██████░░░░] 60% (сброс: 08.09)
 * Аккаунт: `developer@example.com`
+
+📈 Статистика текущей сессии:
+* Запросов: 14 вызовов
+* Токены: ~8,450 (Промпт: 6,100 | Ответ: 2,350)
+* Задержка последнего ответа: 210 мс
 ```
 
 ---
@@ -142,7 +153,7 @@ dsh-clinebot:
     - cline-pass/deepseek-v4-pro
     - cline-pass/kimi-k3
     - cline-pass/qwen3.7-max
-  customModels: []
+  dynamicModels: []
 ```
 
 ### Параметры конфигурации
@@ -156,7 +167,7 @@ dsh-clinebot:
 | `timeoutMs` | `number` | `15000` | Таймаут HTTP-запросов (мс) |
 | `smokeTimeoutMs` | `number` | `25000` | Таймаут тестового пинга (мс) |
 | `enabledModels` | `array` | `[...]` | Список моделей, активных в селекторе чата |
-| `customModels` | `array` | `[]` | Пользовательские модели, добавленные через интерфейс |
+| `dynamicModels` | `array` | `[]` | Динамические модели, автоматически синхронизированные из тарифа |
 
 ---
 
