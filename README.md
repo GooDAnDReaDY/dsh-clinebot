@@ -13,13 +13,13 @@
 
 <!-- Author Showcase Link -->
 <p align="center">
-  <a href="https://goodandready.app/"><img src="https://img.shields.io/badge/All_Author_Projects-goodandready.app-ff4500.svg?style=for-the-badge&logo=rocket&logoColor=white&labelColor=1a1a2e" alt="All Projects"></a>
+  <a href="https://goodandready.app/"><img src="https://img.shields.io/badge/All_Author_Projects-goodandready.app-ff4500.svg?style=for-the-badge&logo=rocket&logoColor=white&labelColor=1a1a2e" alt="GoodAndReady Showcase"></a>
 </p>
 
 <p align="center">
   <a href="README.md"><b>🇬🇧 English</b></a> •
-  <a href="README.ru.md"><b>🇷🇺 Русский</b></a> •
-  <a href="README.zh.md"><b>🇨🇳 中文说明</b></a>
+  <a href="docs/README.ru.md"><b>🇷🇺 Русский</b></a> •
+  <a href="docs/README.zh.md"><b>🇨🇳 中文说明</b></a>
 </p>
 
 </div>
@@ -109,26 +109,30 @@ graph LR
 dsh plugin --profile web add @goodandready/dsh-clinebot
 ```
 
+Restart your DeepSeek Harness instance and refresh the browser.
+
 ---
 
 ## 💬 Slash-Command `/cline`
 
-From any DSH chat session, type `/cline` to inspect quota:
+From any DSH chat session, type `/cline` to inspect quota and status:
 
 ```text
 ### 🤖 ClinePass Status (ClinePass ($9.99/mo))
-* Пинг хоста: ✅ 210 мс
-* Активный ключ: CLINEBOT_API_KEY (credentials)
-* Модель по умолчанию: `cline-pass/deepseek-v4-flash`
+* Latency: ✅ 210 ms
+* Active Key: CLINEBOT_API_KEY (credentials)
+* Default Model: `cline-pass/deepseek-v4-flash`
 
-⏱ 5-часовое окно: [████░░░░░░] 42% (сброс: 18:00)
-📅 Недельное окно: [██████░░░░] 60% (сброс: 08.09)
-* Аккаунт: `developer@example.com`
+⏱ 5-Hour Window: [████░░░░░░] 42% (resets: 18:00)
+📅 Weekly Window: [██████░░░░] 60% (resets: Sep 8)
+* Account: `developer@example.com`
 ```
 
 ---
 
 ## ⚙️ Configuration Reference (`settings.yaml`)
+
+Configure options in `settings.yaml` or directly inside the Web UI:
 
 ```yaml
 dsh-clinebot:
@@ -144,6 +148,29 @@ dsh-clinebot:
     - cline-pass/kimi-k3
     - cline-pass/qwen3.7-max
   customModels: []
+```
+
+### Configuration Parameters
+
+| Parameter | Type | Default | Description |
+|:---|:---|:---|:---|
+| `enabled` | `boolean` | `true` | Enable or disable the ClineBot provider bridge |
+| `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI-compatible base URL |
+| `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Environment variable / credentials key name |
+| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Default selected model ID |
+| `timeoutMs` | `number` | `15000` | HTTP request timeout in milliseconds |
+| `smokeTimeoutMs` | `number` | `25000` | Smoke test latency ping timeout |
+| `enabledModels` | `array` | `[...]` | List of models exposed in the DSH chat picker |
+| `customModels` | `array` | `[]` | User-defined custom model entries |
+
+---
+
+## 🧪 Testing
+
+Run the automated test suite:
+
+```bash
+npm test
 ```
 
 ---

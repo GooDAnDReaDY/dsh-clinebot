@@ -1,6 +1,6 @@
 {
   "name": "@goodandready/dsh-clinebot",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "DeepSeek Harness companion for ClineBot / ClinePass: dedicated settings page, live quota usage limits dashboard, in-UI credentials saving, static & custom models catalog, model picker control, and /cline slash-command.",
   "license": "MIT",
   "type": "module",
@@ -15,8 +15,7 @@
     "lib/",
     "cordis.patch.yml",
     "README.md",
-    "README.ru.md",
-    "README.zh.md",
+    "docs/",
     "CHANGELOG.md",
     "LICENSE"
   ],
