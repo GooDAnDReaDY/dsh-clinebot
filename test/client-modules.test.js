@@ -46,30 +46,60 @@ test("client: factory materializes with a strict module table", () => {
   const record = loadClientRecord()
   const seen = []
   const exports = record.factory(strictRequire(seen))
-  assert.deepEqual(Array.from(exports.inject), ["slots"])
+  assert.deepEqual(Array.from(exports.inject).sort(), ["locale", "settingsScope", "slots"])
   assert.equal(typeof exports.apply, "function")
   assert.equal(seen.includes("@deepseek-ai/dsh-client-ui-primitives"), false)
 })
 
-test("client: apply registers settings.section and settings.plugin.item", () => {
+test("client: apply registers settings.plugin.item primarily, or falls back to settings.section", () => {
   const record = loadClientRecord()
   const exports = record.factory(strictRequire([]))
-  const registrations = []
-  const injected = []
-  const ctx = {
+
+  // 1. Primary path: settings.plugin.item supported
+  const primaryRegistrations = []
+  const primaryInjected = []
+  const ctxPrimary = {
+    locale: { register() {}, bind: () => (k) => k },
     slots: {
       inject(name, cb) {
-        injected.push(name)
-        cb()
+        primaryInjected.push(name)
+        return cb()
       },
       register(decl) {
-        registrations.push(decl)
+        primaryRegistrations.push(decl)
+        return decl
       },
     },
   }
-  exports.apply(ctx)
-  assert.deepEqual(injected.slice().sort(), ["settings.plugin.item", "settings.section"])
-  assert.equal(registrations.length, 2)
+  exports.apply(ctxPrimary)
+  assert.deepEqual(primaryInjected, ["settings.plugin.item"])
+  assert.equal(primaryRegistrations.length, 1)
+  assert.equal(primaryRegistrations[0].name, "settings.plugin.item")
+  assert.equal(primaryRegistrations[0].key, "dsh-clinebot")
+  assert.equal(primaryRegistrations[0].locale, "dsh-clinebot")
+
+  // 2. Fallback path: settings.plugin.item not available
+  const fallbackRegistrations = []
+  const fallbackInjected = []
+  const ctxFallback = {
+    locale: { register() {}, bind: () => (k) => k },
+    slots: {
+      inject(name, cb) {
+        fallbackInjected.push(name)
+        if (name === "settings.plugin.item") return null
+        return cb()
+      },
+      register(decl) {
+        fallbackRegistrations.push(decl)
+        return decl
+      },
+    },
+  }
+  exports.apply(ctxFallback)
+  assert.deepEqual(fallbackInjected, ["settings.plugin.item", "settings.section"])
+  assert.equal(fallbackRegistrations.length, 1)
+  assert.equal(fallbackRegistrations[0].name, "settings.section")
+  assert.equal(fallbackRegistrations[0].locale, "dsh-clinebot")
 })
 
 test("client: dsh.client.inject names only modules the factory resolves", () => {

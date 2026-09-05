@@ -13,7 +13,10 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 
 ### 2.2 Client Runtime (`lib/client.js`)
 * Self-registering module via `window.__ModuleLoader__.load({ id: '@goodandready/dsh-clinebot', factory })`.
-* Slots into `settings.plugin.item` (primary) and `settings.section` (fallback).
+* Injects `['slots', 'locale', 'settingsScope']`.
+* Slots into `settings.plugin.item` (primary) with `key: NS` and `locale: NS`, and graceful fallback to `settings.section` if not declared.
+* Registers localized `en` and `ru` dictionaries via `ctx.locale.register()`.
+* Reactive binding via `ctx.settingsScope.bind({ namespace: NS })` with `useSyncExternalStore` guarding against `unavailable` / `loading` snapshot states.
 * Uses native design tokens (`--dsw-alias-...`) with full dark/light theme support.
 
 ```mermaid
