@@ -18,6 +18,7 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 * Registers localized `en` and `ru` dictionaries via `ctx.locale.register()`.
 * Reactive binding via `ctx.settingsScope.bind({ namespace: NS })` with `useSyncExternalStore` guarding against `unavailable` / `loading` snapshot states.
 * Uses native design tokens (`--dsw-alias-...`) with full dark/light theme support.
+* Injects isolated style tag tagged with `data-dsh-plugin="dsh-clinebot"`.
 
 ```mermaid
 graph LR

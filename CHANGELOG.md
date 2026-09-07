@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-09-07
+
+### Fixed
+- **Style Isolation Attribute**: Added `data-dsh-plugin="dsh-clinebot"` (`style.dataset.dshPlugin`) to dynamically injected CSS tag in `lib/client.js`, protecting styles from cleanup during neighbor plugin HMR and profile updates.
+
 ## [0.3.0] - 2026-09-05
 
 ### Added
