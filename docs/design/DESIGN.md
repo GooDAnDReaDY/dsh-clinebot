@@ -9,7 +9,8 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 ### 2.1 Host Runtime (`lib/index.js`, `lib/cline-client.js`, `lib/models.js`, `lib/http.js`)
 * **Cordis Service Registration**: Injects `['settings', 'webServer', 'credentials']`.
 * **Credential Isolation**: The plugin NEVER stores plain API keys in its configuration. The setting `apiKeyEnv` holds the credential identifier (default: `CLINEBOT_API_KEY`), resolved via `ctx.credentials.resolve()` or `process.env`.
-* **State Synchronization**: Mutates the core `llm-pi-ai` settings space (`op: 'set', path: ['providers', 'clinebot']`) when enabled or registered.
+* **State Synchronization & Auto-Registration**: Mutates the core `llm-pi-ai` settings space (`op: 'set', path: ['providers', 'clinebot']`) declaratively and automatically when enabled or key is saved.
+* **Auto-Discovery & `disabledModels`**: Features automatic background polling of subscription plan models (`GET /api/v1/users/me/plan`). User preferences are tracked via `disabledModels: []`, ensuring newly added plan models appear enabled by default in the DSH chat picker without manual re-synchronization.
 
 ### 2.2 Client Runtime (`lib/client.js`)
 * Self-registering module via `window.__ModuleLoader__.load({ id: '@goodandready/dsh-clinebot', factory })`.

@@ -5,6 +5,18 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-09-08
+
+### Added
+- **Automatic Plan Models Discovery**: Dynamic subscription plan models are parsed and registered automatically upon plugin startup and key configuration without requiring manual sync clicks.
+- **`disabledModels` Selection Model**: Migrated model activation state to `disabledModels`. Any newly added models in the ClinePass subscription plan are enabled automatically by default, while user exclusions are reliably preserved.
+- **Instant Non-Blocking Settings Status**: Limited background health check and quota ping timeout to 2500 ms in `buildStatus()`, rendering settings immediately and avoiding UI freezes on cold start or network hiccups.
+- **Full DSH English & Russian Localization**: Complete translation dictionary coverage (`en` canonical and `ru`) across headers, badges, quotas, models table, metrics, and diagnostics.
+- **Dynamic New Model Badges**: Newly discovered models received directly from the user's subscription plan now feature an informative `New` badge in the model picker.
+
+### Fixed
+- **DSH Registration Automation**: Provider registration in `llm-pi-ai` is now fully declarative and synchronized automatically when API credentials or model choices change. Removed redundant manual registration requirement.
+
 ## [0.3.1] - 2026-09-07
 
 ### Fixed

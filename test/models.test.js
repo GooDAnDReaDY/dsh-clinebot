@@ -8,6 +8,7 @@ import {
   isSupportedModel,
   getAllModels,
   getDefaultModelIds,
+  getActiveModelIds,
   parsePlanIncludedModels,
 } from '../lib/models.js'
 
@@ -68,4 +69,23 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
   assert.equal(merged.length, CLINE_MODELS.length + 1)
   assert.ok(findModel('cline-pass/newsupermodel-v1', dynamicList))
   assert.ok(isSupportedModel('cline-pass/newsupermodel-v1', dynamicList))
+})
+
+test('models: getActiveModelIds respects disabled models and auto-enables new models', () => {
+  const dynamicList = [
+    { id: 'cline-pass/brand-new-ai', name: 'Brand New AI', contextLength: 128000, input: ['text'] },
+  ]
+  const all = getAllModels(dynamicList)
+  const disabled = ['cline-pass/kimi-k3']
+
+  const activeIds = getActiveModelIds(all, disabled)
+
+  // Explicitly disabled model is excluded
+  assert.ok(!activeIds.includes('cline-pass/kimi-k3'))
+
+  // Newly discovered model is automatically included without user intervention
+  assert.ok(activeIds.includes('cline-pass/brand-new-ai'))
+
+  // Default models not in disabled list are included
+  assert.ok(activeIds.includes(DEFAULT_MODEL_ID))
 })
