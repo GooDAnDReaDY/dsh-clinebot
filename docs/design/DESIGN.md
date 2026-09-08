@@ -60,6 +60,13 @@ graph LR
 * **Non-destructive actions**: Unregister cleanly removes the provider entry from DSH without touching other providers or configurations.
 
 ## 4. Security & Isolation
-* CSRF / Cross-site protection: All mutating routes (`/register`, `/unregister`, `/smoke`, `/models`) validate `isTrustedSettingsRequest(req)` (`Sec-Fetch-Site !== 'cross-site'`).
+* CSRF / Cross-site protection: All mutating routes (`/register`, `/unregister`, `/smoke`, `/models`, `/accounts/active`, `/auth/begin`) validate `isTrustedSettingsRequest(req)` (`Sec-Fetch-Site !== 'cross-site'`).
 * Body size limits: Request payloads are strictly capped at 256 KB.
 * Sensitive credential data is never returned across the HTTP API (only `{ present: boolean, source: string, envName: string }`).
+
+## 5. Multi-Account Pool & Resilient Execution (v0.3.3)
+* **Account Pool**: The plugin supports multiple accounts (`accounts: [{ label, apiKeyEnv }]`, `activeAccount`). `resolveActiveAccountKey()` automatically selects the configured active account or falls back to primary `apiKeyEnv`. Account switching (`POST /dsh-clinebot/accounts/active` and `/cline switch <label>`) triggers instant re-registration in `llm-pi-ai` without service restart.
+* **Resilient Retry Policy**: HTTP calls to ClinePass utilize `retryWithBackoff()` with exponential delays and jitter to automatically absorb transient 429 rate-limiting events and upstream 5xx errors.
+* **Reasoning Effort Support**: Models declaring `reasoningEfforts: ['low', 'medium', 'high', 'max']` expose native thinking controls within the DSH model picker, accompanied by UI badges (`🧠 Reasoning`).
+* **Offline Cold-Start Cache**: Discovered plan models are serialized locally to `modelsCachePath` (`~/.dsh/clinebot-models-cache.json`), ensuring models remain immediately available on cold boot even if the upstream network or Cline API is temporarily unavailable.
+

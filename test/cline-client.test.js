@@ -8,6 +8,7 @@ import {
   fetchUsageLimits,
   saveCredentialKey,
   clearUsageCache,
+  retryWithBackoff,
   DEFAULT_BASE_URL,
   DEFAULT_API_KEY_ENV,
 } from '../lib/cline-client.js'
@@ -183,5 +184,48 @@ test('cline-client: sessionStats and request recording', async () => {
 
   resetSessionStats()
   assert.equal(sessionStats.totalRequests, 0)
+})
+
+test('cline-client: retryWithBackoff succeeds after transient 429/500 errors', async () => {
+  let attempts = 0
+  const flakyFn = async () => {
+    attempts++
+    if (attempts === 1) {
+      const err = new Error('Rate limit hit')
+      err.status = 429
+      throw err
+    }
+    if (attempts === 2) {
+      const err = new Error('Internal server error')
+      err.status = 502
+      throw err
+    }
+    return { success: true, attempts }
+  }
+
+  const result = await retryWithBackoff(flakyFn, {
+    maxRetries: 3,
+    initialDelayMs: 10,
+    maxDelayMs: 50,
+  })
+
+  assert.equal(result.success, true)
+  assert.equal(result.attempts, 3)
+  assert.equal(attempts, 3)
+
+  // Fails when retries exhausted
+  let fails = 0
+  const alwaysFail = async () => {
+    fails++
+    const err = new Error('Persistent 503')
+    err.status = 503
+    throw err
+  }
+
+  await assert.rejects(
+    () => retryWithBackoff(alwaysFail, { maxRetries: 2, initialDelayMs: 5, maxDelayMs: 10 }),
+    /Persistent 503/
+  )
+  assert.equal(fails, 3) // 1 initial + 2 retries
 })
 

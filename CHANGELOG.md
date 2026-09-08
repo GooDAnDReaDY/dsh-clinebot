@@ -5,6 +5,22 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-09-08
+
+### Added
+- **Multi-Account Pool & Fast Rotation** (Issue #8): Added full account pool support (`accounts: [{ label, apiKeyEnv }]`, `activeAccount`). Users can configure multiple ClinePass keys across personal and team subscriptions, view configuration statuses in the dedicated settings card, and pin/switch active accounts instantly without restarting DSH.
+- **Web Search Integration Alignment** (Issue #9): Investigated Cline API search capabilities; confirmed search operations are natively executed via model tool-calling without requiring separate search-engine tokens or intermediate providers.
+- **Fast 1-Click Browser Login Flow** (Issue #10): Added interactive browser authorization (`POST /dsh-clinebot/auth/begin` and status polling), streamlining onboarding and credential entry directly from the web settings interface.
+- **Native Reasoning Effort Controls** (Issue #11): Configured `reasoningEfforts: ['low', 'medium', 'high', 'max']` on supported thinking models (`deepseek-v4-flash`, `deepseek-v4-pro`, `kimi-k3`, `minimax-m3`). Exposes native thinking controls in DSH model picker and UI badge `🧠 Reasoning`.
+- **Extended Slash-Command Subcommands** (Issue #12): Enhanced `/cline` with powerful subcommands:
+  - `/cline models` — Lists all available models with context length, Vision modality, and reasoning support.
+  - `/cline accounts` — Displays configured account pool, active key, and environment binding status.
+  - `/cline switch <label>` — Dynamically switches the active key across the account pool directly from chat.
+  - `/cline quota` (default) — Full rolling quota breakdown with warning indicators and session metrics.
+- **Resilient Retry Policy & Backoff** (Issue #13): Added exponential backoff retry mechanism (`retryWithBackoff`) intercepting transient 429 rate-limiting responses, `Retry-After` headers, and 5xx upstream hiccups.
+- **Informative Badges & Model Meta Tags** (Issue #14): Enriched model catalogue metadata with compact human-readable badges (`[200K · Vision · Coding · Reasoning]`), Vision detection, and category filtering.
+- **Offline Cold-Start Disk Caching** (Issue #15): Added persistent JSON disk caching (`saveModelsDiskCache`, `loadModelsDiskCache`) at `~/.dsh/clinebot-models-cache.json`. Newly discovered plan models survive offline restarts and cold boots without blocking startup.
+
 ## [0.3.2] - 2026-09-08
 
 ### Added

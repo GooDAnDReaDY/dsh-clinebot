@@ -10,7 +10,15 @@ import {
   getDefaultModelIds,
   getActiveModelIds,
   parsePlanIncludedModels,
+  formatModelContext,
+  formatModelDescription,
+  isVisionModel,
+  saveModelsDiskCache,
+  loadModelsDiskCache,
 } from '../lib/models.js'
+import os from 'node:os'
+import path from 'node:path'
+import fs from 'node:fs'
 
 test('models: catalog integrity', () => {
   assert.equal(PROVIDER_ID, 'clinebot')
@@ -88,4 +96,49 @@ test('models: getActiveModelIds respects disabled models and auto-enables new mo
 
   // Default models not in disabled list are included
   assert.ok(activeIds.includes(DEFAULT_MODEL_ID))
+})
+
+test('models: formatModelContext and formatModelDescription', () => {
+  assert.equal(formatModelContext(200000), '200K')
+  assert.equal(formatModelContext(128000), '128K')
+  assert.equal(formatModelContext(1000000), '1M')
+
+  const sampleModel = {
+    id: 'cline-pass/deepseek-v4-pro',
+    name: 'DeepSeek V4 Pro',
+    contextLength: 200000,
+    category: 'coding',
+    input: ['text', 'image'],
+  }
+  const desc = formatModelDescription(sampleModel)
+  assert.ok(desc.includes('200K'))
+  assert.ok(desc.includes('Vision'))
+  assert.ok(desc.includes('Coding'))
+
+  assert.equal(isVisionModel('cline-pass/qwen3.7-max'), true)
+  assert.equal(isVisionModel('cline-pass/kimi-k2.7-code'), false)
+})
+
+test('models: saveModelsDiskCache and loadModelsDiskCache', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clinebot-test-'))
+  const cacheFile = path.join(tmpDir, 'cache.json')
+
+  try {
+    const testModels = [
+      { id: 'cline-pass/cached-test', name: 'Cached Test', contextLength: 128000 },
+    ]
+    const saved = await saveModelsDiskCache(cacheFile, testModels)
+    assert.equal(saved, true)
+
+    const loaded = await loadModelsDiskCache(cacheFile)
+    assert.ok(Array.isArray(loaded))
+    assert.equal(loaded.length, 1)
+    assert.equal(loaded[0].id, 'cline-pass/cached-test')
+
+    // Non-existent path returns null
+    const empty = await loadModelsDiskCache(path.join(tmpDir, 'nonexistent.json'))
+    assert.equal(empty, null)
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  }
 })
