@@ -115,3 +115,113 @@ test("client: dsh.client.inject names only modules the factory resolves", () => 
     assert.ok(specifiers.includes(name), "dsh.client.inject names a module the factory never requires: " + name)
   }
 })
+
+test("client: full component tree render and event handler integrity", () => {
+  const record = loadClientRecord()
+  const mockData = {
+    config: { apiKeyEnv: 'CLINEBOT_API_KEY', enabledModels: ['cline-pass/deepseek-v4-flash'], defaultModel: 'cline-pass/deepseek-v4-flash' },
+    accounts: [{ id: 'default', label: 'Default', apiKeyEnv: 'CLINEBOT_API_KEY', present: true, source: 'credentials' }],
+    health: { ok: true, latencyMs: 35 },
+    key: { present: true, source: 'credentials' },
+    isRegistered: true,
+    availableModels: [{ id: 'cline-pass/deepseek-v4-flash', name: 'DeepSeek V4 Flash', contextLength: 200000, category: 'coding', input: ['text', 'image'] }],
+    usage: {
+      user: { email: 'user@example.com' },
+      windows: {
+        fiveHour: { percentUsed: 15, remainingPercent: 85, resetsAt: '2026-09-09T22:00:00Z' },
+        weekly: { percentUsed: 30, remainingPercent: 70, resetsAt: '2026-09-12T00:00:00Z' }
+      }
+    },
+    sessionStats: { totalRequests: 10, successfulRequests: 10, totalTokensEst: 4500, lastLatencyMs: 35, lastRequestAt: Date.now() }
+  }
+
+  let hookIndex = 0
+  const states = [
+    mockData,
+    mockData.config,
+    '',
+    '',
+    '',
+    { latencyMs: 35, model: 'test', preview: 'hello' },
+    '',
+    false
+  ]
+
+  const ReactMock = {
+    useState: (initial) => {
+      const val = hookIndex < states.length ? states[hookIndex] : initial
+      hookIndex++
+      return [val, () => {}]
+    },
+    useEffect: (cb) => { cb() },
+    useCallback: (cb) => cb,
+    useMemo: (cb) => cb(),
+    useSyncExternalStore: (sub, getSnap) => getSnap(),
+    createElement: (tag, props, ...children) => {
+      const finalProps = Object.assign({}, props, { children: children.length === 1 ? children[0] : (children.length > 1 ? children : undefined) })
+      return { tag, props: finalProps, children }
+    },
+    Component: class Component {
+      constructor(props) { this.props = props; this.state = {} }
+    }
+  }
+  ReactMock.Component.prototype.isReactComponent = {}
+
+  const exports = record.factory((spec) => {
+    if (spec === 'react') return ReactMock
+    throw new Error('Unexpected: ' + spec)
+  })
+
+  let registered = {}
+  const ctx = {
+    slots: {
+      inject: (name, cb) => {
+        if (name === 'settings.plugin.item') return null
+        return cb()
+      },
+      register: (opts, comp) => { registered[opts.name] = comp; return opts }
+    },
+    locale: { register: () => {}, bind: () => (k) => k },
+    settingsScope: {
+      bind: () => ({
+        subscribe: () => () => {},
+        getSnapshot: () => ({ status: 'ready', value: {} }),
+        set: async () => {}
+      })
+    }
+  }
+
+  exports.apply(ctx)
+  const settingsSection = registered['settings.section']
+  assert.equal(typeof settingsSection, 'function')
+
+  hookIndex = 0
+  const vdom = settingsSection({ ctx })
+
+  let elementsFound = 0
+  function traverse(node, depth = 0) {
+    if (!node) return
+    elementsFound++
+    if (typeof node.tag === 'function') {
+      if (node.tag.prototype && node.tag.prototype.isReactComponent) {
+        const inst = new node.tag(node.props)
+        traverse(inst.render(), depth + 1)
+      } else {
+        traverse(node.tag(node.props), depth + 1)
+      }
+    }
+    if (node.children) {
+      if (Array.isArray(node.children)) {
+        node.children.forEach(c => {
+          if (Array.isArray(c)) c.forEach(x => traverse(x, depth + 1))
+          else traverse(c, depth + 1)
+        })
+      } else {
+        traverse(node.children, depth + 1)
+      }
+    }
+  }
+
+  traverse(vdom)
+  assert.ok(elementsFound > 100, `Expected full tree evaluation, found ${elementsFound}`)
+})

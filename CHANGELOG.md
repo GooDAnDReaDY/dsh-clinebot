@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.6] - 2026-09-09
+
+### Fixed
+- **Restored `handleSmoke` diagnostics handler**: Re-introduced missing `handleSmoke` click callback in `SettingsPage`, fixing `handleSmoke is not defined` runtime error during Diagnostics card interaction.
+- **Defensive ErrorBoundary child rendering**: Hardened `ErrorBoundary.render()` with `this.props?.children || null` to prevent unhandled exceptions if props are omitted.
+- **Comprehensive UI render integrity test**: Added recursive VDOM component tree evaluation test in `test/client-modules.test.js` covering all 190+ elements and verifying definition of all 18 event handlers.
+
 ## [0.3.5] - 2026-09-09
 
 ### Fixed
