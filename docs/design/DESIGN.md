@@ -7,17 +7,19 @@
 The plugin consists of two runtime boundaries conforming to DSH authoring standards:
 
 ### 2.1 Host Runtime (`lib/index.js`, `lib/cline-client.js`, `lib/models.js`, `lib/http.js`)
-* **Cordis Service Registration**: Injects `['settings', 'webServer', 'credentials']`.
-* **Credential Isolation**: The plugin NEVER stores plain API keys in its configuration. The setting `apiKeyEnv` holds the credential identifier (default: `CLINEBOT_API_KEY`), resolved via `ctx.credentials.resolve()` or `process.env`.
+* **Cordis Service Registration**: Declares `inject = ['settings', 'webServer', 'credentials']` and registers the settings namespace dynamically via `ctx.inject(['settings'], (sctx) => { sctx.settings.register(NS, Config, { base: config }) })`. This guarantees that the configuration schema, default values, and reactive watchers are declared and available to the host and client settingsScope without timing issues.
+* **Safe Service Resolution**: Service lookups utilize defensive proxy resolution `(ctx?.get && ctx.get('credentials')) || ctx?.credentials` to prevent `undefined` properties on Cordis proxies.
+* **Credential Isolation**: The plugin NEVER stores plain API keys in its configuration. The setting `apiKeyEnv` holds the credential identifier (default: `CLINEBOT_API_KEY`), resolved via `ctx.get('credentials').resolve()` or `process.env`.
 * **State Synchronization & Auto-Registration**: Mutates the core `llm-pi-ai` settings space (`op: 'set', path: ['providers', 'clinebot']`) declaratively and automatically when enabled or key is saved.
 * **Auto-Discovery & `disabledModels`**: Features automatic background polling of subscription plan models (`GET /api/v1/users/me/plan`). User preferences are tracked via `disabledModels: []`, ensuring newly added plan models appear enabled by default in the DSH chat picker without manual re-synchronization.
 
 ### 2.2 Client Runtime (`lib/client.js`)
 * Self-registering module via `window.__ModuleLoader__.load({ id: '@goodandready/dsh-clinebot', factory })`.
 * Injects `['slots', 'locale', 'settingsScope']`.
-* Slots into `settings.plugin.item` (primary) with `key: NS` and `locale: NS`, and graceful fallback to `settings.section` if not declared.
-* Registers localized `en` and `ru` dictionaries via `ctx.locale.register()`.
-* Reactive binding via `ctx.settingsScope.bind({ namespace: NS })` with `useSyncExternalStore` guarding against `unavailable` / `loading` snapshot states.
+* Slots strictly and exclusively into `settings.plugin.item` (`key: NS`, `locale: NS`). Standalone top-level `settings.section` registration is omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
+* Uses `refreshMirrorUntilVisible(ctx)` to invalidate and re-read the client settings mirror until the namespace is reported ready by the host.
+* Registers localized `en` and `ru` dictionaries with duplicate-safe guards (`ctx.locale.register()`).
+* Reactive binding via `((ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope).bind({ namespace: NS })` with `useSyncExternalStore` guarding against `unavailable` / `loading` snapshot states. Form mutations write directly to `scope.set()`.
 * Uses native design tokens (`--dsw-alias-...`) with full dark/light theme support.
 * Injects isolated style tag tagged with `data-dsh-plugin="dsh-clinebot"`.
 
