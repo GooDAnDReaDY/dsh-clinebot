@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.7] - 2026-09-10
+
+### Fixed
+- **Canonical Settings Namespace Registration** (Issue #16): Moved settings declaration in `lib/index.js` to `ctx.inject(['settings'], (sctx) => { sctx.settings.register(NS, Config, { base: config }) })`, guaranteeing synchronous/asynchronous namespace availability and reactive config watching via `live()`.
+- **Top-Level Section Removal**: Removed the unauthorized fallback to `settings.section` in `lib/client.js`, strictly confining the plugin UI to the standard `settings.plugin.item` slot under Settings → Plugins → Plugin Settings.
+- **Safe Service Resolution**: Replaced direct property access `ctx.credentials` with safe proxy lookup `(ctx?.get && ctx.get('credentials')) || ctx?.credentials`.
+- **Client Mirror Invalidation & Scope Sync**: Added `refreshMirrorUntilVisible(ctx)` in `lib/client.js` to trigger settings mirror re-reads until the namespace is visible in the web client, and synchronized multi-account changes directly through `scope.set('activeAccount', accountEnv)`.
+- **Duplicate-Safe Locales**: Wrapped client dictionary registration with duplicate-safe guards (`ctx.locale.register()`) preventing registration collision errors.
+
 ## [0.3.6] - 2026-09-09
 
 ### Fixed

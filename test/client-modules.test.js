@@ -51,14 +51,14 @@ test("client: factory materializes with a strict module table", () => {
   assert.equal(seen.includes("@deepseek-ai/dsh-client-ui-primitives"), false)
 })
 
-test("client: apply registers settings.plugin.item primarily, or falls back to settings.section", () => {
+test("client: apply registers settings.plugin.item exclusively without settings.section", () => {
   const record = loadClientRecord()
   const exports = record.factory(strictRequire([]))
 
-  // 1. Primary path: settings.plugin.item supported
   const primaryRegistrations = []
   const primaryInjected = []
   const ctxPrimary = {
+    effect: (fn) => fn(),
     locale: { register() {}, bind: () => (k) => k },
     slots: {
       inject(name, cb) {
@@ -70,6 +70,12 @@ test("client: apply registers settings.plugin.item primarily, or falls back to s
         return decl
       },
     },
+    settingsScope: {
+      describe: () => ({
+        getSnapshot: () => ({ view: { namespaces: [{ ns: "dsh-clinebot" }] } }),
+        load() {},
+      }),
+    },
   }
   exports.apply(ctxPrimary)
   assert.deepEqual(primaryInjected, ["settings.plugin.item"])
@@ -77,29 +83,7 @@ test("client: apply registers settings.plugin.item primarily, or falls back to s
   assert.equal(primaryRegistrations[0].name, "settings.plugin.item")
   assert.equal(primaryRegistrations[0].key, "dsh-clinebot")
   assert.equal(primaryRegistrations[0].locale, "dsh-clinebot")
-
-  // 2. Fallback path: settings.plugin.item not available
-  const fallbackRegistrations = []
-  const fallbackInjected = []
-  const ctxFallback = {
-    locale: { register() {}, bind: () => (k) => k },
-    slots: {
-      inject(name, cb) {
-        fallbackInjected.push(name)
-        if (name === "settings.plugin.item") return null
-        return cb()
-      },
-      register(decl) {
-        fallbackRegistrations.push(decl)
-        return decl
-      },
-    },
-  }
-  exports.apply(ctxFallback)
-  assert.deepEqual(fallbackInjected, ["settings.plugin.item", "settings.section"])
-  assert.equal(fallbackRegistrations.length, 1)
-  assert.equal(fallbackRegistrations[0].name, "settings.section")
-  assert.equal(fallbackRegistrations[0].locale, "dsh-clinebot")
+  assert.ok(!primaryRegistrations.some((r) => r.name === "settings.section"), "settings.section must not be registered")
 })
 
 test("client: dsh.client.inject names only modules the factory resolves", () => {
@@ -137,6 +121,7 @@ test("client: full component tree render and event handler integrity", () => {
 
   let hookIndex = 0
   const states = [
+    true, // PluginCard open = true
     mockData,
     mockData.config,
     '',
@@ -174,15 +159,20 @@ test("client: full component tree render and event handler integrity", () => {
 
   let registered = {}
   const ctx = {
+    effect: (fn) => fn(),
     slots: {
       inject: (name, cb) => {
-        if (name === 'settings.plugin.item') return null
-        return cb()
+        if (name === 'settings.plugin.item') return cb()
+        return null
       },
       register: (opts, comp) => { registered[opts.name] = comp; return opts }
     },
     locale: { register: () => {}, bind: () => (k) => k },
     settingsScope: {
+      describe: () => ({
+        getSnapshot: () => ({ view: { namespaces: [{ ns: 'dsh-clinebot' }] } }),
+        load: () => {}
+      }),
       bind: () => ({
         subscribe: () => () => {},
         getSnapshot: () => ({ status: 'ready', value: {} }),
@@ -192,11 +182,12 @@ test("client: full component tree render and event handler integrity", () => {
   }
 
   exports.apply(ctx)
-  const settingsSection = registered['settings.section']
-  assert.equal(typeof settingsSection, 'function')
+  const pluginCardItem = registered['settings.plugin.item']
+  assert.equal(typeof pluginCardItem, 'function')
+  assert.equal(registered['settings.section'], undefined, 'settings.section must not be registered')
 
   hookIndex = 0
-  const vdom = settingsSection({ ctx })
+  const vdom = pluginCardItem({ ctx })
 
   let elementsFound = 0
   function traverse(node, depth = 0) {
