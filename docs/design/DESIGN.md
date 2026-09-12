@@ -72,3 +72,11 @@ graph LR
 * **Reasoning Effort Support**: Models declaring `reasoningEfforts: ['low', 'medium', 'high', 'max']` expose native thinking controls within the DSH model picker, accompanied by UI badges (`🧠 Reasoning`).
 * **Offline Cold-Start Cache**: Discovered plan models are serialized locally to `modelsCachePath` (`~/.dsh/clinebot-models-cache.json`), ensuring models remain immediately available on cold boot even if the upstream network or Cline API is temporarily unavailable.
 
+
+## 6. Performance, Resilience & Telemetry (v0.3.8)
+* **Stale-While-Revalidate (SWR) Network Probing**: `probeHealth()` utilizes an in-memory SWR cache (`probeCache`) with 25s TTL. Repeated `/status` queries return instantaneously (<1ms latency) with fresh host availability, asynchronously refreshing network latency in the background without blocking the client UI thread.
+* **HTTP Keep-Alive Connection Reuse**: Outbound fetch calls to `api.cline.bot` enforce persistent connection keepalive (`keepalive: true`), eliminating recurrent TLS handshake and TCP connection establishment latency.
+* **Auto-Failover Account Rotation**: When an active account encounters HTTP 429 (Rate Limit) or 100% quota depletion, `rotateToNextAccount()` automatically selects the next configured account in the pool, applies the update to DSH settings, and re-synchronizes credentials in `llm-pi-ai` in real time.
+* **Accurate Token Telemetry**: Real usage metadata (`prompt_tokens`, `completion_tokens`, `total_tokens`) is parsed directly from chat completion responses and tracked in session telemetry (`sessionStats`).
+* **Expanded Slash Commands**: Slash command `/cline` supports `/cline test [model]` (smoke test with latency, response and token metrics), `/cline ping` (real-time host connectivity test), and `/cline rotate` (round-robin active account rotation).
+* **Debounced Model Selection**: Model exclusion checkboxes in `lib/client.js` utilize immediate optimistic UI rendering paired with a 280ms debounced persistence layer, ensuring smooth interaction without request thrashing.

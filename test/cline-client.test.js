@@ -8,6 +8,8 @@ import {
   fetchUsageLimits,
   saveCredentialKey,
   clearUsageCache,
+  clearProbeCache,
+  probeHealth,
   retryWithBackoff,
   DEFAULT_BASE_URL,
   DEFAULT_API_KEY_ENV,
@@ -229,3 +231,74 @@ test('cline-client: retryWithBackoff succeeds after transient 429/500 errors', a
   assert.equal(fails, 3) // 1 initial + 2 retries
 })
 
+
+test('cline-client: probeHealth SWR caching and background revalidation', async () => {
+  clearProbeCache()
+  let callCount = 0
+
+  const mockFetch = async () => {
+    callCount++
+    return { status: 200 }
+  }
+
+  // 1. Initial cold probe
+  const first = await probeHealth('https://api.cline.bot/api/v1', {
+    fetchImpl: mockFetch,
+    ttlMs: 50,
+  })
+  assert.equal(first.ok, true)
+  assert.equal(callCount, 1)
+
+  // 2. Immediate second call hit fresh SWR cache (0 fetch calls)
+  const second = await probeHealth('https://api.cline.bot/api/v1', {
+    fetchImpl: mockFetch,
+    ttlMs: 50,
+  })
+  assert.equal(second.ok, true)
+  assert.equal(callCount, 1)
+
+  // 3. Wait for TTL to expire, call again: returns stale data immediately while triggering background refresh
+  await new Promise((r) => setTimeout(r, 60))
+  const third = await probeHealth('https://api.cline.bot/api/v1', {
+    fetchImpl: mockFetch,
+    ttlMs: 50,
+  })
+  assert.equal(third.ok, true)
+  // Background revalidation triggered
+  await new Promise((r) => setTimeout(r, 10))
+  assert.equal(callCount, 2)
+
+  // 4. bypassCache forces immediate probe
+  const fourth = await probeHealth('https://api.cline.bot/api/v1', {
+    fetchImpl: mockFetch,
+    bypassCache: true,
+  })
+  assert.equal(fourth.ok, true)
+  assert.equal(callCount, 3)
+})
+
+test('cline-client: smokeChat accurate token telemetry extraction', async () => {
+  const mockFetchUsage = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      model: 'cline-pass/deepseek-v4-pro',
+      choices: [{ message: { content: 'test reply' } }],
+      usage: {
+        prompt_tokens: 42,
+        completion_tokens: 18,
+        total_tokens: 60,
+      },
+    }),
+  })
+
+  const outcome = await smokeChat('https://api.cline.bot/api/v1', 'valid-key', {
+    fetchImpl: mockFetchUsage,
+  })
+
+  assert.equal(outcome.ok, true)
+  assert.equal(outcome.promptTokens, 42)
+  assert.equal(outcome.completionTokens, 18)
+  assert.equal(outcome.totalTokens, 60)
+  assert.equal(outcome.preview, 'test reply')
+})
