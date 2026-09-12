@@ -5,6 +5,17 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2026-09-12
+
+### Added
+- **Stale-While-Revalidate (SWR) Network Probe** (Issue #18): Introduced in-memory SWR caching (`probeCache`) with 25s TTL for host health probes (`probeHealth`), reducing settings card status endpoint latency from ~500ms to <1ms on repeated calls while revalidating asynchronously in the background.
+- **HTTP Keep-Alive Connection Reuse**: Added persistent `keepalive: true` connection options across all HTTP calls (`probeHealth`, `smokeChat`, `fetchUsageLimits`) to eliminate recurrent TCP/TLS handshakes to `api.cline.bot`.
+- **Auto-Failover Account Rotation**: Implemented `rotateToNextAccount` to automatically rotate active accounts in the configured pool when encountering HTTP 429 rate limits or 100% quota exhaustion, instantly synchronizing DSH `llm-pi-ai` credentials without restarting.
+- **Accurate Token Telemetry**: Extracted real usage metrics (`prompt_tokens`, `completion_tokens`, `total_tokens`) from chat completion responses, replacing static estimation counters.
+- **Expanded Slash-Commands**: Extended `/cline` chat command with `/cline test [model]` (live smoke verification), `/cline ping` (real-time host connectivity test), and `/cline rotate` (manual failover).
+- **Curated Models Catalog Expansion**: Added Claude 3.7 Sonnet (Hybrid Reasoning), GPT-4.5 Preview, o3-mini, Gemini 2.5 Pro / Flash, and Qwen 2.5 Coder 32B to the official `CLINE_MODELS` catalogue.
+- **Debounced Model Picker Toggles**: Added 280ms debounce for model exclusion persistence in `lib/client.js`, providing 0ms UI checkbox responsiveness and preventing network request thrashing.
+
 ## [0.3.7] - 2026-09-10
 
 ### Fixed

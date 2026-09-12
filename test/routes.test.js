@@ -50,3 +50,12 @@ test('routes: client.js renders error banner with retry button on failure', () =
   assert.ok(clientSource.includes('cb-alert-err'), 'Client must render error banner if loading fails')
   assert.ok(clientSource.includes('Повторить попытку'), 'Client must render retry button')
 })
+
+test('commands: lib/index.js registers /cline command with subcommands', () => {
+  const indexSource = readFileSync(path.join(root, 'lib', 'index.js'), 'utf8')
+  assert.ok(indexSource.includes("name: 'cline'"), 'Slash command /cline must be registered')
+  assert.ok(indexSource.includes("subcmd === 'ping'"), 'Subcommand /cline ping must be supported')
+  assert.ok(indexSource.includes("subcmd === 'test'"), 'Subcommand /cline test must be supported')
+  assert.ok(indexSource.includes("subcmd === 'rotate'"), 'Subcommand /cline rotate must be supported')
+  assert.ok(indexSource.includes("|| 'quota'"), 'Default subcommand must be quota')
+})
