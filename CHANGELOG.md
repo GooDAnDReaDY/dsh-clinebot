@@ -5,6 +5,19 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2026-09-15
+
+### Added
+- **Stale-While-Revalidate (SWR) Quota Caching**: Integrated SWR caching into `fetchUsageLimits` with a 20-second TTL. Instantaneous (<2ms) responses on `/dsh-clinebot/status` and `/dsh-clinebot/usage` with background revalidation.
+- **Smart Quota-Aware Failover**: Account rotation automatically skips exhausted accounts (>=95% 5h usage) and selects the account with the lowest `percentUsed`. Supports auto-recovery once `resetsAt` timestamp is reached.
+- **One-Click In-App Updater (`/dsh-clinebot/update`)**: Added canonical DSH updater endpoint (`lib/updater.js`) validating loopback origin, same-origin, and `x-dsh-plugin-update` header for safe in-app upgrades.
+- **Complete Chinese Localization (`zh`)**: Added comprehensive native Chinese dictionary (67+ translation keys) to `lib/client.js`.
+- **DSH Canon Compliance**: Cleanly separated external Russian translation (supplied via `dsh-russian-lang`), and normalized all slash command outputs to canonical English.
+
+### Fixed
+- **Code Deduplication**: Eliminated duplicate credential and account pool helper functions between `lib/index.js` and `lib/cline-client.js`.
+- **Network Keep-Alive & Cloudflare Handling**: Enforced persistent keep-alive connections on outbound requests and improved error extraction on HTML challenge responses.
+
 ## [0.3.8] - 2026-09-12
 
 ### Added

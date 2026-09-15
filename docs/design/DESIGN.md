@@ -18,7 +18,7 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 * Injects `['slots', 'locale', 'settingsScope']`.
 * Slots strictly and exclusively into `settings.plugin.item` (`key: NS`, `locale: NS`). Standalone top-level `settings.section` registration is omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
 * Uses `refreshMirrorUntilVisible(ctx)` to invalidate and re-read the client settings mirror until the namespace is reported ready by the host.
-* Registers localized `en` and `ru` dictionaries with duplicate-safe guards (`ctx.locale.register()`).
+* Registers localized `en` and `zh` dictionaries with duplicate-safe guards (`ctx.locale.register()`), while Russian translation is modularly supplied by `dsh-russian-lang`.
 * Reactive binding via `((ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope).bind({ namespace: NS })` with `useSyncExternalStore` guarding against `unavailable` / `loading` snapshot states. Form mutations write directly to `scope.set()`.
 * Uses native design tokens (`--dsw-alias-...`) with full dark/light theme support.
 * Injects isolated style tag tagged with `data-dsh-plugin="dsh-clinebot"`.
@@ -80,3 +80,9 @@ graph LR
 * **Accurate Token Telemetry**: Real usage metadata (`prompt_tokens`, `completion_tokens`, `total_tokens`) is parsed directly from chat completion responses and tracked in session telemetry (`sessionStats`).
 * **Expanded Slash Commands**: Slash command `/cline` supports `/cline test [model]` (smoke test with latency, response and token metrics), `/cline ping` (real-time host connectivity test), and `/cline rotate` (round-robin active account rotation).
 * **Debounced Model Selection**: Model exclusion checkboxes in `lib/client.js` utilize immediate optimistic UI rendering paired with a 280ms debounced persistence layer, ensuring smooth interaction without request thrashing.
+
+## 7. Stability, SWR Quotas, Smart Failover & One-Click In-App Updater (v0.3.9)
+* **SWR Quota Caching (`fetchUsageLimits`)**: In-memory Stale-While-Revalidate caching for Cline usage limits (20s TTL). Returns quota statistics (<2ms) immediately on `/status` requests while refreshing quota windows in the background.
+* **Smart Quota-Aware Failover**: Account failover evaluates cached rolling limits (5-hour window), automatically prioritizing accounts with the lowest `percentUsed` and respecting `resetsAt` timestamps for automatic account recovery.
+* **One-Click In-App Updater (`/dsh-clinebot/update`)**: Integrates host-side one-click updater (`lib/updater.js`) with security verification (`isTrustedUpdateRequest`: loopback validation, same-origin checks, `x-dsh-plugin-update: 1` header). Allows seamless in-place updates from DSH UI.
+* **Canonical DSH Localization Standard**: Source code complies with canonical DSH standards (English base canon, complete Chinese `zh` locale registration in client, external Russian translation provided by `dsh-russian-lang`). All slash command responses and system logs are localized to English.

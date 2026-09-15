@@ -1,6 +1,24 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { rotateToNextAccount } from '../lib/cline-client.js'
+import { rotateToNextAccount, isAccountQuotaExhausted } from '../lib/cline-client.js'
+
+test('failover: isAccountQuotaExhausted logic and auto-recovery', () => {
+  // 1. Under 95% is not exhausted
+  assert.equal(isAccountQuotaExhausted({ windows: { fiveHour: { percentUsed: 50 } } }), false)
+  assert.equal(isAccountQuotaExhausted({ windows: { fiveHour: { percentUsed: 94.9 } } }), false)
+
+  // 2. >= 95% with future resetsAt is exhausted
+  const future = new Date(Date.now() + 3600_000).toISOString()
+  assert.equal(isAccountQuotaExhausted({ windows: { fiveHour: { percentUsed: 98, resetsAt: future } } }), true)
+
+  // 3. >= 95% with past resetsAt is recovered (not exhausted)
+  const past = new Date(Date.now() - 60_000).toISOString()
+  assert.equal(isAccountQuotaExhausted({ windows: { fiveHour: { percentUsed: 99, resetsAt: past } } }), false)
+
+  // 4. Missing window or null
+  assert.equal(isAccountQuotaExhausted(null), false)
+  assert.equal(isAccountQuotaExhausted({}), false)
+})
 
 test('failover: rotateToNextAccount switches between multiple configured accounts', async () => {
   const env = {
