@@ -35,15 +35,15 @@ test("host: lib/index.js registers settings namespace via ctx.inject(['settings'
 })
 
 test("host: resolveKeyValue uses ctx.get('credentials') safely without bare property access", () => {
-  const indexSource = readFileSync(path.join(root, "lib", "index.js"), "utf8")
+  const clineClientSource = readFileSync(path.join(root, "lib", "cline-client.js"), "utf8")
 
   // Check safe credentials resolution:
   assert.ok(
-    indexSource.includes("(ctx?.get && ctx.get('credentials')) || ctx?.credentials"),
+    clineClientSource.includes("(ctx?.get && ctx.get('credentials')) || ctx?.credentials"),
     "resolveKeyValue must check ctx.get('credentials')"
   )
   assert.ok(
-    !indexSource.includes("if (ctx?.credentials && typeof ctx.credentials.resolve"),
+    !clineClientSource.includes("if (ctx?.credentials && typeof ctx.credentials.resolve"),
     "Unsafe bare ctx.credentials property access must not be used"
   )
 })

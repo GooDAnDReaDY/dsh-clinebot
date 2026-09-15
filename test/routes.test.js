@@ -43,12 +43,15 @@ test('routes: lib/index.js registers webServer routes with kind exact and /dsh-c
   for (const p of pathMatches) {
     assert.ok(p.startsWith('/dsh-clinebot'), `Path ${p} must start with /dsh-clinebot`)
   }
+
+  // Check that updater route is also mounted
+  assert.ok(indexSource.includes('registerPluginUpdater'), 'registerPluginUpdater must be called in lib/index.js')
 })
 
 test('routes: client.js renders error banner with retry button on failure', () => {
   const clientSource = readFileSync(path.join(root, 'lib', 'client.js'), 'utf8')
   assert.ok(clientSource.includes('cb-alert-err'), 'Client must render error banner if loading fails')
-  assert.ok(clientSource.includes('Повторить попытку'), 'Client must render retry button')
+  assert.ok(clientSource.includes("t('settings.retry')"), 'Client must render localized retry button')
 })
 
 test('commands: lib/index.js registers /cline command with subcommands', () => {
