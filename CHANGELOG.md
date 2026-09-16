@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.10] - 2026-09-16
 
+### Changed
+- **Packaging Sanitization & Denylist Enforcement** (Gitea Issues #25, #26, #30): Purged internal workflow files (`AGENTS.md`, `index.md`, `deploy.sh`, `release-notes.md`) from git tracking and added them to `.gitignore`. Removed redundant duplicate READMEs in `docs/` and outdated root `.tgz` artifacts, reducing unpacked package size to 200 KiB.
+- **Client Module Injection Contract Clarification** (Gitea Issue #32): Documented that `dsh.client.inject: []` in `package.json` is architectural canon for plugins consuming core services (`slots`, `locale`, `settingsScope`) via `exports.inject` rather than require-table imports.
+- **Immediate Quota & Probe Invalidation on Account Switch** (Gitea Issue #31): Connected `clearUsageCache()` and `clearProbeCache()` to account switching routes (`/accounts/active`, `/cline switch`) and `rotateToNextAccount()`, preventing quota telemetry from lagging or sticking to former accounts.
+- **Model Validation in Slash Command** (Gitea Issue #31): Integrated `isSupportedModel()` in `/cline test [model]` to validate target models upfront before issuing upstream requests.
+
+
 ### Fixed
 - **LLM Provider Schema Alignment (`reasoningEfforts`)** (GitHub Issue #1, Gitea Issue #35): Fixed Cordis loader validation failure (`$.providers.clinebot.models[0].reasoningEfforts expected false | { [key]: string } but got ["low","medium","high"]`). Properly map array reasoning efforts into a validated object record `{ [effort]: effort }` or `false`, resolving startup provider crash.
 - **Client Localization Fallback Crash** (Gitea Issue #34): Fixed `ReferenceError: ru is not defined` in `lib/client.js` fallback registration path when `ctx.effect` is absent. Removed direct reference to deleted `ru` dictionary.

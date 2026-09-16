@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { rotateToNextAccount, isAccountQuotaExhausted } from '../lib/cline-client.js'
+import { rotateToNextAccount, isAccountQuotaExhausted, usageCache } from '../lib/cline-client.js'
 
 test('failover: isAccountQuotaExhausted logic and auto-recovery', () => {
   // 1. Under 95% is not exhausted
@@ -112,4 +112,25 @@ test('failover: rotateToNextAccount updates settings via settingsApi.replace whe
   assert.equal(res.activeAccount, 'CLINEBOT_API_KEY_2')
   assert.ok(replacedConfig)
   assert.equal(replacedConfig.activeAccount, 'CLINEBOT_API_KEY_2')
+})
+
+test('failover: rotateToNextAccount clears usageCache and probeCache', async () => {
+  // Populate dummy item in usageCache
+  usageCache.set('test-key', { data: { percentUsed: 50 }, expiresAt: Date.now() + 60000 })
+  assert.ok(usageCache.has('test-key'))
+
+  const env = { CLINEBOT_API_KEY: 'k1', CLINEBOT_API_KEY_2: 'k2' }
+  const ctx = {
+    get: () => ({ resolve: async (r) => ({ value: env[r?.name] }) }),
+  }
+  const cfg = {
+    apiKeyEnv: 'CLINEBOT_API_KEY',
+    accounts: [{ label: 'Secondary', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
+    activeAccount: 'CLINEBOT_API_KEY',
+  }
+
+  const res = await rotateToNextAccount(ctx, cfg, 'rate_limit', { replace: async () => {} })
+  assert.equal(res.rotated, true)
+  // Verify cache is cleared on account switch
+  assert.equal(usageCache.has('test-key'), false, 'usageCache must be cleared after account rotation')
 })
