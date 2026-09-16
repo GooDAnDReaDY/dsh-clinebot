@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
@@ -15,14 +15,19 @@ test('routes: client ROUTE_PREFIX matches registered server base path', () => {
 
 test('routes: lib/index.js registers webServer routes with kind exact and /dsh-clinebot path prefix', () => {
   const indexSource = readFileSync(path.join(root, 'lib', 'index.js'), 'utf8')
+  const routesDir = path.join(root, 'lib', 'routes')
+  const routeSources = readdirSync(routesDir)
+    .filter((f) => f.endsWith('.js'))
+    .map((f) => readFileSync(path.join(routesDir, f), 'utf8'))
+  const allSource = [indexSource, ...routeSources].join('\n')
   
   // Anti-patterns check:
-  assert.equal(indexSource.includes('web.registerRoute'), false, 'Banned method web.registerRoute must not be used')
-  assert.equal(indexSource.includes('settingsApi?.set'), false, 'Banned method settingsApi.set must not be used (use replace)')
-  assert.equal(indexSource.includes('settingsApi.set'), false, 'Banned method settingsApi.set must not be used')
+  assert.equal(allSource.includes('web.registerRoute'), false, 'Banned method web.registerRoute must not be used')
+  assert.equal(allSource.includes('settingsApi?.set'), false, 'Banned method settingsApi.set must not be used (use replace)')
+  assert.equal(allSource.includes('settingsApi.set'), false, 'Banned method settingsApi.set must not be used')
 
   // Find all registered paths
-  const pathMatches = Array.from(indexSource.matchAll(/path:\s*['"]([^'"]+)['"]/g), (m) => m[1])
+  const pathMatches = Array.from(allSource.matchAll(/path:\s*['"]([^'"]+)['"]/g), (m) => m[1])
   const expectedPaths = [
     '/dsh-clinebot/status',
     '/dsh-clinebot/config',
@@ -36,7 +41,7 @@ test('routes: lib/index.js registers webServer routes with kind exact and /dsh-c
   ]
 
   for (const exp of expectedPaths) {
-    assert.ok(pathMatches.includes(exp), `Expected route ${exp} to be registered in lib/index.js`)
+    assert.ok(pathMatches.includes(exp), `Expected route ${exp} to be registered in server routes`)
   }
 
   // Check that all paths start with /dsh-clinebot
@@ -56,10 +61,12 @@ test('routes: client.js renders error banner with retry button on failure', () =
 
 test('commands: lib/index.js registers /cline command with subcommands', () => {
   const indexSource = readFileSync(path.join(root, 'lib', 'index.js'), 'utf8')
-  assert.ok(indexSource.includes("name: 'cline'"), 'Slash command /cline must be registered')
-  assert.ok(indexSource.includes("subcmd === 'ping'"), 'Subcommand /cline ping must be supported')
-  assert.ok(indexSource.includes("subcmd === 'test'"), 'Subcommand /cline test must be supported')
-  assert.ok(indexSource.includes("subcmd === 'rotate'"), 'Subcommand /cline rotate must be supported')
-  assert.ok(indexSource.includes("|| 'quota'"), 'Default subcommand must be quota')
-  assert.ok(indexSource.includes("isSupportedModel(param, pub.dynamicModels)"), 'Subcommand /cline test must validate models via isSupportedModel')
+  const slashSource = readFileSync(path.join(root, 'lib', 'slash-command.js'), 'utf8')
+  const allCmdSource = indexSource + '\n' + slashSource
+  assert.ok(allCmdSource.includes("name: 'cline'"), 'Slash command /cline must be registered')
+  assert.ok(allCmdSource.includes("subcmd === 'ping'"), 'Subcommand /cline ping must be supported')
+  assert.ok(allCmdSource.includes("subcmd === 'test'"), 'Subcommand /cline test must be supported')
+  assert.ok(allCmdSource.includes("subcmd === 'rotate'"), 'Subcommand /cline rotate must be supported')
+  assert.ok(allCmdSource.includes("|| 'quota'"), 'Default subcommand must be quota')
+  assert.ok(allCmdSource.includes("isSupportedModel(param, pub.dynamicModels)"), 'Subcommand /cline test must validate models via isSupportedModel')
 })
