@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.12] - 2026-09-16
+
+### Changed
+- **Full Source Code Decomposition (< 600 Lines Limit)** (Gitea Issues #41, #29):
+  - Split server-side `lib/index.js` (formerly 976 lines) into focused domain modules: `lib/access.js` (CSRF / origin security), `lib/config.js` (Schemastery configuration), `lib/provider-sync.js` (PiAi provider lifecycle & model discovery), `lib/slash-command.js` (`/cline` chat command), and `lib/routes/*` (`settings.js`, `accounts.js`, `models.js`, `auth.js`). Main entry point `lib/index.js` reduced to 148 lines.
+  - Extracted `lib/account-pool.js` from `lib/cline-client.js`, reducing it from 684 to 557 lines.
+  - Modularized client codebase into 16 clean source files in `src/client/` (< 480 lines each), separating locales, theme styles, error boundaries, and dedicated UI components.
+  - Added zero-dependency `scripts/build-client.js` maintaining single-bundle DSH Store contract (< 256 KiB limit, actual size 57.7 KiB).
+- **Test Suite Expansion**: Added `test/decomposition.test.js` validating line limits and exported domain interfaces (45 passing tests).
+
 ## [0.3.11] - 2026-09-16
 
 ### Added

@@ -50,7 +50,7 @@ function SettingsPage(props) {
   const [updateState, setUpdateState] = React.useState({
     checking: false,
     updating: false,
-    currentVersion: '0.3.11',
+    currentVersion: '0.3.12',
     latestVersion: '',
     updateAvailable: false,
     canAutoUpdate: true,
