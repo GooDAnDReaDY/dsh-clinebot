@@ -37,7 +37,8 @@
     "url": "git+https://github.com/GooDAnDReaDY/dsh-clinebot.git"
   },
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "build:client": "node scripts/build-client.js",
+    "test": "node scripts/build-client.js && node --test test/*.test.js"
   },
   "engines": {
     "node": ">=20"
