@@ -128,6 +128,7 @@ test("client: full component tree render and event handler integrity", () => {
     '',
     '',
     { latencyMs: 35, model: 'test', preview: 'hello' },
+    { checking: false, updating: false, currentVersion: '0.3.10', latestVersion: '0.3.11', updateAvailable: true, canAutoUpdate: true, error: '', notice: '' },
     '',
     false
   ]
@@ -278,4 +279,15 @@ test('client: chevron probes kernel primitives with safe fallback and rotation c
     throw new Error('Missing module: ' + spec)
   })
   assert.equal(typeof fallbackExports.apply, 'function')
+})
+
+test('client: renders one-click update banner and button in settings card', () => {
+  const source = readFileSync(path.join(root, 'lib', 'client.js'), 'utf8')
+  assert.ok(source.includes('updateState'), 'Must maintain updateState')
+  assert.ok(source.includes('handleTriggerUpdate'), 'Must handle update trigger')
+  assert.ok(source.includes("t('update.btn')"), 'Must render localized update button')
+  assert.ok(source.includes("t('update.updating')"), 'Must render localized updating indicator')
+  assert.ok(source.includes("t('update.up_to_date')"), 'Must render localized up-to-date badge')
+  assert.ok(source.includes("t('update.checking')"), 'Must render localized checking indicator')
+  assert.ok(source.includes("x-dsh-plugin-update': '1'"), 'Must pass x-dsh-plugin-update header on update trigger')
 })
