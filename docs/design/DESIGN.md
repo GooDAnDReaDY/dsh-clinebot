@@ -62,7 +62,7 @@ graph LR
 * **Non-destructive actions**: Unregister cleanly removes the provider entry from DSH without touching other providers or configurations.
 
 ## 4. Security & Isolation
-* CSRF / Cross-site protection: All mutating routes (`/register`, `/unregister`, `/smoke`, `/models`, `/accounts/active`, `/auth/begin`) validate `isTrustedSettingsRequest(req)` (`Sec-Fetch-Site !== 'cross-site'`).
+* CSRF / Cross-site protection: All mutating routes (`/register`, `/unregister`, `/smoke`, `/models`, `/accounts/active`, `/auth/begin`) validate `isTrustedSettingsRequest(req)` checking `Sec-Fetch-Site`, `Origin`, `Host`, `Referer`, and loopback IP matching for LAN and reverse-proxy setups.
 * Body size limits: Request payloads are strictly capped at 256 KB.
 * Sensitive credential data is never returned across the HTTP API (only `{ present: boolean, source: string, envName: string }`).
 
@@ -86,3 +86,10 @@ graph LR
 * **Smart Quota-Aware Failover**: Account failover evaluates cached rolling limits (5-hour window), automatically prioritizing accounts with the lowest `percentUsed` and respecting `resetsAt` timestamps for automatic account recovery.
 * **One-Click In-App Updater (`/dsh-clinebot/update`)**: Integrates host-side one-click updater (`lib/updater.js`) with security verification (`isTrustedUpdateRequest`: loopback validation, same-origin checks, `x-dsh-plugin-update: 1` header). Allows seamless in-place updates from DSH UI.
 * **Canonical DSH Localization Standard**: Source code complies with canonical DSH standards (English base canon, complete Chinese `zh` locale registration in client, external Russian translation provided by `dsh-russian-lang`). All slash command responses and system logs are localized to English.
+
+## 8. Provider Schema Alignment & Security Hardening (v0.3.10)
+* **Cordis / Schemastery `reasoningEfforts` Alignment**: `buildPiAiProvider` transforms reasoning effort declarations into strict Cordis schema format (`false | { [key: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"]: string }`), completely resolving provider loader validation errors (GitHub #1, Gitea #35).
+* **ReferenceError Prevention in Localization Fallback**: `lib/client.js` cleanly falls back to English and Chinese dictionaries without referencing undefined locale variables (Gitea #34).
+* **Transparent Settings Persistence**: Silent catch blocks eliminated in favor of explicit logging via `ctx.logger.warn` and user-facing error banners in the UI (Gitea #33).
+* **Host Updater Prerelease SemVer Support**: `isNewerVersion()` strictly honors SemVer 2.0.0 pre-release specifications, ensuring automated upgrade detection for pre-release and release candidate builds (Gitea #23).
+* **Comprehensive Write-Route Origin & Host Validation**: Mutating endpoints rigorously verify `Sec-Fetch-Site`, `Origin`, `Host`, `X-Forwarded-Host`, `Referer`, and loopback IPs against cross-origin forgery while supporting transparent reverse proxies (Gitea #22).
