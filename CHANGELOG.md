@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.10] - 2026-09-16
 
 ### Changed
+- **UI Color Contrast & Adaptive Theme Compliance** (Gitea Issue #27): Replaced all hardcoded `rgba(...)` background tints and borders with CSS `color-mix(in srgb, var(--dsw-alias-state-...) X%, transparent)` for full legibility across Light and Dark DSH themes.
+- **Kernel Chevron Icon Probe & Fallback** (Gitea Issue #28): Added dynamic safe probe for kernel `IconChevronDownOutline14` from `@deepseek-ai/dsh-client-ui-primitives` with pixel-perfect FallbackChevron and `.cb-chevron` / `.cb-chevron-open` rotation classes.
+- **Single-Bundle Runtime Contract Documentation** (Gitea Issue #29): Formalized client single-bundle architecture and decoupled backend design in `docs/design/DESIGN.md`.
 - **Packaging Sanitization & Denylist Enforcement** (Gitea Issues #25, #26, #30): Purged internal workflow files (`AGENTS.md`, `index.md`, `deploy.sh`, `release-notes.md`) from git tracking and added them to `.gitignore`. Removed redundant duplicate READMEs in `docs/` and outdated root `.tgz` artifacts, reducing unpacked package size to 200 KiB.
 - **Client Module Injection Contract Clarification** (Gitea Issue #32): Documented that `dsh.client.inject: []` in `package.json` is architectural canon for plugins consuming core services (`slots`, `locale`, `settingsScope`) via `exports.inject` rather than require-table imports.
 - **Immediate Quota & Probe Invalidation on Account Switch** (Gitea Issue #31): Connected `clearUsageCache()` and `clearProbeCache()` to account switching routes (`/accounts/active`, `/cline switch`) and `rotateToNextAccount()`, preventing quota telemetry from lagging or sticking to former accounts.
