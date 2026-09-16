@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.11] - 2026-09-16
+
+### Added
+- **One-Click In-App Update UI & Live Status Banner** (Gitea Issue #39): Rendered interactive update status bar in `PluginCard` / `SettingsPage`. Displays current installed version, live npm registry check indicator, and up-to-date status badge. Automatically reveals warning badge and 'Update Now' button (`update.btn`) when a newer version is released, triggering safe POST `/dsh-clinebot/update` with `x-dsh-plugin-update: 1` header and completion guidance.
+- **Client Test Coverage Expansion**: Added component render assertions for one-click update UI elements and updated test state table to 41 passing unit tests.
+
 ## [0.3.10] - 2026-09-16
 
 ### Changed
