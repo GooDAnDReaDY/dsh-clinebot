@@ -99,3 +99,21 @@ graph LR
 * **Packaging & Public Repository Sanitization**: Internal workflow and deployment files (`AGENTS.md`, `index.md`, `deploy.sh`, `release-notes.md`) are purged from git tracking and permanently blocked via `.gitignore`. Duplicate READMEs in `docs/` are eliminated, trimming npm package unpacked size to ~200 KiB (Resolves #25, #26, #30).
 * **Account Switch Cache Invalidation**: Switching or rotating active accounts (`/accounts/active`, `/cline switch`, `rotateToNextAccount`) automatically purges cached rolling quota windows (`clearUsageCache`) and host reachability probes (`clearProbeCache`) to eliminate stale telemetry and immediately revalidate the new account's credentials (Resolves #31).
 * **Slash-Command Model Validation**: `/cline test [model]` verifies candidate models with `isSupportedModel()` before issuing network requests, providing immediate feedback if an unrecognized model identifier is supplied (Resolves #31).
+
+## 10. UI Theme Compliance, Kernel Icon Fidelity & Module Architecture (v0.3.10)
+* **Adaptive Theme Variables & `color-mix` (Resolves #27)**:
+  * Eliminated all hardcoded `rgba(...)` and hex color values in `lib/client.js`.
+  * All semi-transparent background tints and borders (`.cb-badge-ok`, `.cb-badge-warn`, `.cb-badge-bad`, `.cb-btn-danger`, `.cb-alert-ok`, `.cb-alert-bad`, `.cb-alert-err`, `.cb-banner-warning`, `.cb-banner-exhausted`) strictly utilize CSS `color-mix(in srgb, var(--dsw-alias-state-...) X%, transparent)`.
+  * Guarantees 100% legibility, contrast, and visual consistency across both Light and Dark DSH themes.
+* **Kernel Chevron Icon Probe & Animated Fallback (Resolves #28)**:
+  * Probes official kernel primitives via safe dynamic import: `try { require('@deepseek-ai/dsh-client-ui-primitives') } catch (_) {}` for `IconChevronDownOutline14`.
+  * When running on streamlined web profiles where primitives are absent, seamlessly falls back to pixel-perfect SVG `FallbackChevron` (14x14, stroke 1.5, `currentColor`).
+  * Card expansion toggle employs canonical class-based rotation: `.cb-chevron` with `transition: transform .16s ease` and `.cb-chevron-open` (`transform: rotate(180deg)`), preserving DSH native micro-interactions.
+* **Architectural Boundaries & Module Decomposition (Resolves #29)**:
+  * **Browser Bundle (`lib/client.js`)**: Under DSH web profile architecture, client plugins are served directly as single-file self-registering bundles (`window.__ModuleLoader__.load({ id, factory })`) without runtime bundling servers. Splitting client code into unbundled ES modules would break DSH kernel resolution, while introducing runtime bundlers adds unnecessary complexity contrary to `ponytail` minimal engineering standards. Therefore, `lib/client.js` remains a unified runtime artifact, internally organized into distinct domain sections (CSS Theme Tokens, UI Primitives & Chevron, State & Store, Section Components, Entrypoint).
+  * **Host Backend Separation (`lib/`)**: Backend responsibilities are decoupled across clean domain boundaries:
+    * `lib/http.js`: Common security middleware (`isTrustedSettingsRequest`), stream parsing, and size limit enforcement.
+    * `lib/models.js`: Curated model catalog, dynamic discovery parser, active model filtering, disk cache.
+    * `lib/updater.js`: SemVer 2.0.0 comparator and host-side one-click plugin updater.
+    * `lib/cline-client.js`: ClinePass network client, retry backoff, SWR health probes, token telemetry, Cordis provider builder.
+    * `lib/index.js`: Cordis lifecycle, settings registration, `/cline` slash commands, and HTTP route declarations.

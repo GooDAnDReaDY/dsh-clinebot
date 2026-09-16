@@ -240,3 +240,42 @@ test('client: apply handles fallback without ctx.effect without ReferenceError',
   assert.ok(langs.includes('zh'), 'Must register zh dictionary')
   assert.equal(langs.includes('ru'), false, 'ru dictionary must not be registered directly in plugin client')
 })
+
+test('client: css styles strictly use theme variables and color-mix without hardcoded rgba/hex colors', () => {
+  const source = readFileSync(path.join(root, 'lib', 'client.js'), 'utf8')
+  const cssMatch = source.match(/style\.textContent = `([^`]+)`/)
+  assert.ok(cssMatch, 'CSS block must be present in lib/client.js')
+  const css = cssMatch[1]
+  assert.equal(/rgba\(/i.test(css), false, 'CSS must not contain hardcoded rgba() values')
+  assert.equal(/#[0-9a-fA-F]{3,6}\b/i.test(css), false, 'CSS must not contain hardcoded hex colors')
+  assert.ok(css.includes('color-mix(in srgb, var(--dsw-alias-state-success-primary) 8%, transparent)'), 'Must use color-mix for success badge')
+  assert.ok(css.includes('.cb-chevron'), 'Must define .cb-chevron transition class')
+  assert.ok(css.includes('.cb-chevron-open'), 'Must define .cb-chevron-open rotation class')
+})
+
+test('client: chevron probes kernel primitives with safe fallback and rotation class', () => {
+  const source = readFileSync(path.join(root, 'lib', 'client.js'), 'utf8')
+  assert.ok(source.includes('@deepseek-ai/dsh-client-ui-primitives'), 'Must probe @deepseek-ai/dsh-client-ui-primitives')
+  assert.ok(source.includes('FallbackChevron'), 'Must retain FallbackChevron SVG component')
+  assert.ok(source.includes("className: 'cb-chevron' + (open ? ' cb-chevron-open' : '')"), 'Must use cb-chevron rotation class on expand toggle')
+
+  // Test 1: with kernel primitives available
+  const kernelRecord = loadClientRecord()
+  const KernelChevronStub = () => ({ tag: 'svg-kernel' })
+  const kernelExports = kernelRecord.factory((spec) => {
+    if (spec === 'react') return { createElement: (tag, props) => ({ tag, props }) }
+    if (spec === '@deepseek-ai/dsh-client-ui-primitives') {
+      return { IconChevronDownOutline14: KernelChevronStub }
+    }
+    throw new Error('Unexpected spec: ' + spec)
+  })
+  assert.equal(typeof kernelExports.apply, 'function')
+
+  // Test 2: without kernel primitives (safe fallback)
+  const fallbackRecord = loadClientRecord()
+  const fallbackExports = fallbackRecord.factory((spec) => {
+    if (spec === 'react') return { createElement: (tag, props) => ({ tag, props }) }
+    throw new Error('Missing module: ' + spec)
+  })
+  assert.equal(typeof fallbackExports.apply, 'function')
+})
