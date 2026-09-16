@@ -12,3 +12,14 @@ credentials.yaml
 dist/
 coverage/
 .worktrees/
+
+# Internal service and agent workflow files (dhs-plugin-release-workflow denylist)
+AGENTS.md
+index.md
+deploy.sh
+release-notes.md
+.planning/
+openwiki/
+task_plan.md
+findings.md
+progress.md
