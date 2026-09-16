@@ -41,23 +41,51 @@ test('cline-client: resolveApiKey', () => {
   assert.equal(missing.value, '')
 })
 
-test('cline-client: buildPiAiProvider with custom models', () => {
+test('cline-client: buildPiAiProvider with custom models and reasoningEfforts schema', () => {
   const customModels = [
-    { id: 'cline-pass/deepseek-v4-moe', name: 'DeepSeek V4 MoE', input: ['text', 'vision'] },
+    {
+      id: 'cline-pass/deepseek-v4-moe',
+      name: 'DeepSeek V4 MoE',
+      input: ['text', 'vision'],
+      reasoningEfforts: ['low', 'medium', 'high', 'invalid_effort'],
+    },
+    {
+      id: 'cline-pass/empty-efforts',
+      name: 'Empty Efforts',
+      reasoningEfforts: [],
+    },
+    {
+      id: 'cline-pass/object-efforts',
+      name: 'Object Efforts',
+      reasoningEfforts: { low: 'Low Effort', max: 'Maximum Effort' },
+    },
   ]
   const provider = buildPiAiProvider({
     baseUrl: 'https://api.cline.bot/api/v1',
     apiKeyEnv: 'MY_KEY',
-    models: ['cline-pass/deepseek-v4-moe', 'cline-pass/glm-5.2'],
+    models: ['cline-pass/deepseek-v4-moe', 'cline-pass/empty-efforts', 'cline-pass/object-efforts', 'cline-pass/glm-5.2'],
     customModels,
   })
 
   assert.equal(provider.api, 'openai-completions')
   assert.equal(provider.baseURL, 'https://api.cline.bot/api/v1')
   assert.equal(provider.apiKeyEnv, 'MY_KEY')
-  assert.equal(provider.models.length, 2)
+  assert.equal(provider.models.length, 4)
   assert.equal(provider.models[0].id, 'cline-pass/deepseek-v4-moe')
   assert.equal(provider.models[0].provider, PROVIDER_ID)
+  // GitHub #1 / Gitea #35: reasoningEfforts must be false | { [key]: label }
+  assert.deepEqual(provider.models[0].reasoningEfforts, {
+    low: 'low',
+    medium: 'medium',
+    high: 'high',
+  })
+  assert.equal(provider.models[1].reasoningEfforts, false)
+  assert.deepEqual(provider.models[2].reasoningEfforts, {
+    low: 'Low Effort',
+    max: 'Maximum Effort',
+  })
+  // Model without reasoningEfforts defined defaults to false
+  assert.equal(provider.models[3].reasoningEfforts, false)
 })
 
 test('cline-client: fetchUsageLimits parsing and caching', async () => {

@@ -10,6 +10,15 @@ test('updater: isNewerVersion semantic version comparison', () => {
   assert.equal(isNewerVersion('0.3.8', '0.3.8'), false)
   assert.equal(isNewerVersion('0.3.9', '0.3.8'), false)
   assert.equal(isNewerVersion('0.3.8', 'invalid'), false)
+
+  // Prerelease comparisons (SemVer 2.0.0)
+  assert.equal(isNewerVersion('0.3.10-beta.1', '0.3.10'), true)
+  assert.equal(isNewerVersion('0.3.10', '0.3.10-beta.1'), false)
+  assert.equal(isNewerVersion('0.3.10-alpha.1', '0.3.10-beta.1'), true)
+  assert.equal(isNewerVersion('0.3.10-beta.1', '0.3.10-beta.2'), true)
+  assert.equal(isNewerVersion('0.3.10-beta.2', '0.3.10-beta.1'), false)
+  assert.equal(isNewerVersion('0.3.10-rc.1', '0.3.10-rc.2'), true)
+  assert.equal(isNewerVersion('0.3.9', '0.3.10-alpha.1'), true)
 })
 
 test('updater: isTrustedUpdateRequest security checks', () => {

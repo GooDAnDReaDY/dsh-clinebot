@@ -216,3 +216,27 @@ test("client: full component tree render and event handler integrity", () => {
   traverse(vdom)
   assert.ok(elementsFound > 100, `Expected full tree evaluation, found ${elementsFound}`)
 })
+
+test('client: apply handles fallback without ctx.effect without ReferenceError', () => {
+  const registeredLocales = []
+  const fallbackCtx = {
+    locale: {
+      register: (ns, lang, dict) => {
+        registeredLocales.push({ ns, lang, dict })
+        return () => {}
+      },
+    },
+    settings: {
+      register: () => () => {},
+    },
+  }
+  const record = loadClientRecord()
+  const exports = record.factory(strictRequire([]))
+  assert.doesNotThrow(() => {
+    exports.apply(fallbackCtx)
+  })
+  const langs = registeredLocales.map(l => l.lang)
+  assert.ok(langs.includes('en'), 'Must register en dictionary')
+  assert.ok(langs.includes('zh'), 'Must register zh dictionary')
+  assert.equal(langs.includes('ru'), false, 'ru dictionary must not be registered directly in plugin client')
+})

@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.10] - 2026-09-16
+
+### Fixed
+- **LLM Provider Schema Alignment (`reasoningEfforts`)** (GitHub Issue #1, Gitea Issue #35): Fixed Cordis loader validation failure (`$.providers.clinebot.models[0].reasoningEfforts expected false | { [key]: string } but got ["low","medium","high"]`). Properly map array reasoning efforts into a validated object record `{ [effort]: effort }` or `false`, resolving startup provider crash.
+- **Client Localization Fallback Crash** (Gitea Issue #34): Fixed `ReferenceError: ru is not defined` in `lib/client.js` fallback registration path when `ctx.effect` is absent. Removed direct reference to deleted `ru` dictionary.
+- **Settings Persistence Error Visibility** (Gitea Issue #33): Replaced empty/silent `catch {}` blocks around settings persistence in `lib/client.js` and `lib/cline-client.js` with structured warning logs (`ctx.logger.warn`) and user-facing error banners (`setErr`).
+- **Semantic Version Prerelease Comparison in Host Updater** (Gitea Issue #23): Enhanced `isNewerVersion()` in `lib/updater.js` to strictly follow SemVer 2.0.0 rules for pre-release tags, ensuring pre-releases and release candidates update seamlessly.
+- **Hardened Write-Route Security Validation** (Gitea Issue #22): Strengthened `isTrustedSettingsRequest()` in `lib/http.js` to rigorously validate `Origin`, `Host`, `X-Forwarded-Host`, `Referer`, and loopback remote addresses against CSRF, while maintaining full support for reverse proxies and local LAN environments.
+
 ## [0.3.9] - 2026-09-15
 
 ### Added
