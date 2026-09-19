@@ -5,6 +5,22 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.13] - 2026-09-19
+
+### Fixed
+- **Settings reachable again**: the card registered into `settings.plugin.item`, a
+  slot the current DSH core (0.1.6-alpha.2) no longer renders, so the plugin's
+  settings were unreachable. The surface now registers into the Plugins page row
+  seat `plugins.row.config` first, keyed
+  `@goodandready/dsh-clinebot#dsh-clinebot` (`rowConfigKey(package, rowId)`): the
+  plugin's row gains a configure control whose page is the settings form
+  (`view: 'page'`, open and without our card chrome — the host page draws the title,
+  icon, crumb and padding) plus a one-line state for `view: 'summary'`. The legacy
+  seat stays registered as a fallback for older cores.
+- The client module test now expects both seats in order.
+- The change lives in `src/client/*`; `lib/client.js` is rebuilt by
+  `npm run build:client` (also run by `npm test`).
+
 ## [0.3.12] - 2026-09-16
 
 ### Changed

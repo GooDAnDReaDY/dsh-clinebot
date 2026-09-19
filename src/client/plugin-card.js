@@ -1,13 +1,20 @@
 function PluginCard(props) {
-  const [open, setOpen] = React.useState(false)
+  const page = !!(props && props.view === 'page')
+  const [open, setOpen] = React.useState(!!page)
   const t = props?.t || makeT(en, en)
   React.useEffect(() => {
     ensureCss()
   }, [])
 
+  // Row seat (plugins.row.config): the host page draws title/icon/crumb and the
+  // padding, so the summary is a one-liner and the page drops our card chrome.
+  if (props && props.view === 'summary') {
+    return React.createElement('span', { style: { fontSize: '13px', color: 'var(--dsw-alias-label-secondary)' } }, t('subtitle'))
+  }
+
   return React.createElement(
-    'li',
-    { className: 'cb-section-card', style: { listStyle: 'none', marginBottom: '12px' } },
+    page ? 'div' : 'li',
+    { className: page ? 'cb-page' : 'cb-section-card', style: page ? undefined : { listStyle: 'none', marginBottom: '12px' } },
     React.createElement(
       'button',
       {
@@ -16,13 +23,13 @@ function PluginCard(props) {
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          display: 'flex',
+          display: page ? 'none' : 'flex',
           alignItems: 'center',
           width: '100%',
           padding: 0,
           textAlign: 'left',
         },
-        'aria-expanded': open,
+        'aria-expanded': page ? true : open,
         onClick: () => setOpen((v) => !v),
       },
       React.createElement(
@@ -35,7 +42,7 @@ function PluginCard(props) {
         React.createElement(Chevron)
       )
     ),
-    open
+    (page || open)
       ? React.createElement(
           'div',
           { style: { marginTop: '16px' } },
