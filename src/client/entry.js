@@ -75,6 +75,19 @@ function apply(ctx) {
     }
   }
 
+  // Row seat first (the seat the current core renders), legacy seat after it.
+  registerSlotWhenReady('plugins.row.config', () =>
+    ctx.slots.register(
+      {
+        name: 'plugins.row.config',
+        key: ROW_CONFIG_KEY,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, null, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
   registerSlotWhenReady('settings.plugin.item', () =>
     ctx.slots.register(
       {

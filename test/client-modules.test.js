@@ -78,11 +78,16 @@ test("client: apply registers settings.plugin.item exclusively without settings.
     },
   }
   exports.apply(ctxPrimary)
-  assert.deepEqual(primaryInjected, ["settings.plugin.item"])
-  assert.equal(primaryRegistrations.length, 1)
-  assert.equal(primaryRegistrations[0].name, "settings.plugin.item")
-  assert.equal(primaryRegistrations[0].key, "dsh-clinebot")
+  // Two seats by design: the Plugins page row seat the current core renders, and the
+  // legacy settings.plugin.item card kept as a fallback for older cores.
+  assert.deepEqual(primaryInjected, ["plugins.row.config", "settings.plugin.item"])
+  assert.equal(primaryRegistrations.length, 2)
+  assert.equal(primaryRegistrations[0].name, "plugins.row.config")
+  assert.equal(primaryRegistrations[0].key, "@goodandready/dsh-clinebot#dsh-clinebot")
   assert.equal(primaryRegistrations[0].locale, "dsh-clinebot")
+  assert.equal(primaryRegistrations[1].name, "settings.plugin.item")
+  assert.equal(primaryRegistrations[1].key, "dsh-clinebot")
+  assert.equal(primaryRegistrations[1].locale, "dsh-clinebot")
   assert.ok(!primaryRegistrations.some((r) => r.name === "settings.section"), "settings.section must not be registered")
 })
 
