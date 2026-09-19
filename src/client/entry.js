@@ -75,6 +75,24 @@ function apply(ctx) {
     }
   }
 
+  // The seat the Plugins page actually renders as the plugin's own page with the
+  // settings form: a card in the plugin list (`plugins.item`), exactly how
+  // @goodandready-private/dsh-agentrouter does it. `view: 'summary'` is the card's
+  // one-liner, `view: 'page'` is the body of that page.
+  registerSlotWhenReady('plugins.item', () =>
+    ctx.slots.register(
+      {
+        name: 'plugins.item',
+        id: NS,
+        order: 60,
+        label: () => 'clinebot',
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, null, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
   // Row seat first (the seat the current core renders), legacy seat after it.
   // The core keys the seat as `<bundle name>#<row id>`; `bundle.name` may be the
   // package name or the short bundle name depending on the manager's view, so both

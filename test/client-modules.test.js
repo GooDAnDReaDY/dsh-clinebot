@@ -78,10 +78,15 @@ test("client: apply registers settings.plugin.item exclusively without settings.
     },
   }
   exports.apply(ctxPrimary)
-  // The row seat is registered under both key spellings (the core keys it as
+  // Three seats: the plugin-list card the Plugins page renders as the plugin's own
+  // page (plugins.item), the row seat under both key spellings (the core keys it as
   // `<bundle name>#<row id>`, and the bundle name may be the package or the short
-  // name), plus the legacy settings.plugin.item card kept as a fallback.
-  assert.deepEqual([...new Set(primaryInjected)], ["plugins.row.config", "settings.plugin.item"])
+  // name), and the legacy settings.plugin.item card kept as a fallback.
+  assert.deepEqual([...new Set(primaryInjected)], ["plugins.item", "plugins.row.config", "settings.plugin.item"])
+  const cards = primaryRegistrations.filter((r) => r.name === "plugins.item")
+  assert.equal(cards.length, 1)
+  assert.equal(cards[0].id, "dsh-clinebot")
+  assert.equal(cards[0].locale, "dsh-clinebot")
   const rows = primaryRegistrations.filter((r) => r.name === "plugins.row.config")
   assert.equal(rows.length, 2)
   assert.deepEqual(rows.map((r) => r.key).sort(), ["@goodandready/dsh-clinebot#dsh-clinebot", "dsh-clinebot#dsh-clinebot"])
