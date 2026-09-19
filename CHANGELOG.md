@@ -5,6 +5,19 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.15] - 2026-09-19
+
+### Fixed
+- **The settings form now appears on the plugin's own page.** The seat the Plugins
+  page really renders as a plugin page with its configuration is a card in the
+  plugin list (`plugins.item`) — the page draws the card's one-liner for
+  `view: 'summary'` and the entry itself as the body of that page for
+  `view: 'page'`. That is how `@goodandready-private/dsh-agentrouter` and
+  `@goodandready/dsh-agent-orchestrator` have always shown their settings, while the
+  `plugins.row.config` seat alone left the row without a configure control. The card
+  is registered with `id: 'dsh-clinebot'`, order 60 and a static label; the row seat
+  and the legacy `settings.plugin.item` card stay as fallbacks.
+
 ## [0.3.14] - 2026-09-19
 
 ### Fixed
