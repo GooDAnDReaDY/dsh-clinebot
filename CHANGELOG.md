@@ -5,6 +5,17 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.14] - 2026-09-19
+
+### Fixed
+- **The row-seat key is registered under both spellings.** The core keys a row's
+  configuration page as `` `${bundle.name}#${rowId}` `` (`rowConfigKey` in
+  `dsh-client-ui-plugin-manager`), and `bundle.name` may be either the package name
+  (`@goodandready/dsh-clinebot`) or the short bundle name (`dsh-clinebot`) depending
+  on how the manager builds its package view. Both keys are now registered for
+  `plugins.row.config`, so the row's configure control appears whichever spelling the
+  core compares against; the unused entry is inert.
+
 ## [0.3.13] - 2026-09-19
 
 ### Fixed

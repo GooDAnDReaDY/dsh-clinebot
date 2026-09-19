@@ -78,16 +78,18 @@ test("client: apply registers settings.plugin.item exclusively without settings.
     },
   }
   exports.apply(ctxPrimary)
-  // Two seats by design: the Plugins page row seat the current core renders, and the
-  // legacy settings.plugin.item card kept as a fallback for older cores.
-  assert.deepEqual(primaryInjected, ["plugins.row.config", "settings.plugin.item"])
-  assert.equal(primaryRegistrations.length, 2)
-  assert.equal(primaryRegistrations[0].name, "plugins.row.config")
-  assert.equal(primaryRegistrations[0].key, "@goodandready/dsh-clinebot#dsh-clinebot")
-  assert.equal(primaryRegistrations[0].locale, "dsh-clinebot")
-  assert.equal(primaryRegistrations[1].name, "settings.plugin.item")
-  assert.equal(primaryRegistrations[1].key, "dsh-clinebot")
-  assert.equal(primaryRegistrations[1].locale, "dsh-clinebot")
+  // The row seat is registered under both key spellings (the core keys it as
+  // `<bundle name>#<row id>`, and the bundle name may be the package or the short
+  // name), plus the legacy settings.plugin.item card kept as a fallback.
+  assert.deepEqual([...new Set(primaryInjected)], ["plugins.row.config", "settings.plugin.item"])
+  const rows = primaryRegistrations.filter((r) => r.name === "plugins.row.config")
+  assert.equal(rows.length, 2)
+  assert.deepEqual(rows.map((r) => r.key).sort(), ["@goodandready/dsh-clinebot#dsh-clinebot", "dsh-clinebot#dsh-clinebot"])
+  assert.equal(rows[0].locale, "dsh-clinebot")
+  const legacy = primaryRegistrations.filter((r) => r.name === "settings.plugin.item")
+  assert.equal(legacy.length, 1)
+  assert.equal(legacy[0].key, "dsh-clinebot")
+  assert.equal(legacy[0].locale, "dsh-clinebot")
   assert.ok(!primaryRegistrations.some((r) => r.name === "settings.section"), "settings.section must not be registered")
 })
 
