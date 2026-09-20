@@ -71,6 +71,17 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
   assert.equal(withNew[0].id, 'cline-pass/newsupermodel-v1')
   assert.equal(withNew[0].name, 'NewSuperModel V1')
 
+  // Handles array input from plan.features.included
+  const featuresArray = [
+    'Low cost subscription pricing',
+    'Generous limits and reliable access',
+    'Includes Kimi K3, GLM 5.2, Kimi K2.6, Kimi K2.7 Code, Mimo v2.5, Mimo v2.5 Pro, Minimax M3, Qwen3.7 Plus, Qwen3.7 Max, DeepSeek V4 Pro, and DeepSeek V4 Flash'
+  ]
+  const parsedFromArray = parsePlanIncludedModels(featuresArray)
+  assert.equal(parsedFromArray.length, 11)
+  assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/deepseek-v4-flash'))
+  assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/glm-5.2'))
+
   // Dynamic models merge into catalogue
   const dynamicList = [withNew[0]]
   const merged = getAllModels(dynamicList)

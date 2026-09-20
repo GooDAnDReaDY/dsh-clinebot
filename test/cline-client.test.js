@@ -107,6 +107,26 @@ test('cline-client: fetchUsageLimits parsing and caching', async () => {
         }),
       }
     }
+    if (url.includes('/users/me/plan')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: {
+            plan: {
+              displayName: 'Cline Pass (Monthly)',
+              pricePerSeatCents: 999,
+              features: {
+                included: [
+                  'Low cost subscription pricing',
+                  'Includes Kimi K3, GLM 5.2, Kimi K2.6, Kimi K2.7 Code, Mimo v2.5, Mimo v2.5 Pro, Minimax M3, Qwen3.7 Plus, Qwen3.7 Max, DeepSeek V4 Pro, and DeepSeek V4 Flash'
+                ]
+              }
+            }
+          }
+        }),
+      }
+    }
     if (url.includes('/users/me')) {
       return {
         ok: true,
@@ -130,6 +150,9 @@ test('cline-client: fetchUsageLimits parsing and caching', async () => {
   assert.equal(res.windows.fiveHour.remainingPercent, 74.6)
   assert.equal(res.windows.weekly.percentUsed, 50)
   assert.equal(res.windows.weekly.remainingPercent, 50)
+  assert.equal(res.plan, 'Cline Pass (Monthly) ($9.99/mo)')
+  assert.ok(Array.isArray(res.dynamicModels))
+  assert.equal(res.dynamicModels.length, 11)
 })
 
 test('cline-client: saveCredentialKey integration', async () => {

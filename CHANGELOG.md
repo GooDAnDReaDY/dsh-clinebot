@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.16] - 2026-09-20
+
+### Fixed
+- **Strict Active Subscription Plan Model Filtering (#48)**: Correctly parsed `plan.features.included` array from `GET /users/me/plan` to discover exactly the 11 active ClinePass subscription models. Removed non-subscription models from the default `CLINE_MODELS` list (eliminating out-of-plan failures and preventing 400+ models from cluttering the DSH picker).
+- **Array Parsing in `parsePlanIncludedModels`**: Added support for both string and array inputs (extracting feature entries matching `/includes\s+/i`).
+
 ## [0.3.15] - 2026-09-19
 
 ### Fixed
