@@ -5,6 +5,22 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.17] - 2026-09-21
+
+### Fixed
+- **Cache Resilience (#50)**: Fixed permanent `isRevalidating` flag lock in `usageCache` and `probeCache` upon background SWR revalidation failures. The flag is now guaranteed to reset in `finally` and `catch` blocks.
+- **Immediate Abort Handling (#52)**: Eliminated artificial 250ms delay and futile retry upon `AbortError` or `signal.aborted` in `fetchUsageLimits`.
+- **Lifecycle Timer Cleanup (#53)**: Wrapped `autoDiscover` timer in `ctx.effect` with cleanup handler to avoid orphaned background callbacks upon plugin context unload.
+- **UI Version Hardcode Removal (#56)**: Replaced hardcoded legacy `'0.3.12'` string in initial React state with dynamic retrieval from `/update` endpoint and conditional badge rendering.
+
+### Performance
+- **Single Account Pool Resolution (#51)**: Eliminated duplicate sequential IPC queries to DSH Credentials by passing the pre-resolved account pool into `resolveActiveAccountKey` within `buildStatus`.
+- **Bounded Cache with Auto-Eviction (#57)**: Enforced `MAX_CACHE_ENTRIES = 50` and automatic eviction of expired entries in `usageCache` and `probeCache` to prevent long-term memory leaks.
+
+### Refactored
+- **Active Route Guard (#54)**: Converted `assertTrustedSettingsRequest` into an active route guard writing `403 Forbidden` and applied it across all write endpoints in `lib/routes/`.
+- **Dead Export Wiring (#55)**: Wired `getDefaultModelIds` helper in `lib/config.js` to compute `allDefaultIds`, clearing preflight dead-export warnings.
+
 ## [0.3.16] - 2026-09-20
 
 ### Fixed
