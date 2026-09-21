@@ -17,9 +17,11 @@ function UpdateBanner({ updateState, handleTriggerUpdate, t }) {
       React.createElement(
         'div',
         { style: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' } },
-        React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)', fontWeight: 500 } },
-          `v${updateState.currentVersion}`
-        ),
+        updateState.currentVersion
+          ? React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)', fontWeight: 500 } },
+              `v${updateState.currentVersion}`
+            )
+          : null,
         updateState.checking
           ? React.createElement('span', { style: { color: 'var(--dsw-alias-label-tertiary)', fontSize: '12px' } },
               t('update.checking')
