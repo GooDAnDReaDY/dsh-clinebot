@@ -13,6 +13,10 @@ import {
   retryWithBackoff,
   DEFAULT_BASE_URL,
   DEFAULT_API_KEY_ENV,
+  usageCache,
+  probeCache,
+  setBoundedCache,
+  MAX_CACHE_ENTRIES,
 } from '../lib/cline-client.js'
 import { PROVIDER_ID } from '../lib/models.js'
 
@@ -352,4 +356,61 @@ test('cline-client: smokeChat accurate token telemetry extraction', async () => 
   assert.equal(outcome.completionTokens, 18)
   assert.equal(outcome.totalTokens, 60)
   assert.equal(outcome.preview, 'test reply')
+})
+
+test('cline-client: SWR isRevalidating flag resets on background fetch error (Issue #50)', async () => {
+  const cacheKey = 'cline:usage:testkey1'
+  usageCache.set(cacheKey, {
+    data: { ok: true, plan: 'ClinePass', windows: {} },
+    expiresAt: Date.now() - 1000, // expired
+    isRevalidating: false,
+  })
+
+  let attempt = 0
+  const mockFailingFetch = async () => {
+    attempt++
+    throw new Error('Network timeout')
+  }
+
+  // First call returns stale data and triggers background fetch
+  const first = await fetchUsageLimits('https://api.cline.bot/api/v1', 'valid-testkey1', {
+    fetchImpl: mockFailingFetch,
+  })
+  assert.equal(first.ok, true)
+
+  // Allow background microtasks and retry timer to settle
+  await new Promise((r) => setTimeout(r, 350))
+
+  const entry = usageCache.get(cacheKey)
+  assert.equal(entry.isRevalidating, false, 'isRevalidating must reset to false after failure')
+})
+
+test('cline-client: setBoundedCache prunes expired items and bounds size (Issue #57)', () => {
+  const testMap = new Map()
+  for (let i = 0; i < 5; i++) {
+    setBoundedCache(testMap, `key_${i}`, { data: i, expiresAt: Date.now() - 1000 }, 3)
+  }
+  assert.ok(testMap.size <= 3, 'Cache size should be bounded')
+
+  setBoundedCache(testMap, 'active_key', { data: 99, expiresAt: Date.now() + 60000 }, 3)
+  assert.ok(testMap.has('active_key'))
+  assert.ok(testMap.size <= 3)
+})
+
+test('cline-client: fetchUsageLimits does not sleep/retry on aborted signal (Issue #52)', async () => {
+  let attempts = 0
+  const mockAbortedFetch = async () => {
+    attempts++
+    const err = new Error('The operation was aborted')
+    err.name = 'AbortError'
+    throw err
+  }
+
+  const res = await fetchUsageLimits('https://api.cline.bot/api/v1', 'key-abort', {
+    fetchImpl: mockAbortedFetch,
+    timeoutMs: 1, // trigger instant abort
+  })
+
+  assert.equal(res.ok, false)
+  assert.equal(attempts, 1, 'Should fail immediately without retrying on AbortError')
 })
