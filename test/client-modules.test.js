@@ -46,7 +46,7 @@ test("client: factory materializes with a strict module table", () => {
   const record = loadClientRecord()
   const seen = []
   const exports = record.factory(strictRequire(seen))
-  assert.deepEqual(Array.from(exports.inject).sort(), ["locale", "settingsScope", "slots"])
+  assert.deepEqual(Array.from(exports.inject).sort(), ["configForms", "locale", "slots"])
   assert.equal(typeof exports.apply, "function")
   assert.equal(seen.includes("@deepseek-ai/dsh-client-ui-primitives"), false)
 })
@@ -70,7 +70,7 @@ test("client: apply registers settings.plugin.item exclusively without settings.
         return decl
       },
     },
-    settingsScope: {
+    configForms: {
       describe: () => ({
         getSnapshot: () => ({ view: { namespaces: [{ ns: "dsh-clinebot" }] } }),
         load() {},
@@ -106,7 +106,13 @@ test("client: dsh.client.inject names only modules the factory resolves", () => 
     assert.equal(spec.startsWith("@deepseek-ai/"), false, "client.js requires a module missing from the kernel table: " + spec)
   }
   const inject = (pkg.dsh && pkg.dsh.client && pkg.dsh.client.inject) || []
+  const hostProviders = new Set([
+    "@deepseek-ai/dsh-client-locale",
+    "@deepseek-ai/dsh-client-ui-settings",
+    "@deepseek-ai/dsh-client-ui-slots",
+  ])
   for (const name of inject) {
+    if (hostProviders.has(name)) continue
     assert.equal(name.startsWith("@deepseek-ai/"), false, "dsh.client.inject names a module missing from the kernel table: " + name)
     assert.ok(specifiers.includes(name), "dsh.client.inject names a module the factory never requires: " + name)
   }
@@ -181,12 +187,12 @@ test("client: full component tree render and event handler integrity", () => {
       register: (opts, comp) => { registered[opts.name] = comp; return opts }
     },
     locale: { register: () => {}, bind: () => (k) => k },
-    settingsScope: {
+    configForms: {
       describe: () => ({
         getSnapshot: () => ({ view: { namespaces: [{ ns: 'dsh-clinebot' }] } }),
         load: () => {}
       }),
-      bind: () => ({
+      get: () => ({
         subscribe: () => () => {},
         getSnapshot: () => ({ status: 'ready', value: {} }),
         set: async () => {}

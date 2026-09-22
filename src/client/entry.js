@@ -1,7 +1,7 @@
 function refreshMirrorUntilVisible(ctx) {
   const visible = () => {
     try {
-      const s = (ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope
+      const s = (ctx?.get && ctx.get('lanSettings')) || ctx?.configForms
       const view = s?.describe?.()?.getSnapshot?.()?.view
       return !!view && Array.isArray(view.namespaces) && view.namespaces.some((row) => row.ns === NS)
     } catch (_) {
@@ -14,7 +14,7 @@ function refreshMirrorUntilVisible(ctx) {
     if (visible() || tries >= 15) { clearInterval(timer); return }
     tries += 1
     try {
-      const s = (ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope
+      const s = (ctx?.get && ctx.get('lanSettings')) || ctx?.configForms
       s?.describe?.()?.load?.()
     } catch (e) {
       console.debug?.('[dsh-clinebot] Polling settings mirror:', e)
@@ -124,4 +124,4 @@ function apply(ctx) {
   )
 }
 
-module.exports = { apply, inject: ['slots', 'locale', 'settingsScope'] }
+module.exports = { apply, inject: ['slots', 'locale', 'configForms'] }

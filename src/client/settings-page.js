@@ -3,10 +3,10 @@ function SettingsPage(props) {
   const t = props?.t || makeT(en, en)
 
   const scope = React.useMemo(() => {
-    const s = (ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope
-    if (!s?.bind) return undefined
+    const s = (ctx?.get && ctx.get('lanSettings')) || ctx?.configForms
+    if (!s?.get) return undefined
     try {
-      return s.bind({ namespace: NS })
+      return s.get(NS)
     } catch (_) {
       return undefined
     }
