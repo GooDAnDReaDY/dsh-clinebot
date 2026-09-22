@@ -79,8 +79,8 @@ function ModelsSection({ modelsList, disabledSet, enabledCount, keyPresent, busy
               m.input?.includes('image') || m.input?.includes('vision')
                 ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: '4px' } }, 'Vision')
                 : null,
-              m.reasoningEfforts?.length || m.reasoning
-                ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: '4px' } }, '🧠 Reasoning')
+              (Array.isArray(m.reasoningEfforts) ? m.reasoningEfforts.length > 0 : (m.reasoningEfforts && typeof m.reasoningEfforts === 'object' ? Object.keys(m.reasoningEfforts).length > 0 : Boolean(m.reasoning)))
+                ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: '4px' }, title: t('models.reasoning_tooltip') }, '🧠 Reasoning')
                 : null
             )
           )

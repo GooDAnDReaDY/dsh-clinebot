@@ -153,3 +153,28 @@ test('models: saveModelsDiskCache and loadModelsDiskCache', async () => {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   }
 })
+
+test('models: reasoning efforts catalog coverage and dynamic assignment', () => {
+  const reasoningIds = [
+    'cline-pass/deepseek-v4-flash',
+    'cline-pass/deepseek-v4-pro',
+    'cline-pass/glm-5.2',
+    'cline-pass/kimi-k3',
+    'cline-pass/qwen3.7-max',
+    'cline-pass/qwen3.7-plus',
+    'cline-pass/minimax-m3',
+    'cline-pass/mimo-v2.5',
+    'cline-pass/mimo-v2.5-pro',
+  ]
+  for (const id of reasoningIds) {
+    const m = findModel(id)
+    assert.ok(m, 'Model must exist: ' + id)
+    assert.ok(Array.isArray(m.reasoningEfforts) && m.reasoningEfforts.length > 0, 'Model must have reasoningEfforts: ' + id)
+    assert.ok(m.reasoningEfforts.includes('low') && m.reasoningEfforts.includes('high'), 'Model must include low and high: ' + id)
+  }
+
+  // Dynamic plan model gets reasoning if name matches
+  const parsed = parsePlanIncludedModels('Includes Future DeepSeek Reasoning Model')
+  assert.equal(parsed.length, 1)
+  assert.ok(Array.isArray(parsed[0].reasoningEfforts) && parsed[0].reasoningEfforts.length > 0)
+})
