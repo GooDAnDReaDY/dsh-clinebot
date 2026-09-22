@@ -5,6 +5,18 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.18] - 2026-09-22
+
+### Added
+- **Reasoning Effort (思考强度) Selection (#59)**: Enabled reasoning effort selection (`Off` / `Low` / `Medium` / `High` / `Max`) across DSH composer model picker and `dsh-effort-slider` for all supported reasoning models (Qwen 3.7 Max/Plus, MiMo 2.5/Pro, GLM 5.2, Kimi K3, DeepSeek V4 Pro/Flash, MiniMax M3).
+- **Protocol Compliance**: Injected `off: null` into wire dictionary and declared `compat: { supportsReasoningEffort: true }` at provider and model levels in accordance with `@earendil-works/pi-ai` protocol specifications.
+- **Dynamic Plan Model Reasoning Heuristics**: Added automatic detection of reasoning capabilities for dynamically discovered models matching `/qwen3\.7|mimo|glm-5|kimi-k3|deepseek-v4|minimax-m3/i`.
+- **Reasoning Tooltip Localization**: Added localized explanatory tooltips (`models.reasoning_tooltip`) across English, Russian, and Chinese in the Settings UI.
+
+### Fixed
+- **Settings UI Reasoning Badge**: Fixed reasoning badge check in `models-section.js` to correctly detect object dictionary configurations instead of relying solely on array length.
+- **Context Window Capacity Clarification**: Updated catalog documentation and descriptions to clarify that the uniform 200k tokens context parameter reflects the official ClinePass upstream completion proxy gateway limit.
+
 ## [0.3.17] - 2026-09-21
 
 ### Fixed

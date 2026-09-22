@@ -108,13 +108,13 @@ graph LR
 ## ✨ Features & Module Breakdown
 
 * **`lib/models.js`**:
-  Manages the curated catalog (11 built-in models) and dynamically parses subscription plan models (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
+  Manages the curated catalog (11 built-in models) with full reasoning effort mappings (`off: null`, `low`, `medium`, `high`, `max`), upstream 200k context limit declarations, and dynamic subscription plan model parsing (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **`lib/cline-client.js`**:
   * `fetchUsageLimits`: queries `GET /users/me/plan/usage-limits`, `GET /users/me/plan`, and `GET /users/me` with in-memory caching.
   * `sessionStats` / `recordSessionRequest`: in-memory telemetry recording requests count, tokens, latency, and timestamps.
   * `saveCredentialKey`: writes credentials directly into `~/.dsh/.credentials.yaml`.
   * `smokeChat`: tests latency via non-streaming ping and updates session metrics.
-  * `buildPiAiProvider`: builds the DSH `llm-pi-ai` structure (`api: 'openai-completions'`).
+  * `buildPiAiProvider`: builds the DSH `llm-pi-ai` structure (`api: 'openai-completions'`) with full reasoning effort protocol compliance (`compat.supportsReasoningEffort: true`).
 * **`lib/index.js`**:
   Cordis service module managing routes (including `POST /dsh-clinebot/models/sync`), quota warnings threshold evaluation, credentials, and registering the `/cline` slash command.
 * **`lib/client.js`**:

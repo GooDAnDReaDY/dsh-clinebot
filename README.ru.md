@@ -107,7 +107,7 @@ graph LR
 
 ## ✨ Структура модулей и возможности
 
-* **`lib/models.js`**: каталог встроенных моделей ClinePass (11 моделей) и парсер моделей подписки (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
+* **`lib/models.js`**: каталог встроенных моделей ClinePass (11 моделей с полной поддержкой уровней размышлений `Off` / `Low` / `Medium` / `High` / `Max` и фиксацией лимита шлюза в 200k токенов) и парсер моделей подписки (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **`lib/cline-client.js`**:
   * `fetchUsageLimits`: параллельный опрос `GET /users/me/plan/usage-limits`, `GET /users/me/plan` и `GET /users/me` с кэшированием в памяти.
   * `sessionStats` / `recordSessionRequest`: счетчики сессии (запросы, токены, задержка, время).
