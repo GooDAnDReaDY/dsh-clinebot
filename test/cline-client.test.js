@@ -67,29 +67,36 @@ test('cline-client: buildPiAiProvider with custom models and reasoningEfforts sc
   const provider = buildPiAiProvider({
     baseUrl: 'https://api.cline.bot/api/v1',
     apiKeyEnv: 'MY_KEY',
-    models: ['cline-pass/deepseek-v4-moe', 'cline-pass/empty-efforts', 'cline-pass/object-efforts', 'cline-pass/glm-5.2'],
+    models: ['cline-pass/deepseek-v4-moe', 'cline-pass/empty-efforts', 'cline-pass/object-efforts', 'cline-pass/kimi-k2.7-code'],
     customModels,
   })
 
   assert.equal(provider.api, 'openai-completions')
   assert.equal(provider.baseURL, 'https://api.cline.bot/api/v1')
   assert.equal(provider.apiKeyEnv, 'MY_KEY')
+  assert.deepEqual(provider.compat, { supportsReasoningEffort: true })
   assert.equal(provider.models.length, 4)
   assert.equal(provider.models[0].id, 'cline-pass/deepseek-v4-moe')
   assert.equal(provider.models[0].provider, PROVIDER_ID)
-  // GitHub #1 / Gitea #35: reasoningEfforts must be false | { [key]: label }
+  // GitHub #1 / Gitea #35 / Gitea #59: reasoningEfforts must include off: null for wire protocol
   assert.deepEqual(provider.models[0].reasoningEfforts, {
+    off: null,
     low: 'low',
     medium: 'medium',
     high: 'high',
   })
+  assert.deepEqual(provider.models[0].compat, { supportsReasoningEffort: true })
   assert.equal(provider.models[1].reasoningEfforts, false)
+  assert.equal(provider.models[1].compat, undefined)
   assert.deepEqual(provider.models[2].reasoningEfforts, {
+    off: null,
     low: 'Low Effort',
     max: 'Maximum Effort',
   })
+  assert.deepEqual(provider.models[2].compat, { supportsReasoningEffort: true })
   // Model without reasoningEfforts defined defaults to false
   assert.equal(provider.models[3].reasoningEfforts, false)
+  assert.equal(provider.models[3].compat, undefined)
 })
 
 test('cline-client: fetchUsageLimits parsing and caching', async () => {
