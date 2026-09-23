@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.20] - 2026-09-23
+
+### Fixed
+- **Web Boot Freeze Hotfix (#64 / GitHub #3)**: Removed non-existent `configForms` service from client `inject: ['slots', 'locale']` and cleared `dsh.client.inject: []` in `package.json`. In version 0.3.19, Cordis in the browser hung indefinitely waiting for `configForms`, causing DSH startup to fail with `Failed to load plugins / web boot: 1 entry did not activate / @goodandready/dsh-clinebot: pending (waiting for service: configForms)`.
+- **Safe Fallback**: Retained safe optional chaining for settings mirror refresh (`(ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope`) without introducing hard service dependencies.
+
 ## 0.3.19
 
 ### Fixed
