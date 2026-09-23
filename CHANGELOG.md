@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.21] - 2026-09-23
+
+### Fixed
+- **Account Failover Persistence & Cache Invalidation (#61)**: Fixed `rotateToNextAccount` returning `rotated: true` when settings persistence (`settingsApi.replace` or `settings.mutate`) fails. It now returns `{ rotated: false, activeAccount: active, reason: 'failed_to_persist' }` on failure, and defers `clearUsageCache()` and `clearProbeCache()` until settings are confirmed written. This prevents the provider from staying on the previous account while its quota and health telemetry caches are wiped.
+
 ## [0.3.20] - 2026-09-23
 
 ### Fixed

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { rotateToNextAccount, isAccountQuotaExhausted, usageCache } from '../lib/cline-client.js'
+import { rotateToNextAccount, isAccountQuotaExhausted, usageCache, probeCache } from '../lib/cline-client.js'
 
 test('failover: isAccountQuotaExhausted logic and auto-recovery', () => {
   // 1. Under 95% is not exhausted
@@ -133,4 +133,110 @@ test('failover: rotateToNextAccount clears usageCache and probeCache', async () 
   assert.equal(res.rotated, true)
   // Verify cache is cleared on account switch
   assert.equal(usageCache.has('test-key'), false, 'usageCache must be cleared after account rotation')
+})
+
+test('failover: rotateToNextAccount returns rotated: false and preserves cache if settingsApi.replace throws', async () => {
+  usageCache.set('persist-test-key-1', { data: { percentUsed: 40 }, expiresAt: Date.now() + 60000 })
+  probeCache.set('probe-test-key-1', { status: 'healthy' })
+
+  const env = {
+    CLINEBOT_API_KEY: 'key-1',
+    CLINEBOT_API_KEY_2: 'key-2',
+  }
+
+  let warnLogged = null
+  const ctx = {
+    get: (name) => {
+      if (name === 'credentials') return { resolve: async (r) => ({ value: env[r?.name] }) }
+      return null
+    },
+    logger: {
+      warn: (msg) => {
+        warnLogged = msg
+      },
+    },
+  }
+
+  const failingSettingsApi = {
+    replace: async () => {
+      throw new Error('settings disk full')
+    },
+  }
+
+  const cfg = {
+    apiKeyEnv: 'CLINEBOT_API_KEY',
+    accounts: [{ label: 'Secondary', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
+    activeAccount: 'CLINEBOT_API_KEY',
+  }
+
+  const res = await rotateToNextAccount(ctx, cfg, 'rate_limit', failingSettingsApi)
+
+  assert.equal(res.rotated, false)
+  assert.equal(res.activeAccount, 'CLINEBOT_API_KEY')
+  assert.equal(res.previousAccount, 'CLINEBOT_API_KEY')
+  assert.equal(res.reason, 'failed_to_persist')
+  assert.equal(res.updatedSettings, false)
+  assert.ok(warnLogged && warnLogged.includes('settings disk full'))
+
+  // Verify caches were NOT cleared
+  assert.equal(usageCache.has('persist-test-key-1'), true, 'usageCache must not be wiped on persist failure')
+  assert.equal(probeCache.has('probe-test-key-1'), true, 'probeCache must not be wiped on persist failure')
+
+  // Clean up
+  usageCache.clear()
+  probeCache.clear()
+})
+
+test('failover: rotateToNextAccount returns rotated: false and preserves cache if settings.mutate throws', async () => {
+  usageCache.set('persist-test-key-2', { data: { percentUsed: 50 }, expiresAt: Date.now() + 60000 })
+  probeCache.set('probe-test-key-2', { status: 'healthy' })
+
+  const env = {
+    CLINEBOT_API_KEY: 'key-1',
+    CLINEBOT_API_KEY_2: 'key-2',
+  }
+
+  let warnLogged = null
+  const mockSettings = {
+    mutate: async () => {
+      throw new Error('database locked')
+    },
+  }
+
+  const ctx = {
+    get: (name) => {
+      if (name === 'credentials') return { resolve: async (r) => ({ value: env[r?.name] }) }
+      if (name === 'settings') return mockSettings
+      return null
+    },
+    settings: mockSettings,
+    logger: {
+      warn: (msg) => {
+        warnLogged = msg
+      },
+    },
+  }
+
+  const cfg = {
+    apiKeyEnv: 'CLINEBOT_API_KEY',
+    accounts: [{ label: 'Secondary', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
+    activeAccount: 'CLINEBOT_API_KEY',
+  }
+
+  const res = await rotateToNextAccount(ctx, cfg, 'rate_limit')
+
+  assert.equal(res.rotated, false)
+  assert.equal(res.activeAccount, 'CLINEBOT_API_KEY')
+  assert.equal(res.previousAccount, 'CLINEBOT_API_KEY')
+  assert.equal(res.reason, 'failed_to_persist')
+  assert.equal(res.updatedSettings, false)
+  assert.ok(warnLogged && warnLogged.includes('database locked'))
+
+  // Verify caches were NOT cleared
+  assert.equal(usageCache.has('persist-test-key-2'), true, 'usageCache must not be wiped on persist failure')
+  assert.equal(probeCache.has('probe-test-key-2'), true, 'probeCache must not be wiped on persist failure')
+
+  // Clean up
+  usageCache.clear()
+  probeCache.clear()
 })
