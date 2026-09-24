@@ -35,19 +35,19 @@ function SettingsPage(props) {
   }, [scope])
 
   const getSnapshot = React.useCallback(() => {
-    if (!scope?.getSnapshot) return SNAPSHOT_LOADING
+    if (!scope?.getSnapshot) return SNAPSHOT_READY
     try {
-      return scope.getSnapshot() || SNAPSHOT_LOADING
+      return scope.getSnapshot() || SNAPSHOT_READY
     } catch (err) {
       console.warn('[dsh-clinebot] settings snapshot failed:', err)
-      return SNAPSHOT_LOADING
+      return SNAPSHOT_READY
     }
   }, [scope])
 
   const snapshot = React.useSyncExternalStore(
     subscribe,
     getSnapshot,
-    React.useCallback(() => SNAPSHOT_LOADING, [])
+    React.useCallback(() => SNAPSHOT_READY, [])
   )
   const snapshotStatus = snapshot?.status || 'loading'
 
