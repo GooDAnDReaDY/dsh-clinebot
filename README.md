@@ -53,7 +53,7 @@ Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 * 🖥️ **Plugin configuration page**: Open the installed ClineBot plugin and choose configure. The page shows the credential name, models, quota, and accounts. It is not a separate sidebar section.
 * 🔄 **Dynamic Subscription Model Sync**: Automatically pulls real models included in your ClinePass plan directly from `GET /api/v1/users/me/plan` with one-click DSH provider sync.
 * ⚠️ **Quota Exhaustion Alerts**: Real-time visual warning banners when 5-hour rolling limit reaches 80% (warning) and 95% (exhausted), complete with countdown to reset.
-* 📈 **Session Metrics Telemetry**: Live dashboard tracking request counts, token consumption estimates, latency, and last-request timestamp.
+* 📈 **Session Metrics Telemetry**: Live dashboard tracking real in-flight DSH chat requests through the ClineBot provider, prompt and completion tokens, stream latency, and error counts since process startup.
 * 📊 **Live Quota Dashboard**: Visual progress bars for 5-hour rolling limits and weekly windows from the official `GET /users/me/plan/usage-limits` API.
 * 🔑 **In-UI Key Storage**: Paste your API key directly in the UI; it is saved securely via `ctx.credentials.set()` into `~/.dsh/.credentials.yaml`.
 * 🎯 **Model Picker Management**: Granular checkboxes to choose which models appear in the chat picker.
