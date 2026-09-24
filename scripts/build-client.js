@@ -64,3 +64,21 @@ try {
   console.error('[build-client] Syntax error in assembled lib/client.js!')
   process.exit(1)
 }
+
+try {
+  execFileSync('eslint', [
+    '--no-config-lookup',
+    '--rule', 'no-undef: 2',
+    '--global', 'window,document,console,fetch,setTimeout,clearTimeout',
+    outFile
+  ], { stdio: 'inherit' })
+  console.log('[build-client] no-undef check: OK')
+} catch (err) {
+  if (err.code === 'ENOENT') {
+    // eslint not installed globally in this environment, skip CLI lint
+  } else {
+    console.error('[build-client] no-undef violations found in assembled lib/client.js!')
+    process.exit(1)
+  }
+}
+
