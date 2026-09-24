@@ -363,6 +363,11 @@ test('failover: llm/stream waterfall intercepts 429 error and rotates active acc
   await new Promise((r) => setTimeout(r, 60))
   assert.equal(currentActive, 'CLINEBOT_API_KEY_2', 'Active account must rotate to CLINEBOT_API_KEY_2 on 429')
 
+  const piAiMutations = mutated.filter((m) => m.ns === 'llm-pi-ai')
+  assert.ok(piAiMutations.length > 0, 'Provider settings must be synced on rotation')
+  const lastPiAi = piAiMutations[piAiMutations.length - 1]
+  assert.equal(lastPiAi.ops[0].value.apiKeyEnv, 'CLINEBOT_API_KEY_2', 'Provider settings must point to rotated account apiKeyEnv')
+
   // 3. Storm dampening: second 429 within 30s does not trigger another rotation
   async function* second429Stream() {
     yield { type: 'finish', reason: { kind: 'error', failure: { status: 429, message: 'Rate limit' } } }
