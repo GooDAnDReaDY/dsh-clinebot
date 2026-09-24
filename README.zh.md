@@ -186,6 +186,22 @@ dsh-clinebot:
 
 ---
 
+## 🌐 HTTP API 接口说明
+
+所有接口注册于 `/dsh-clinebot/*` 路径，并受到严格的跨站防护保护（仅允许同源或环回请求）：
+
+* `GET /dsh-clinebot/status` — 服务运行状态，包括健康探活、当前凭据名称、配额限制及会话统计。
+* `GET /dsh-clinebot/config` — 诊断接口，安全获取脱敏后的公共配置。
+* `PUT /dsh-clinebot/config` — 更新配置项。仅接受模式中的已知字段（未知字段或已废弃的 `enabledModels` 返回 `400 Bad Request`）。
+* `POST /dsh-clinebot/key/verify` — 向 `api.cline.bot` 发送探活请求实时验证密钥，返回绑定邮箱及套餐名称。
+* `POST /dsh-clinebot/save-key` — 将 API 密钥安全存储到 DSH credentials 服务。
+* `POST /dsh-clinebot/models/sync` — 同步 ClinePass 官方套餐内包含的全部动态模型。
+* `POST /dsh-clinebot/models/toggle` — 通过 `disabledModels` 批量切换模型可用性。
+* `POST /dsh-clinebot/accounts/active` — 从多账号池中指定当前主账号。
+* `POST /dsh-clinebot/smoke` — 发起快速探测并返回实时延迟。
+
+---
+
 ## 🧪 测试
 
 运行自动化测试套件：

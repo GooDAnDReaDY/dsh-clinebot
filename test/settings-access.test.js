@@ -4,7 +4,7 @@ import { registerSettingsRoutes } from '../lib/routes/settings.js'
 import { registerModelsRoutes } from '../lib/routes/models.js'
 import { registerAuthRoutes } from '../lib/routes/auth.js'
 import { publicUsage } from '../lib/http.js'
-import { publicConfig } from '../lib/config.js'
+import { publicConfig, plainConfig } from '../lib/config.js'
 import { smokeChat } from '../lib/cline-client.js'
 import { Readable } from 'node:stream'
 
@@ -151,8 +151,9 @@ test('smokeChat rejects insecure remote http baseUrl', async () => {
   assert.match(result.error, /Insecure protocol/)
 })
 
-test('PUT /config strips enabledModels before persisting to settingsApi', async () => {
+test('PUT /config behavior: 405, 403, 503, 400 (unknown / enabledModels), and 200 success', async () => {
   let replacedWith = null
+  let settingsAvailable = true
   const settingsApi = {
     replace: async (val) => { replacedWith = val },
   }
@@ -162,23 +163,95 @@ test('PUT /config strips enabledModels before persisting to settingsApi', async 
     webServer: { register: (r) => handlers.push(r) },
   }
   registerSettingsRoutes(ctx, {
-    live: () => ({ enabled: true, disabledModels: [], enabledModels: ['old-model'], dynamicModels: [] }),
-    getSettingsApi: () => settingsApi,
+    live: () => ({ enabled: true, disabledModels: [], dynamicModels: [{ id: 'm1' }] }),
+    getSettingsApi: () => settingsAvailable ? settingsApi : null,
     syncProviderState: async () => {},
     triggerAutoDiscover: () => {},
   })
 
   const handler = handlers.find((r) => r.path === '/dsh-clinebot/config').handler
-  const req = Readable.from([Buffer.from(JSON.stringify({ defaultModel: 'cline-pass/deepseek-v4-pro', enabledModels: ['old-model'] }))])
-  req.method = 'PUT'
-  req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
-  req.socket = { remoteAddress: '127.0.0.1' }
 
-  const out = respond()
-  await handler(req, out.res)
-  const payload = out.read()
-  assert.equal(payload.status, 200)
-  assert.equal(replacedWith.enabledModels.length, 0, 'enabledModels should not be persisted')
+  // 1. Method not allowed (POST -> 405)
+  const req405 = Readable.from([])
+  req405.method = 'POST'
+  req405.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  req405.socket = { remoteAddress: '127.0.0.1' }
+  const out405 = respond()
+  await handler(req405, out405.res)
+  assert.equal(out405.read().status, 405)
+
+  // 2. Untrusted client (remote IP -> 403)
+  const req403 = Readable.from([Buffer.from(JSON.stringify({ defaultModel: 'cline-pass/deepseek-v4-pro' }))])
+  req403.method = 'PUT'
+  req403.headers = {}
+  req403.socket = { remoteAddress: '203.0.113.10' }
+  const out403 = respond()
+  await handler(req403, out403.res)
+  assert.equal(out403.read().status, 403)
+
+  // 3. Settings service unavailable -> 503
+  settingsAvailable = false
+  const req503 = Readable.from([Buffer.from(JSON.stringify({ defaultModel: 'cline-pass/deepseek-v4-pro' }))])
+  req503.method = 'PUT'
+  req503.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  req503.socket = { remoteAddress: '127.0.0.1' }
+  const out503 = respond()
+  await handler(req503, out503.res)
+  assert.equal(out503.read().status, 503)
+  settingsAvailable = true
+
+  // 4. Invalid JSON -> 400
+  const reqInvalidJson = Readable.from([Buffer.from('not json{')])
+  reqInvalidJson.method = 'PUT'
+  reqInvalidJson.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  reqInvalidJson.socket = { remoteAddress: '127.0.0.1' }
+  const outInvalidJson = respond()
+  await handler(reqInvalidJson, outInvalidJson.res)
+  assert.equal(outInvalidJson.read().status, 400)
+
+  // 5. Unknown fields -> 400
+  const reqUnknown = Readable.from([Buffer.from(JSON.stringify({ maliciousOrUnknown: 'bad' }))])
+  reqUnknown.method = 'PUT'
+  reqUnknown.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  reqUnknown.socket = { remoteAddress: '127.0.0.1' }
+  const outUnknown = respond()
+  await handler(reqUnknown, outUnknown.res)
+  assert.equal(outUnknown.read().status, 400)
+  assert.match(outUnknown.read().body.error, /unknown config field/)
+
+  // 6. Deprecated enabledModels rejected -> 400
+  const reqEnabledModels = Readable.from([Buffer.from(JSON.stringify({ enabledModels: ['old-model'] }))])
+  reqEnabledModels.method = 'PUT'
+  reqEnabledModels.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  reqEnabledModels.socket = { remoteAddress: '127.0.0.1' }
+  const outEnabledModels = respond()
+  await handler(reqEnabledModels, outEnabledModels.res)
+  assert.equal(outEnabledModels.read().status, 400)
+  assert.match(outEnabledModels.read().body.error, /enabledModels is deprecated/)
+
+  // 7. Success with valid payload -> 200
+  const req200 = Readable.from([Buffer.from(JSON.stringify({ defaultModel: 'cline-pass/deepseek-v4-pro', timeoutMs: 12000 }))])
+  req200.method = 'PUT'
+  req200.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  req200.socket = { remoteAddress: '127.0.0.1' }
+  const out200 = respond()
+  await handler(req200, out200.res)
+  assert.equal(out200.read().status, 200)
+  const plainReplaced = plainConfig(replacedWith)
+  assert.equal(plainReplaced.defaultModel, 'cline-pass/deepseek-v4-pro')
+  assert.equal(plainReplaced.timeoutMs, 12000)
+})
+
+test('apply() returns undefined and does not produce Invalid effect in Cordis', async () => {
+  const { apply } = await import('../lib/index.js')
+  const ctx = {
+    inject: () => {},
+    effect: (fn) => fn(),
+    on: () => () => {},
+    logger: { info: () => {}, warn: () => {} },
+  }
+  const result = apply(ctx, {})
+  assert.equal(result, undefined, 'apply() must return undefined to prevent Cordis 4 Invalid effect')
 })
 
 test('publicConfig enables newly discovered dynamic models by default when disabledModels is empty', async () => {

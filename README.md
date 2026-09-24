@@ -189,6 +189,22 @@ dsh-clinebot:
 
 ---
 
+## 🌐 HTTP API Endpoints
+
+All endpoints are registered under `/dsh-clinebot/*` and protected against untrusted cross-site origins (same-origin and loopback allowed):
+
+* `GET /dsh-clinebot/status` — Live status report including provider health, active credential, quota, and session metrics.
+* `GET /dsh-clinebot/config` — Diagnostic endpoint returning public configuration without secret keys.
+* `PUT /dsh-clinebot/config` — Update configuration fields. Accepts only known schema properties (unknown fields or deprecated `enabledModels` return `400 Bad Request`).
+* `POST /dsh-clinebot/key/verify` — Validates a candidate API key against `api.cline.bot` and returns account email and plan name.
+* `POST /dsh-clinebot/save-key` — Saves a key into DSH credentials service under a valid `CLINEBOT_API_KEY*` name.
+* `POST /dsh-clinebot/models/sync` — Synchronizes models with your active subscription plan.
+* `POST /dsh-clinebot/models/toggle` — Toggles models via `disabledModels`.
+* `POST /dsh-clinebot/accounts/active` — Pins an active account from the account pool.
+* `POST /dsh-clinebot/smoke` — Runs a live latency test ping.
+
+---
+
 ## 🧪 Testing
 
 Run the automated test suite:
