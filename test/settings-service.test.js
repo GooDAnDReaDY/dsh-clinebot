@@ -1,52 +1,142 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
 import { Readable } from "node:stream"
-import { fileURLToPath } from "node:url"
-import path from "node:path"
 
-const root = fileURLToPath(new URL("../", import.meta.url))
+test("host: apply registers settings namespace via ctx.inject(['settings']) and watches updates", async () => {
+  const { apply, NS } = await import("../lib/index.js")
+  const injectCalls = []
+  let registeredNs = null
+  let registeredSchema = null
+  let registeredOptions = null
+  let watchHandler = null
+  let watchRegistered = false
 
-test("host: lib/index.js registers settings namespace via ctx.inject(['settings'])", () => {
-  const indexSource = readFileSync(path.join(root, "lib", "index.js"), "utf8")
+  const dummyScope = {
+    get: () => ({ enabled: true, baseUrl: "https://api.cline.bot/api/v1", apiKeyEnv: "CLINEBOT_API_KEY", enabledModels: [] }),
+    watch: (cb) => {
+      watchRegistered = true
+      watchHandler = cb
+      return () => {}
+    },
+    replace: async () => {},
+  }
 
-  // 1. Must use ctx.inject(['settings'], ...)
-  assert.ok(
-    indexSource.includes("ctx.inject(['settings']") || indexSource.includes('ctx.inject(["settings"]'),
-    "lib/index.js must register settings inside ctx.inject(['settings'], (sctx) => ...)"
-  )
+  let syncProviderCalled = false
+  const mockSettingsService = {
+    register: (ns, schema, opts) => {
+      registeredNs = ns
+      registeredSchema = schema
+      registeredOptions = opts
+      return dummyScope
+    },
+    mutate: async (ns, ops) => {
+      if (ns === 'llm-pi-ai') {
+        syncProviderCalled = true
+      }
+    },
+  }
 
-  // 2. Must register NS, Config with base options
-  assert.ok(
-    indexSource.includes("sctx.settings.register(NS, Config, { base: config })"),
-    "sctx.settings.register must be called with NS, Config, { base: config }"
-  )
+  let synchronousSettingsGetCalled = false
+  const mockCtx = {
+    inject: (deps, cb) => {
+      injectCalls.push(deps)
+      if (deps.includes('settings')) {
+        cb({
+          settings: mockSettingsService,
+          effect: (fn) => fn(),
+        })
+      }
+    },
+    get: (name) => {
+      if (name === 'settings') {
+        synchronousSettingsGetCalled = true
+      }
+      return null
+    },
+    effect: (fn) => fn(),
+  }
 
-  // 3. Must not call bare ctx.get('settings') synchronously in apply
-  assert.ok(
-    !indexSource.includes("const settingsService = ctx.get('settings')"),
-    "Synchronous ctx.get('settings') must not be used in apply"
-  )
+  const baseConfig = { enabled: true, baseUrl: "https://api.cline.bot/api/v1", apiKeyEnv: "CLINEBOT_API_KEY" }
+  apply(mockCtx, baseConfig)
 
-  // 4. Must use scope.watch to sync live provider state
-  assert.ok(
-    indexSource.includes("scope.watch"),
-    "scope.watch must be used to observe settings changes"
-  )
+  // 1. ctx.inject must be called with ['settings']
+  assert.ok(injectCalls.some((d) => d.includes('settings')), "apply must inject 'settings' service dependency")
+
+  // 2. Must register NS, schema, with { base: config }
+  assert.equal(registeredNs, NS, "sctx.settings.register must be called with NS")
+  assert.equal(typeof registeredSchema, "function", "sctx.settings.register must receive schema function")
+  assert.deepEqual(registeredOptions, { base: baseConfig }, "sctx.settings.register must pass base config")
+
+  // 3. Must not perform bare synchronous ctx.get('settings') during apply()
+  assert.equal(synchronousSettingsGetCalled, false, "apply must not call bare ctx.get('settings') synchronously")
+
+  // 4. Must register scope.watch and trigger sync on change
+  assert.equal(watchRegistered, true, "scope.watch must be registered to observe settings changes")
+  assert.equal(typeof watchHandler, "function")
 })
 
-test("host: resolveKeyValue uses ctx.get('credentials') safely without bare property access", () => {
-  const clineClientSource = readFileSync(path.join(root, "lib", "cline-client.js"), "utf8")
+test("host: resolveKeyValue safely resolves via ctx.get('credentials') without unsafe property access", async () => {
+  const { resolveKeyValue } = await import("../lib/cline-client.js")
 
-  // Check safe credentials resolution:
-  assert.ok(
-    clineClientSource.includes("(ctx?.get && ctx.get('credentials')) || ctx?.credentials"),
-    "resolveKeyValue must check ctx.get('credentials')"
-  )
-  assert.ok(
-    !clineClientSource.includes("if (ctx?.credentials && typeof ctx.credentials.resolve"),
-    "Unsafe bare ctx.credentials property access must not be used"
-  )
+  // 1. Standard context with ctx.get('credentials')
+  let getCredentialsCalled = false
+  const ctxWithGet = {
+    get: (name) => {
+      if (name === 'credentials') {
+        getCredentialsCalled = true
+        return {
+          resolve: async (ref) => ({ value: 'secret-from-get' }),
+        }
+      }
+      return null
+    },
+  }
+
+  const res1 = await resolveKeyValue(ctxWithGet, 'SOME_ENV_KEY')
+  assert.equal(getCredentialsCalled, true, "resolveKeyValue must call ctx.get('credentials')")
+  assert.equal(res1.value, 'secret-from-get')
+  assert.equal(res1.source, 'credentials')
+
+  // 2. Context with Proxy where bare credentials property access is checked
+  let proxyGetCalled = false
+  const trappingCtx = {
+    get: (name) => {
+      if (name === 'credentials') {
+        proxyGetCalled = true
+        return {
+          resolve: async () => ({ value: 'proxy-key' }),
+        }
+      }
+      return null
+    },
+  }
+  Object.defineProperty(trappingCtx, 'credentials', {
+    get() {
+      return {
+        resolve: async () => ({ value: 'direct-prop-key' }),
+      }
+    },
+  })
+
+  const res2 = await resolveKeyValue(trappingCtx, 'PROXY_ENV_KEY')
+  assert.equal(proxyGetCalled, true)
+  assert.equal(res2.value, 'proxy-key')
+
+  // 3. Fallback context with only bare ctx.credentials (legacy)
+  const legacyCtx = {
+    credentials: {
+      resolve: async () => ({ value: 'legacy-key' }),
+    },
+  }
+  const res3 = await resolveKeyValue(legacyCtx, 'LEGACY_ENV_KEY')
+  assert.equal(res3.value, 'legacy-key')
+  assert.equal(res3.source, 'credentials')
+
+  // 4. Context with neither credentials service falls back to env or empty
+  const emptyCtx = { get: () => null }
+  const res4 = await resolveKeyValue(emptyCtx, 'NON_EXISTENT_ENV_KEY_12345')
+  assert.equal(res4.value, '')
+  assert.equal(res4.source, 'none')
 })
 
 test("host: apply adapts modern SettingsForms without sctx.settings.register", async () => {

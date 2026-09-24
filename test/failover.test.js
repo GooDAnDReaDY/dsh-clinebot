@@ -55,6 +55,8 @@ test('failover: rotateToNextAccount switches between multiple configured account
     activeAccount: 'CLINEBOT_API_KEY',
   })
 
+  const { upsertPiAiProvider } = await import('../lib/provider-sync.js')
+
   // 1. Initial rotation from default (CLINEBOT_API_KEY) to Account 2
   const res1 = await rotateToNextAccount(ctx, cfg, 'rate_limit')
   assert.equal(res1.rotated, true)
@@ -62,7 +64,15 @@ test('failover: rotateToNextAccount switches between multiple configured account
   assert.equal(res1.activeAccount, 'CLINEBOT_API_KEY_2')
   assert.equal(res1.updatedSettings, true)
   assert.equal(mutated.length, 1)
+  assert.equal(mutated[0].ns, 'dsh-clinebot')
   assert.equal(mutated[0].ops[0].value, 'CLINEBOT_API_KEY_2')
+
+  // Verify provider registered with rotated account apiKeyEnv
+  const rotatedCfg1 = { ...cfg, activeAccount: res1.activeAccount }
+  await upsertPiAiProvider(ctx, rotatedCfg1)
+  assert.equal(mutated.length, 2)
+  assert.equal(mutated[1].ns, 'llm-pi-ai')
+  assert.equal(mutated[1].ops[0].value.apiKeyEnv, 'CLINEBOT_API_KEY_2', 'Provider must be registered with CLINEBOT_API_KEY_2')
 
   // 2. Next rotation from Account 2 back to default (round-robin)
   const cfg2 = ({ ...cfg, activeAccount: 'CLINEBOT_API_KEY_2' })
@@ -70,6 +80,16 @@ test('failover: rotateToNextAccount switches between multiple configured account
   assert.equal(res2.rotated, true)
   assert.equal(res2.previousAccount, 'CLINEBOT_API_KEY_2')
   assert.equal(res2.activeAccount, 'CLINEBOT_API_KEY')
+  assert.equal(mutated.length, 3)
+  assert.equal(mutated[2].ns, 'dsh-clinebot')
+  assert.equal(mutated[2].ops[0].value, 'CLINEBOT_API_KEY')
+
+  // Verify provider registered with Default apiKeyEnv upon rotating back
+  const rotatedCfg2 = { ...cfg, activeAccount: res2.activeAccount }
+  await upsertPiAiProvider(ctx, rotatedCfg2)
+  assert.equal(mutated.length, 4)
+  assert.equal(mutated[3].ns, 'llm-pi-ai')
+  assert.equal(mutated[3].ops[0].value.apiKeyEnv, 'CLINEBOT_API_KEY', 'Provider must revert to CLINEBOT_API_KEY')
 
   // 3. Single account pool does not rotate
   const singleCfg = ({
