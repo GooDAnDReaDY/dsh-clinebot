@@ -15,11 +15,11 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 
 ### 2.2 Client Runtime (`lib/client.js`)
 * Self-registering module via `window.__ModuleLoader__.load({ id: '@goodandready/dsh-clinebot', factory })`.
-* Injects `['slots', 'locale', 'settingsScope']`.
+* Injects `['slots', 'locale']`.
 * Slots strictly and exclusively into `settings.plugin.item` (`key: NS`, `locale: NS`). Standalone top-level `settings.section` registration is omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
 * Uses `refreshMirrorUntilVisible(ctx)` to invalidate and re-read the client settings mirror until the namespace is reported ready by the host.
 * Registers localized `en` and `zh` dictionaries with duplicate-safe guards (`ctx.locale.register()`), while Russian translation is modularly supplied by `dsh-russian-lang`.
-* Reactive binding via `((ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope).bind({ namespace: NS })` with `useSyncExternalStore` guarding against `unavailable` / `loading` snapshot states. Form mutations write directly to `scope.set()`.
+* Reactive binding via defensive service probing (`typeof ctx?.get === 'function' ? (ctx.get('lanSettings') || ctx.get('settingsScope')) : null`) wrapped in `try/catch`. When settings services are absent under strict Cordis contexts (DSH 0.17+), snapshots safely default to `{ status: 'ready', view: null }`, unblocking standalone rendering while the page operates via its authenticated REST endpoints.
 * Uses native design tokens (`--dsw-alias-...`) with full dark/light theme support.
 * Injects isolated style tag tagged with `data-dsh-plugin="dsh-clinebot"`.
 

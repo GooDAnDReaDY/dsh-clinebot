@@ -1,26 +1,46 @@
 function refreshMirrorUntilVisible(ctx) {
+  const getSettingsService = () => {
+    try {
+      if (typeof ctx?.get === 'function') {
+        const s = ctx.get('lanSettings') || ctx.get('settingsScope')
+        if (s) return s
+      }
+    } catch (_) {}
+    try {
+      if (ctx && typeof ctx === 'object') {
+        return ctx.lanSettings || ctx.settingsScope || null
+      }
+    } catch (_) {}
+    return null
+  }
+
+  const s = getSettingsService()
+  if (!s) return
+
   const visible = () => {
     try {
-      const s = (ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope
-      const view = s?.describe?.()?.getSnapshot?.()?.view
+      const current = getSettingsService()
+      const view = current?.describe?.()?.getSnapshot?.()?.view
       return !!view && Array.isArray(view.namespaces) && view.namespaces.some((row) => row.ns === NS)
     } catch (_) {
       return false
     }
   }
-  if (visible()) return () => {}
+  if (visible()) return
+
+  if (typeof setInterval !== 'function') return
+
   let tries = 0
   const timer = setInterval(() => {
     if (visible() || tries >= 15) { clearInterval(timer); return }
     tries += 1
     try {
-      const s = (ctx?.get && ctx.get('lanSettings')) || ctx?.settingsScope
-      s?.describe?.()?.load?.()
+      const current = getSettingsService()
+      current?.describe?.()?.load?.()
     } catch (e) {
       console.debug?.('[dsh-clinebot] Polling settings mirror:', e)
     }
   }, 1000)
-  return () => clearInterval(timer)
 }
 
 function apply(ctx) {
