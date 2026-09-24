@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { Config, plainConfig } from '../lib/config.js'
+import { Config, plainConfig, volatileConfig } from '../lib/config.js'
 
 test('user settings fields are volatile so the host namespace is published', () => {
-  const keys = ['enabled', 'baseUrl', 'apiKeyEnv', 'defaultModel', 'disabledModels', 'dynamicModels', 'accounts', 'activeAccount']
+  const keys = ['enabled', 'baseUrl', 'apiKeyEnv', 'defaultModel', 'disabledModels', 'accounts', 'activeAccount']
   for (const key of keys) {
     assert.equal(Config.dict[key].meta.volatile, true, key)
   }
-  assert.equal(Config.dict.dynamicModels.inner.dict.description.meta.volatile, undefined)
-  assert.equal(Config.dict.dynamicModels.inner.dict.category.meta.volatile, undefined)
+  // Internal/derived fields must remain non-volatile
+  assert.equal(Config.dict.dynamicModels.meta.volatile, undefined)
+  assert.equal(Config.dict.enabledModels.meta.volatile, undefined)
   assert.equal(Config.dict.accounts.inner.dict.label.meta.volatile, undefined)
 })
 
@@ -22,4 +23,20 @@ test('plainConfig copies volatile field references before structuredClone', () =
   assert.deepEqual(structuredClone(plain), plain)
   const root = Object.freeze({ get: () => ({ enabled: false, baseUrl: 'https://api.example.test' }) })
   assert.equal(plainConfig(root).enabled, false)
+})
+
+test('volatileConfig filters out non-volatile fields before persistence to DSH settings', () => {
+  const full = {
+    enabled: true,
+    baseUrl: 'https://api.cline.bot/api/v1',
+    dynamicModels: [{ id: 'custom-model' }],
+    enabledModels: ['custom-model'],
+    activeAccount: 'MY_KEY',
+  }
+  const vol = volatileConfig(full)
+  assert.equal(vol.enabled, true)
+  assert.equal(vol.baseUrl, 'https://api.cline.bot/api/v1')
+  assert.equal(vol.activeAccount, 'MY_KEY')
+  assert.equal(vol.dynamicModels, undefined)
+  assert.equal(vol.enabledModels, undefined)
 })

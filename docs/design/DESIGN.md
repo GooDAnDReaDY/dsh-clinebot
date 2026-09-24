@@ -7,7 +7,7 @@
 The plugin consists of two runtime boundaries conforming to DSH authoring standards:
 
 ### 2.1 Host Runtime (`lib/index.js`, `lib/cline-client.js`, `lib/models.js`, `lib/http.js`)
-* **Cordis Service Registration**: Declares `inject = ['settings', 'webServer', 'credentials']` and registers the settings namespace dynamically via `ctx.inject(['settings'], (sctx) => { sctx.settings.register(NS, Config, { base: config }) })`. This guarantees that the configuration schema, default values, and reactive watchers are declared and available to the host and client settingsScope without timing issues.
+* **Cordis Service Registration & Modern Settings Adapter**: Declares `inject = ['settings', 'webServer', 'credentials']` and integrates with DSH settings via `ctx.inject(['settings'], (sctx) => ...)`. Supports both legacy `sctx.settings.register` and modern DSH 0.1.7+ `SettingsForms` (`svc.replace` / `svc.update` / `svc.describe`). Only user-editable fields are marked `.volatile()`, while `volatileConfig()` strips derived and non-volatile properties prior to DSH settings writes.
 * **Safe Service Resolution**: Service lookups utilize defensive proxy resolution `(ctx?.get && ctx.get('credentials')) || ctx?.credentials` to prevent `undefined` properties on Cordis proxies.
 * **Credential Isolation**: The plugin NEVER stores plain API keys in its configuration. The setting `apiKeyEnv` holds the credential identifier (default: `CLINEBOT_API_KEY`), resolved via `ctx.get('credentials').resolve()` or `process.env`.
 * **State Synchronization & Auto-Registration**: Mutates the core `llm-pi-ai` settings space (`op: 'set', path: ['providers', 'clinebot']`) declaratively and automatically when enabled or key is saved.
@@ -19,7 +19,7 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 * Slots strictly and exclusively into `settings.plugin.item` (`key: NS`, `locale: NS`). Standalone top-level `settings.section` registration is omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
 * Opens the namespace with `configForms.get('dsh-clinebot')`. The form exposes `getSnapshot`, `subscribe`, and `set`.
 * Registers localized `en` and `zh` dictionaries with duplicate-safe guards (`ctx.locale.register()`), while Russian translation is modularly supplied by `dsh-russian-lang`.
-* The settings card reads `ctx.get('configForms').get('dsh-clinebot')`. It does not call `settingsScope`, `lanSettings`, or `bind`. When `configForms` is not yet available, `getSnapshot` returns the frozen fallback constant `SNAPSHOT_READY`, preventing infinite re-render loops in `useSyncExternalStore` (React error #185) and allowing the page to render via its authenticated HTTP REST endpoints.
+* The settings card reads `ctx.get('configForms').get('dsh-clinebot')`. It does not call `settingsScope`, `lanSettings`, or `bind`. When `configForms` is not yet available, or when running over non-loopback connections (`persistence === 'memory'`), `getSnapshot` returns the frozen fallback constant `SNAPSHOT_READY`, preventing infinite re-render loops in `useSyncExternalStore` (React error #185) and allowing the page to render via its authenticated HTTP REST endpoints without being blocked behind an "unavailable" banner.
 * Uses native design tokens (`--dsw-alias-...`) with full dark/light theme support.
 * Injects isolated style tag tagged with `data-dsh-plugin="dsh-clinebot"`.
 
