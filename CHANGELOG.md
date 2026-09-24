@@ -5,6 +5,23 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-24
+
+### Added
+- **One-Click In-App Updater (#91)**: Self-update companion plugin directly from the DSH settings card or via loopback `POST /dsh-clinebot/update` with rate limiting, package manifest verification, and restart indicators.
+- **Real DSH Stream 429 & Quota Failover (#79)**: Intercepts HTTP 429 and quota exhaustion at the `llm/stream` waterfall level, automatically rotating to the next account in the pool with 30s storm protection and immediately synchronizing the provider's `apiKeyEnv` in `llm-pi-ai`.
+- **Dynamic Plan Models Discovery (#90)**: Discovers models dynamically from active ClinePass subscription plan via `POST /dsh-clinebot/models/sync`. Removes hardcoded pricing references from UI and settings.
+- **Stream Telemetry & Token Tracking (#83)**: Tracks real DSH chat requests through the ClineBot provider, prompt and completion tokens from stream usage chunks, stream latency, and error counts since process startup.
+- **Live API Key Verification (#84)**: Direct navigation to `https://app.cline.bot/settings/api-keys` and on-the-fly key verification endpoint `POST /dsh-clinebot/key/verify` displaying account email and subscription plan in the UI.
+- **Behavioral Test Suite (#85)**: Comprehensive test suite testing all write endpoints for HTTP 405 Method Not Allowed, HTTP 403 Forbidden on untrusted origins, service error reporting (503), and behavioral execution of all `/cline` slash subcommands.
+
+### Changed
+- **Hardened PUT /dsh-clinebot/config (#89)**: Merges from raw `live()`, accepts only known schema fields, strictly rejects unknown properties with 400 Bad Request, rejects deprecated `enabledModels`, and documents HTTP API in README.
+- **Cordis 4 Clean apply() Return (#89)**: `apply()` now returns `undefined` to eliminate `TypeError: Invalid effect` in Cordis 4, and dead branches without `ctx.inject` were removed.
+- **Strict Credential Naming Pattern (#82)**: Restricts `/dsh-clinebot/save-key` target environment variables strictly to `^CLINEBOT_API_KEY(_[A-Z0-9]+)?$`.
+- **Honest Persistence Reporting (#81)**: Write endpoints report honest errors and HTTP 503 when the DSH settings service is unavailable.
+- **UI and Locale Refinements (#86, #87, #88)**: Eliminated undeclared `ctx` reference in `PluginCard`, removed dead state loops in `SettingsPage`, corrected layout spacing and badge styling across localized cards.
+
 ## [0.3.25] - 2026-09-24
 
 ### Fixed
