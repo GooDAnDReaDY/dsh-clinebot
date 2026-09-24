@@ -5,10 +5,20 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.24] - 2026-09-24
+
+### Fixed
+
+- The settings card opens. Host settings are published as a namespace, copied to plain values before use, and account credential names are read as text, so the form renders instead of a React error.
+
 ## [0.3.23] - 2026-09-24
 
 ### Fixed
 - **React Error #185 Infinite Loop Fix (#74 / GitHub #6)**: Restored stable reference constant `SNAPSHOT_READY` in `SettingsPage.getSnapshot` for `useSyncExternalStore`. Returning an inline object literal caused `Object.is` mismatch on every render, triggering an infinite update depth loop (`Maximum update depth exceeded`). The snapshot fallback now returns frozen `SNAPSHOT_READY`, guaranteeing reference stability while keeping the page unblocked in standalone mode.
+- The settings schema marks the user-editable fields volatile, so DSH includes the `dsh-clinebot` namespace and the configuration page is no longer stuck on "host namespace is not ready".
+- Nested fields inside an already volatile array stay plain. The plugin copies host volatile references to plain values before `structuredClone`, so startup does not reject the config or fail to clone a getter.
+- The configuration page renders its own status payload when the host form snapshot is still loading. A missing host namespace still shows the unavailable banner until that payload arrives.
+- Account credential names are read as text. A host volatile reference was sent through as an empty object, and React error #31 replaced the settings card.
 - The settings page binds `configForms.get('dsh-clinebot')` on DSH 0.1.7. The removed `settingsScope` and `lanSettings` services are no longer consulted, so the plugin configuration page can render after install.
 - `GET /dsh-clinebot/status`, `/config`, `/usage`, and `/auth/status` use the same trusted-request check as the write routes. Usage responses keep the quota fields the card shows and omit the raw provider payload.
 - `/cline models` prints the model total in English.
@@ -194,7 +204,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.4] - 2026-09-08
 
 ### Fixed
-- **Cache Path Resolution**: Corrected POSIX home directory expansion (`~/`) in `resolvePathWithHome` so `~/.dsh/clinebot-models-cache.json` resolves cleanly to `/home/vadim/.dsh/...` instead of root-level paths.
+- **Cache Path Resolution**: Corrected POSIX home directory expansion (`~/`) in `resolvePathWithHome` so `~/.dsh/clinebot-models-cache.json` resolves under the user home directory instead of a root-level path.
 
 ## [0.3.3] - 2026-09-08
 
