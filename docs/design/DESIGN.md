@@ -15,11 +15,11 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 
 ### 2.2 Client Runtime (`lib/client.js`)
 * Self-registering module via `window.__ModuleLoader__.load({ id: '@goodandready/dsh-clinebot', factory })`.
-* Injects `['slots', 'locale']`.
+* Injects `['slots', 'locale', 'configForms']`. `package.json` `dsh.client.inject` names `@deepseek-ai/dsh-client-ui-slots`, `@deepseek-ai/dsh-client-locale`, and `@deepseek-ai/dsh-client-ui-settings` so those services exist.
 * Slots strictly and exclusively into `settings.plugin.item` (`key: NS`, `locale: NS`). Standalone top-level `settings.section` registration is omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
-* Uses `refreshMirrorUntilVisible(ctx)` to invalidate and re-read the client settings mirror until the namespace is reported ready by the host.
+* Opens the namespace with `configForms.get('dsh-clinebot')`. The form exposes `getSnapshot`, `subscribe`, and `set`.
 * Registers localized `en` and `zh` dictionaries with duplicate-safe guards (`ctx.locale.register()`), while Russian translation is modularly supplied by `dsh-russian-lang`.
-* Reactive binding via defensive service probing (`typeof ctx?.get === 'function' ? (ctx.get('lanSettings') || ctx.get('settingsScope')) : null`) wrapped in `try/catch`. When settings services are absent under strict Cordis contexts (DSH 0.17+), snapshots safely default to `{ status: 'ready', view: null }`, unblocking standalone rendering while the page operates via its authenticated REST endpoints.
+* The settings card reads `ctx.get('configForms').get('dsh-clinebot')`. It does not call `settingsScope`, `lanSettings`, or `bind`.
 * Uses native design tokens (`--dsw-alias-...`) with full dark/light theme support.
 * Injects isolated style tag tagged with `data-dsh-plugin="dsh-clinebot"`.
 
@@ -62,7 +62,7 @@ graph LR
 * **Non-destructive actions**: Unregister cleanly removes the provider entry from DSH without touching other providers or configurations.
 
 ## 4. Security & Isolation
-* CSRF / Cross-site protection: All mutating routes (`/register`, `/unregister`, `/smoke`, `/models`, `/accounts/active`, `/auth/begin`) validate `isTrustedSettingsRequest(req)` checking `Sec-Fetch-Site`, `Origin`, `Host`, `Referer`, and loopback IP matching for LAN and reverse-proxy setups.
+* Same-origin check: mutating routes and the read routes `/status`, `/config`, `/usage`, and `/auth/status` call `isTrustedSettingsRequest`. `/usage` and the status payload return quota fields the card draws (plan, email, window percents) and omit the raw provider body.
 * Body size limits: Request payloads are strictly capped at 256 KB.
 * Sensitive credential data is never returned across the HTTP API (only `{ present: boolean, source: string, envName: string }`).
 
@@ -95,7 +95,7 @@ graph LR
 * **Comprehensive Write-Route Origin & Host Validation**: Mutating endpoints rigorously verify `Sec-Fetch-Site`, `Origin`, `Host`, `X-Forwarded-Host`, `Referer`, and loopback IPs against cross-origin forgery while supporting transparent reverse proxies (Gitea #22).
 
 ## 9. Packaging Sanitization, Cache Lifecycle & Client Injection Architecture (v0.3.10)
-* **Client Injection (`dsh.client.inject: []`)**: `package.json` specifies `dsh.client.inject: []` intentionally. The plugin client factory does not `require()` external `@deepseek-ai/*` bundles, but instead receives kernel-provided services (`slots`, `locale`, `settingsScope`) declaratively via `exports.inject = ['slots', 'locale', 'settingsScope']`. This follows the canonical DSH web profile architecture and avoids unresolved bundle errors (Resolves #32).
+* **Client injection**: `dsh.client.inject` lists the slots, locale, and settings provider packages. The factory `inject` array is `slots`, `locale`, and `configForms`. The factory does not `require()` those packages.
 * **Packaging & Public Repository Sanitization**: Internal workflow and deployment files (`AGENTS.md`, `index.md`, `deploy.sh`, `release-notes.md`) are purged from git tracking and permanently blocked via `.gitignore`. Duplicate READMEs in `docs/` are eliminated, trimming npm package unpacked size to ~200 KiB (Resolves #25, #26, #30).
 * **Account Switch Cache Invalidation**: Switching or rotating active accounts (`/accounts/active`, `/cline switch`, `rotateToNextAccount`) automatically purges cached rolling quota windows (`clearUsageCache`) and host reachability probes (`clearProbeCache`) to eliminate stale telemetry and immediately revalidate the new account's credentials (Resolves #31). In `rotateToNextAccount`, cache invalidation and `rotated: true` status are strictly gated on successful settings persistence (`settingsApi.replace` / `settings.mutate`); if persistence fails, cache is preserved and `rotated: false` is returned (Resolves #61).
 * **Slash-Command Model Validation**: `/cline test [model]` verifies candidate models with `isSupportedModel()` before issuing network requests, providing immediate feedback if an unrecognized model identifier is supplied (Resolves #31).
