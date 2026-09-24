@@ -83,6 +83,17 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
   assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/deepseek-v4-flash'))
   assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/glm-5.2'))
 
+  // Issue #103: preserve dots in model names and IDs
+  const dottedPlanText = 'Includes DeepSeek V4.1 Flash, Qwen3.8 Max, and GLM 5.3.'
+  const parsedDotted = parsePlanIncludedModels(dottedPlanText)
+  assert.equal(parsedDotted.length, 3)
+  assert.equal(parsedDotted[0].id, 'cline-pass/deepseek-v4.1-flash')
+  assert.equal(parsedDotted[0].name, 'DeepSeek V4.1 Flash')
+  assert.equal(parsedDotted[1].id, 'cline-pass/qwen3.8-max')
+  assert.equal(parsedDotted[1].name, 'Qwen3.8 Max')
+  assert.equal(parsedDotted[2].id, 'cline-pass/glm-5.3')
+  assert.equal(parsedDotted[2].name, 'GLM 5.3')
+
   // When plan models exist, getAllModels returns strictly plan models with enriched properties
   const dynamicList = [withNew[0]]
   const planModelsOnly = getAllModels(dynamicList)
