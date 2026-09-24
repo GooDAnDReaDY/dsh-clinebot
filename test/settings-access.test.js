@@ -44,12 +44,12 @@ function respond() {
 const remote = { method: 'GET', headers: {}, socket: { remoteAddress: '203.0.113.10' } }
 const local = { method: 'GET', headers: {}, socket: { remoteAddress: '127.0.0.1' } }
 
-test('GET status, config, usage, and auth status reject an untrusted client', async () => {
+test('GET status, config, usage, and key verify reject an untrusted client', async () => {
   const cases = [
     [registerSettingsRoutes, '/dsh-clinebot/status'],
     [registerSettingsRoutes, '/dsh-clinebot/config'],
     [registerModelsRoutes, '/dsh-clinebot/usage'],
-    [registerAuthRoutes, '/dsh-clinebot/auth/status'],
+    [registerAuthRoutes, '/dsh-clinebot/key/verify'],
   ]
   for (const [register, path] of cases) {
     const handler = capture(register).find((route) => route.path === path).handler
@@ -72,13 +72,31 @@ test('GET config from loopback returns public config without a key value', async
   assert.equal(Object.hasOwn(payload.body.config, 'value'), false)
 })
 
-test('GET auth status from loopback reports idle', async () => {
-  const handler = capture(registerAuthRoutes).find((route) => route.path === '/dsh-clinebot/auth/status').handler
-  const out = respond()
-  await handler(local, out.res)
-  const payload = out.read()
-  assert.equal(payload.status, 200)
-  assert.equal(payload.body.status, 'idle')
+test('POST /dsh-clinebot/key/verify rejects non-POST and validates key payload', async () => {
+  const handler = capture(registerAuthRoutes).find((route) => route.path === '/dsh-clinebot/key/verify').handler
+  // 1. GET returns 405
+  const getOut = respond()
+  await handler(local, getOut.res)
+  assert.equal(getOut.read().status, 405)
+
+  // 2. Remote IP returns 403
+  const remoteOut = respond()
+  await handler({ method: 'POST', headers: {}, socket: { remoteAddress: '203.0.113.10' } }, remoteOut.res)
+  assert.equal(remoteOut.read().status, 403)
+
+  // 3. Empty key returns 400
+  const emptyReq = {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    socket: { remoteAddress: '127.0.0.1' },
+    [Symbol.asyncIterator]: async function* () {
+      yield Buffer.from(JSON.stringify({ key: '' }))
+    },
+  }
+  const emptyOut = respond()
+  await handler(emptyReq, emptyOut.res)
+  assert.equal(emptyOut.read().status, 400)
+  assert.equal(emptyOut.read().body.valid, false)
 })
 
 test('publicUsage keeps quota fields and drops account timestamps and plan models', () => {

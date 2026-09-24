@@ -260,21 +260,41 @@ function SettingsPage(props) {
     }
   }
 
-  async function handleFastLogin() {
-    setBusy('fast-login')
-    setErr('')
-    try {
-      const res = await fetch(`${ROUTE_PREFIX}/auth/begin`, { method: 'POST' })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      if (data.authUrl) {
-        window.open(data.authUrl, '_blank')
-      }
-    } catch (e) {
-      setErr(String(e.message || e))
-    } finally {
-      setBusy('')
+  const [verifyStatus, setVerifyStatus] = React.useState({ state: 'idle', email: '', plan: '', error: '' })
+  const verifyTimerRef = typeof React.useRef === 'function' ? React.useRef(null) : { current: null }
+
+  React.useEffect(() => {
+    const raw = String(apiKeyInput || '').trim()
+    if (!raw || raw.length < 10) {
+      setVerifyStatus({ state: 'idle', email: '', plan: '', error: '' })
+      return
     }
+    if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
+    verifyTimerRef.current = setTimeout(async () => {
+      setVerifyStatus({ state: 'verifying', email: '', plan: '', error: '' })
+      try {
+        const res = await fetch(`${ROUTE_PREFIX}/key/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: raw }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (data.ok && data.valid) {
+          setVerifyStatus({ state: 'valid', email: data.email, plan: data.plan, error: '' })
+        } else {
+          setVerifyStatus({ state: 'invalid', email: '', plan: '', error: data.error || 'Verification failed' })
+        }
+      } catch (err) {
+        setVerifyStatus({ state: 'invalid', email: '', plan: '', error: String(err?.message || err) })
+      }
+    }, 500)
+    return () => {
+      if (verifyTimerRef.current) clearTimeout(verifyTimerRef.current)
+    }
+  }, [apiKeyInput])
+
+  function handleFastLogin() {
+    window.open('https://app.cline.bot/settings/api-keys', '_blank')
   }
 
   async function handlePinAccount(accountEnv) {
@@ -422,6 +442,7 @@ function SettingsPage(props) {
       draft,
       handleSaveKey,
       handleFastLogin,
+      verifyStatus,
       t,
     }),
 
