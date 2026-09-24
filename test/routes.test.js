@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { Readable } from 'node:stream'
 import path from 'node:path'
+import vm from 'node:vm'
 
 import { registerSettingsRoutes } from '../lib/routes/settings.js'
 import { registerAccountsRoutes } from '../lib/routes/accounts.js'
@@ -138,6 +139,8 @@ test('routes: behavioral verification of all registered routes kind and prefix',
     '/dsh-clinebot/unregister',
     '/dsh-clinebot/models/sync',
     '/dsh-clinebot/models/toggle',
+    '/dsh-clinebot/accounts',
+    '/dsh-clinebot/accounts/delete',
     '/dsh-clinebot/usage',
     '/dsh-clinebot/key/verify',
     '/dsh-clinebot/smoke',
@@ -152,6 +155,8 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     { path: '/dsh-clinebot/save-key', allowedMethod: 'POST', badBody: {}, goodBody: { apiKey: 'test-key', apiKeyEnv: 'CLINEBOT_API_KEY' } },
     { path: '/dsh-clinebot/models/toggle', allowedMethod: 'POST', badBody: null, goodBody: { disabledModels: ['cline-pass/kimi-k3'] } },
     { path: '/dsh-clinebot/accounts/active', allowedMethod: 'POST', badBody: null, goodBody: { account: 'CLINEBOT_API_KEY_WORK' } },
+    { path: '/dsh-clinebot/accounts', allowedMethod: 'POST', badBody: { apiKey: '' }, goodBody: { label: 'New Acc', apiKeyEnv: 'CLINEBOT_API_KEY_2', apiKey: 'test-key' } },
+    { path: '/dsh-clinebot/accounts/delete', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } },
     { path: '/dsh-clinebot/register', allowedMethod: 'POST', badBody: null, goodBody: {} },
     { path: '/dsh-clinebot/unregister', allowedMethod: 'POST', badBody: null, goodBody: {} },
     { path: '/dsh-clinebot/smoke', allowedMethod: 'POST', badBody: null, goodBody: { model: 'cline-pass/deepseek-v4-flash' } },
@@ -183,13 +188,13 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
   }
 
   // 4. Settings service unavailable (503) for settings-dependent write endpoints
-  const settingsDependent = ['/dsh-clinebot/models/toggle', '/dsh-clinebot/accounts/active', '/dsh-clinebot/config']
+  const settingsDependent = ['/dsh-clinebot/models/toggle', '/dsh-clinebot/accounts/active', '/dsh-clinebot/accounts', '/dsh-clinebot/accounts/delete', '/dsh-clinebot/config']
   for (const p of settingsDependent) {
     const { getHandler } = setupRouter({ settingsAvailable: false })
     const handler = getHandler(p)
     const method = p === '/dsh-clinebot/config' ? 'PUT' : 'POST'
     const out503 = createRes()
-    await handler(createReq({ method, body: { defaultModel: 'cline-pass/deepseek-v4-flash', account: 'CLINEBOT_API_KEY_WORK', disabledModels: [] } }), out503.res)
+    await handler(createReq({ method, body: { defaultModel: 'cline-pass/deepseek-v4-flash', account: 'CLINEBOT_API_KEY_WORK', disabledModels: [], apiKey: 'key', apiKeyEnv: 'CLINEBOT_API_KEY_2' } }), out503.res)
     assert.equal(out503.read().status, 503, `${p} must return 503 when settings service is unavailable`)
   }
 
@@ -217,7 +222,39 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     assert.equal(isProviderSynced(), true)
   }
 
-  // 7. Successful write execution: /unregister and /register
+  // 7. Successful write execution: /accounts (POST) and /accounts/delete (POST)
+  {
+    const { getHandler, getReplacedConfig, isProviderSynced } = setupRouter()
+    const addHandler = getHandler('/dsh-clinebot/accounts')
+    const outAdd = createRes()
+    await addHandler(createReq({
+      method: 'POST',
+      body: { label: 'Backup Account', apiKeyEnv: 'CLINEBOT_API_KEY_3', apiKey: 'test-key-3' },
+    }), outAdd.res)
+    assert.equal(outAdd.read().status, 200)
+    assert.equal(outAdd.read().body.ok, true)
+    assert.equal(outAdd.read().body.account.apiKeyEnv, 'CLINEBOT_API_KEY_3')
+    const cfgAfterAdd = plainConfig(getReplacedConfig())
+    assert.ok(cfgAfterAdd.accounts.some((a) => a.apiKeyEnv === 'CLINEBOT_API_KEY_3'))
+    assert.equal(isProviderSynced(), true)
+
+    // Cannot delete primary account
+    const delHandler = getHandler('/dsh-clinebot/accounts/delete')
+    const outDelPrimary = createRes()
+    await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY' } }), outDelPrimary.res)
+    assert.equal(outDelPrimary.read().status, 400)
+
+    // Can delete secondary account
+    const outDel = createRes()
+    await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } }), outDel.res)
+    assert.equal(outDel.read().status, 200)
+    assert.equal(outDel.read().body.ok, true)
+    assert.equal(outDel.read().body.removed, 'CLINEBOT_API_KEY_WORK')
+    const cfgAfterDel = plainConfig(getReplacedConfig())
+    assert.equal(cfgAfterDel.accounts.some((a) => a.apiKeyEnv === 'CLINEBOT_API_KEY_WORK'), false)
+  }
+
+  // 8. Successful write execution: /unregister and /register
   {
     const { getHandler } = setupRouter()
     const unregHandler = getHandler('/dsh-clinebot/unregister')
@@ -234,10 +271,32 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
   }
 })
 
-test('routes: client.js renders error banner with retry button on failure', () => {
+test('routes: client.js bundle executes and exports valid DSH plugin module', () => {
   const clientSource = readFileSync(path.join(root, 'lib', 'client.js'), 'utf8')
-  assert.ok(clientSource.includes('cb-alert-err'), 'Client must render error banner if loading fails')
-  assert.ok(clientSource.includes("t('settings.retry')"), 'Client must render localized retry button')
+  let loadedExports = null
+  const context = {
+    window: {
+      __ModuleLoader__: {
+        load: ({ id, factory }) => {
+          assert.equal(id, '@goodandready/dsh-clinebot')
+          const mockReact = {
+            createElement: (type, props, ...children) => ({ type, props, children }),
+            useMemo: (fn) => fn(),
+            useCallback: (fn) => fn,
+            useState: (init) => [init, () => {}],
+            useEffect: () => {},
+            useSyncExternalStore: () => 'ready',
+          }
+          loadedExports = factory((dep) => (dep === 'react' ? mockReact : {}))
+        },
+      },
+    },
+    document: { head: { appendChild: () => {} }, createElement: () => ({ setAttribute: () => {} }), getElementById: () => null },
+    console,
+  }
+  vm.runInNewContext(clientSource, context)
+  assert.ok(loadedExports, 'lib/client.js must register with window.__ModuleLoader__')
+  assert.equal(typeof loadedExports.apply, 'function', 'Client module must export apply')
 })
 
 test('commands: behavioral execution of /cline slash command and subcommands', async () => {
@@ -305,4 +364,11 @@ test('commands: behavioral execution of /cline slash command and subcommands', a
   const switchOutput = await registeredCmd.execute('switch')
   assert.ok(typeof switchOutput === 'string')
   assert.ok(switchOutput.includes('Please specify account'))
+
+  // 5. Behavioral test: DSH command handler contract
+  assert.equal(typeof registeredCmd.handler, 'function')
+  const handlerResult = await registeredCmd.handler({ rawInput: 'models' })
+  assert.equal(handlerResult.kind, 'success')
+  assert.ok(typeof handlerResult.text === 'string')
+  assert.ok(handlerResult.text.includes('ClinePass Models Catalog'))
 })

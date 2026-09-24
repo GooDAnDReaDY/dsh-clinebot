@@ -13,6 +13,29 @@ function ModelsSection({
   t,
 }) {
   const syncDateStr = planSyncedAt ? new Date(planSyncedAt).toLocaleDateString() : ''
+  const [search, setSearch] = React.useState('')
+  const [viewFilter, setViewFilter] = React.useState('all')
+
+  const filteredModels = modelsList.filter((m) => {
+    if (viewFilter === 'vision') {
+      const hasVision = Boolean(m.input?.includes('image') || m.input?.includes('vision'))
+      if (!hasVision) return false
+    } else if (viewFilter === 'coding') {
+      if (m.category !== 'coding') return false
+    } else if (viewFilter === 'recommended') {
+      if (!m.recommended) return false
+    } else if (viewFilter === 'disabled') {
+      if (!disabledSet.has(m.id)) return false
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      const name = String(m.name || '').toLowerCase()
+      const id = String(m.id || '').toLowerCase()
+      const desc = String(m.description || '').toLowerCase()
+      if (!name.includes(q) && !id.includes(q) && !desc.includes(q)) return false
+    }
+    return true
+  })
 
   return React.createElement(
     'div',
@@ -52,6 +75,83 @@ function ModelsSection({
       )
     ),
     React.createElement('div', { className: 'cb-section-desc' }, t('models.desc')),
+
+    // Search and display filter bar
+    React.createElement(
+      'div',
+      {
+        style: {
+          display: 'flex',
+          gap: '8px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          marginBottom: '12px',
+        },
+      },
+      React.createElement('input', {
+        type: 'text',
+        className: 'cb-input',
+        style: { flex: '1 1 200px' },
+        placeholder: t('models.search_placeholder'),
+        value: search,
+        onChange: (e) => setSearch(e.target.value),
+      }),
+      React.createElement(
+        'div',
+        { className: 'cb-row', style: { gap: '4px' } },
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: `cb-btn ${viewFilter === 'all' ? 'cb-btn-active' : ''}`,
+            style: { padding: '4px 8px', fontSize: '11px' },
+            onClick: () => setViewFilter('all'),
+          },
+          t('models.filter_all')
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: `cb-btn ${viewFilter === 'vision' ? 'cb-btn-active' : ''}`,
+            style: { padding: '4px 8px', fontSize: '11px' },
+            onClick: () => setViewFilter('vision'),
+          },
+          t('models.filter_vision')
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: `cb-btn ${viewFilter === 'coding' ? 'cb-btn-active' : ''}`,
+            style: { padding: '4px 8px', fontSize: '11px' },
+            onClick: () => setViewFilter('coding'),
+          },
+          t('models.filter_coding')
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: `cb-btn ${viewFilter === 'recommended' ? 'cb-btn-active' : ''}`,
+            style: { padding: '4px 8px', fontSize: '11px' },
+            onClick: () => setViewFilter('recommended'),
+          },
+          t('models.filter_recommended')
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: `cb-btn ${viewFilter === 'disabled' ? 'cb-btn-active' : ''}`,
+            style: { padding: '4px 8px', fontSize: '11px' },
+            onClick: () => setViewFilter('disabled'),
+          },
+          t('models.filter_disabled')
+        )
+      )
+    ),
+
     React.createElement(
       'table',
       { className: 'cb-table' },
@@ -71,7 +171,7 @@ function ModelsSection({
       React.createElement(
         'tbody',
         null,
-        modelsList.map((m) => {
+        filteredModels.map((m) => {
           const isEnabled = !disabledSet.has(m.id)
           return React.createElement(
             'tr',
