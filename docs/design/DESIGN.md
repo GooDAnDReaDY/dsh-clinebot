@@ -15,7 +15,7 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 
 ### 2.2 Client Runtime (`lib/client.js`)
 * Self-registering module via `window.__ModuleLoader__.load({ id: '@goodandready/dsh-clinebot', factory })`.
-* Injects `['slots', 'locale', 'configForms']`. User settings fields are volatile so the host publishes the `dsh-clinebot` namespace; otherwise the page stays on "host namespace is not ready". `package.json` `dsh.client.inject` names `@deepseek-ai/dsh-client-ui-slots`, `@deepseek-ai/dsh-client-locale`, and `@deepseek-ai/dsh-client-ui-settings` so those services exist.
+* Injects `['slots', 'locale', 'configForms']`. User settings fields are volatile so the host publishes the `dsh-clinebot` namespace; otherwise the page stays on "host namespace is not ready". Nested fields inside those arrays stay plain, and the plugin copies each host volatile reference to a plain value before cloning it. `package.json` `dsh.client.inject` names `@deepseek-ai/dsh-client-ui-slots`, `@deepseek-ai/dsh-client-locale`, and `@deepseek-ai/dsh-client-ui-settings` so those services exist.
 * Slots strictly and exclusively into `settings.plugin.item` (`key: NS`, `locale: NS`). Standalone top-level `settings.section` registration is omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
 * Opens the namespace with `configForms.get('dsh-clinebot')`. The form exposes `getSnapshot`, `subscribe`, and `set`.
 * Registers localized `en` and `zh` dictionaries with duplicate-safe guards (`ctx.locale.register()`), while Russian translation is modularly supplied by `dsh-russian-lang`.
