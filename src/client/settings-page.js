@@ -1,55 +1,20 @@
-function readConfigForms(ctx) {
-  if (!ctx || typeof ctx.get !== 'function') return undefined
-  try {
-    return ctx.get('configForms') || undefined
-  } catch (err) {
-    console.warn('[dsh-clinebot] configForms is not available:', err)
-    return undefined
-  }
+function useConfigFormsSnapshot(ctx) {
+  const scope = React.useMemo(() => {
+    try { return readConfigForms(ctx)?.get?.(NS) || undefined } catch { return undefined }
+  }, [ctx])
+  const subscribe = React.useMemo(() => (cb) => {
+    try { return scope?.subscribe ? (scope.subscribe(cb) || (() => {})) : () => {} } catch { return () => {} }
+  }, [scope])
+  const getSnapshot = React.useCallback(() => {
+    try { return scope?.getSnapshot?.() || SNAPSHOT_READY } catch { return SNAPSHOT_READY }
+  }, [scope])
+  return React.useSyncExternalStore(subscribe, getSnapshot, () => SNAPSHOT_READY)?.status || 'loading'
 }
 
 function SettingsPage(props) {
   const ctx = props?.ctx
   const t = props?.t || makeT(en, en)
-
-  const scope = React.useMemo(() => {
-    const svc = readConfigForms(ctx)
-    if (!svc || typeof svc.get !== 'function') return undefined
-    try {
-      return svc.get(NS)
-    } catch (err) {
-      console.warn('[dsh-clinebot] configForms.get failed:', err)
-      return undefined
-    }
-  }, [ctx])
-
-  const subscribe = React.useMemo(() => {
-    return (cb) => {
-      if (!scope?.subscribe) return () => {}
-      try {
-        return scope.subscribe(cb) || (() => {})
-      } catch (_) {
-        return () => {}
-      }
-    }
-  }, [scope])
-
-  const getSnapshot = React.useCallback(() => {
-    if (!scope?.getSnapshot) return SNAPSHOT_READY
-    try {
-      return scope.getSnapshot() || SNAPSHOT_READY
-    } catch (err) {
-      console.warn('[dsh-clinebot] settings snapshot failed:', err)
-      return SNAPSHOT_READY
-    }
-  }, [scope])
-
-  const snapshot = React.useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    React.useCallback(() => SNAPSHOT_READY, [])
-  )
-  const snapshotStatus = snapshot?.status || 'loading'
+  const snapshotStatus = useConfigFormsSnapshot(ctx)
 
   const [status, setStatus] = React.useState(null)
   const [draft, setDraft] = React.useState(null)
@@ -58,7 +23,6 @@ function SettingsPage(props) {
   const [msg, setMsg] = React.useState('')
   const [smokeResult, setSmokeResult] = React.useState(null)
 
-  // Plugin in-app updater state
   const [updateState, setUpdateState] = React.useState({
     checking: false,
     updating: false,
@@ -70,13 +34,10 @@ function SettingsPage(props) {
     notice: '',
   })
 
-  // Key input state
   const [apiKeyInput, setApiKeyInput] = React.useState('')
   const [showKey, setShowKey] = React.useState(false)
 
-  React.useEffect(() => {
-    ensureCss()
-  }, [])
+  React.useEffect(() => { ensureCss() }, [])
 
   const load = React.useCallback(async () => {
     setErr('')
@@ -110,9 +71,7 @@ function SettingsPage(props) {
     }
   }, [])
 
-  React.useEffect(() => {
-    checkUpdate()
-  }, [checkUpdate])
+  React.useEffect(() => { checkUpdate() }, [checkUpdate])
 
   async function handleTriggerUpdate() {
     if (updateState.updating) return
@@ -123,9 +82,7 @@ function SettingsPage(props) {
         headers: { 'x-dsh-plugin-update': '1' },
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok || data.ok === false || data.error) {
-        throw new Error(data.error || `HTTP ${res.status}`)
-      }
+      if (!res.ok || data.ok === false || data.error) throw new Error(data.error || `HTTP ${res.status}`)
       const newVer = data.updatedVersion || updateState.latestVersion || updateState.currentVersion
       setUpdateState((s) => ({
         ...s,
@@ -136,24 +93,27 @@ function SettingsPage(props) {
       }))
       setTimeout(() => checkUpdate(), 2000)
     } catch (err) {
-      setUpdateState((s) => ({
-        ...s,
-        updating: false,
-        error: t('update.failed', { error: String(err.message || err) }),
-      }))
+      setUpdateState((s) => ({ ...s, updating: false, error: t('update.failed', { error: String(err.message || err) }) }))
+    }
+  }
+
+  async function performAction(busyKey, fn) {
+    setBusy(busyKey)
+    setErr('')
+    setMsg('')
+    try {
+      await fn()
+    } catch (e) {
+      setErr(String(e.message || e))
+    } finally {
+      setBusy('')
     }
   }
 
   async function handleSaveKey() {
     const keyVal = String(apiKeyInput || '').trim()
-    if (!keyVal) {
-      setErr(t('key.empty_err'))
-      return
-    }
-    setBusy('save-key')
-    setErr('')
-    setMsg('')
-    try {
+    if (!keyVal) { setErr(t('key.empty_err')); return }
+    await performAction('save-key', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/save-key`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -164,87 +124,53 @@ function SettingsPage(props) {
       setApiKeyInput('')
       setMsg(t('key.saved_msg', { status: data.validated ? 'OK' : 'Notice (check console)' }))
       await load()
-    } catch (e) {
-      setErr(String(e.message || e))
-    } finally {
-      setBusy('')
-    }
+    })
   }
 
   async function handleRefreshQuota() {
-    setBusy('refresh-quota')
-    setErr('')
-    setMsg('')
-    try {
+    await performAction('refresh-quota', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/usage`)
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setStatus((prev) => (prev ? { ...prev, usage: data } : prev))
       setMsg(t('quota.refreshed_msg'))
-    } catch (e) {
-      setErr(String(e.message || e))
-    } finally {
-      setBusy('')
-    }
+    })
   }
 
   async function handleSyncPlanModels() {
-    setBusy('sync-models')
-    setErr('')
-    setMsg('')
-    try {
+    await performAction('sync-models', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/models/sync`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setMsg(t('models.synced_msg', { total: data.totalModelsCount, discovered: data.discoveredCount }))
       await load()
-    } catch (e) {
-      setErr(String(e.message || e))
-    } finally {
-      setBusy('')
-    }
+    })
   }
 
   async function handleRegister() {
-    setBusy('register')
-    setErr('')
-    setMsg('')
-    try {
+    await performAction('register', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/register`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       const count = status?.availableModels?.filter((m) => !(draft?.disabledModels || []).includes(m.id)).length || 0
       setMsg(t('diag.resynced_msg', { count }))
       await load()
-    } catch (e) {
-      setErr(String(e.message || e))
-    } finally {
-      setBusy('')
-    }
+    })
   }
 
   async function handleUnregister() {
-    setBusy('unregister')
-    setErr('')
-    setMsg('')
-    try {
+    await performAction('unregister', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/unregister`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setMsg(t('diag.unregistered_msg'))
       await load()
-    } catch (e) {
-      setErr(String(e.message || e))
-    } finally {
-      setBusy('')
-    }
+    })
   }
 
   async function handleSmoke() {
-    setBusy('smoke')
-    setErr('')
     setSmokeResult(null)
-    try {
+    await performAction('smoke', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/smoke`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -253,11 +179,7 @@ function SettingsPage(props) {
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setSmokeResult(data)
-    } catch (e) {
-      setErr(String(e.message || e))
-    } finally {
-      setBusy('')
-    }
+    })
   }
 
   const [verifyStatus, setVerifyStatus] = React.useState({ state: 'idle', email: '', plan: '', error: '' })
@@ -298,9 +220,7 @@ function SettingsPage(props) {
   }
 
   async function handlePinAccount(accountEnv) {
-    setBusy('pin-account')
-    setErr('')
-    try {
+    await performAction('pin-account', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/accounts/active`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -309,25 +229,65 @@ function SettingsPage(props) {
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       await load()
-    } catch (e) {
-      setErr(String(e.message || e))
-    } finally {
-      setBusy('')
-    }
+    })
+  }
+
+  async function handleAddAccount({ label, apiKeyEnv, apiKey }) {
+    await performAction('add-account', async () => {
+      const res = await fetch(`${ROUTE_PREFIX}/accounts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, apiKeyEnv, apiKey }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      setMsg(t('key.saved_msg', { status: data.validated ? 'OK' : (data.validationError || 'Notice') }))
+      await load()
+    })
+  }
+
+  async function handleDeleteAccount(accountEnv, deleteSecret = true) {
+    await performAction('delete-account', async () => {
+      const res = await fetch(`${ROUTE_PREFIX}/accounts/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKeyEnv: accountEnv, deleteSecret }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      await load()
+    })
   }
 
   const debounceTimerRef = typeof React.useRef === 'function' ? React.useRef(null) : { current: null }
-  function debounceSaveDisabledModels(nextDisabled) {
+
+  React.useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+    }
+  }, [])
+
+  function debounceSaveDisabledModels(nextDisabled, previousDisabled) {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        await fetch(`${ROUTE_PREFIX}/models/toggle`, {
+        const res = await fetch(`${ROUTE_PREFIX}/models/toggle`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ disabledModels: nextDisabled }),
         })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
+        await load()
       } catch (err) {
         console.warn('[dsh-clinebot] Failed saving disabled models:', err)
+        setErr(String(err?.message || err))
+        setDraft((prev) => {
+          if (!prev) return prev
+          const all = status?.availableModels || []
+          const prevEnabled = all.map((m) => m.id).filter((mId) => !previousDisabled.includes(mId))
+          return { ...prev, disabledModels: previousDisabled, enabledModels: prevEnabled }
+        })
       }
     }, 400)
   }
@@ -339,7 +299,7 @@ function SettingsPage(props) {
     const all = status?.availableModels || []
     const enabledIds = all.map((m) => m.id).filter((mId) => !next.includes(mId))
     setDraft({ ...draft, disabledModels: next, enabledModels: enabledIds })
-    debounceSaveDisabledModels(next)
+    debounceSaveDisabledModels(next, curr)
   }
 
   function handleSetModelsFilter(type) {
@@ -355,10 +315,11 @@ function SettingsPage(props) {
       allowed = new Set(all.filter((m) => m.recommended).map((m) => m.id))
     }
 
+    const curr = draft?.disabledModels || []
     const nextDisabled = all.map((m) => m.id).filter((id) => !allowed.has(id))
     const nextEnabled = Array.from(allowed)
     setDraft({ ...draft, disabledModels: nextDisabled, enabledModels: nextEnabled })
-    debounceSaveDisabledModels(nextDisabled)
+    debounceSaveDisabledModels(nextDisabled, curr)
   }
 
   if (!status || !draft) {
@@ -427,6 +388,11 @@ function SettingsPage(props) {
     // In-app Update Bar
     React.createElement(UpdateBanner, { updateState, handleTriggerUpdate, t }),
 
+    // Settings host status warning
+    snapshotStatus === 'unavailable'
+      ? React.createElement('div', { className: 'cb-alert-bad', style: { marginBottom: '12px' } }, t('settings.unavailable'))
+      : null,
+
     // Notifications
     err ? React.createElement('div', { className: 'cb-alert-bad' }, err) : null,
     msg ? React.createElement('div', { className: 'cb-alert-ok' }, msg) : null,
@@ -447,7 +413,14 @@ function SettingsPage(props) {
     }),
 
     // Accounts Pool Card
-    React.createElement(AccountsSection, { status, busy, handlePinAccount, t }),
+    React.createElement(AccountsSection, {
+      status,
+      busy,
+      handlePinAccount,
+      handleAddAccount,
+      handleDeleteAccount,
+      t,
+    }),
 
     // Quota Warning & Dashboard Card
     React.createElement(QuotaSection, { keyPresent, status, usage, busy, handleRefreshQuota, t }),
