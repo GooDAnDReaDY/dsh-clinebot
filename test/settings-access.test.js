@@ -4,6 +4,7 @@ import { registerSettingsRoutes } from '../lib/routes/settings.js'
 import { registerModelsRoutes } from '../lib/routes/models.js'
 import { registerAuthRoutes } from '../lib/routes/auth.js'
 import { publicUsage } from '../lib/http.js'
+import { publicConfig } from '../lib/config.js'
 import { smokeChat } from '../lib/cline-client.js'
 import { Readable } from 'node:stream'
 
@@ -131,4 +132,46 @@ test('smokeChat rejects insecure remote http baseUrl', async () => {
   assert.equal(result.ok, false)
   assert.match(result.error, /Insecure protocol/)
 })
+
+test('PUT /config strips enabledModels before persisting to settingsApi', async () => {
+  let replacedWith = null
+  const settingsApi = {
+    replace: async (val) => { replacedWith = val },
+  }
+  const handlers = []
+  const ctx = {
+    effect: (fn) => fn(),
+    webServer: { register: (r) => handlers.push(r) },
+  }
+  registerSettingsRoutes(ctx, {
+    live: () => ({ enabled: true, disabledModels: [], enabledModels: ['old-model'], dynamicModels: [] }),
+    getSettingsApi: () => settingsApi,
+    syncProviderState: async () => {},
+    triggerAutoDiscover: () => {},
+  })
+
+  const handler = handlers.find((r) => r.path === '/dsh-clinebot/config').handler
+  const req = Readable.from([Buffer.from(JSON.stringify({ defaultModel: 'cline-pass/deepseek-v4-pro', enabledModels: ['old-model'] }))])
+  req.method = 'PUT'
+  req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  req.socket = { remoteAddress: '127.0.0.1' }
+
+  const out = respond()
+  await handler(req, out.res)
+  const payload = out.read()
+  assert.equal(payload.status, 200)
+  assert.equal(replacedWith.enabledModels.length, 0, 'enabledModels should not be persisted')
+})
+
+test('publicConfig enables newly discovered dynamic models by default when disabledModels is empty', async () => {
+  const cfg = {
+    disabledModels: [],
+    dynamicModels: [
+      { id: 'cline-pass/new-model-v2', name: 'New Model V2' },
+    ],
+  }
+  const pub = publicConfig(cfg)
+  assert.ok(pub.enabledModels.includes('cline-pass/new-model-v2'), 'New dynamic model must be enabled by default')
+})
+
 
