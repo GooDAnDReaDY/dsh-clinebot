@@ -346,29 +346,66 @@ test('commands: behavioral execution of /cline slash command and subcommands', a
   // 1. Behavioral test: /cline models
   const modelsOutput = await registeredCmd.execute('models')
   assert.ok(typeof modelsOutput === 'string')
-  assert.ok(modelsOutput.includes('ClinePass Models Catalog'))
-  assert.ok(modelsOutput.includes('Total models'))
+  assert.ok(modelsOutput.includes('ClinePass Models'))
+  assert.ok(modelsOutput.includes('Active Models'))
   assert.ok(modelsOutput.includes('DeepSeek Flash'))
+  assert.equal(modelsOutput.includes('###'), false, 'Output must not contain markdown headers')
+  assert.equal(modelsOutput.includes('**'), false, 'Output must not contain markdown bold syntax')
+  assert.equal(modelsOutput.includes('`'), false, 'Output must not contain markdown backticks')
+  assert.ok(modelsOutput.split('\n')[0].length <= 120, 'First line summary must be <= 120 characters')
 
   // 2. Behavioral test: /cline accounts
   const accountsOutput = await registeredCmd.execute('accounts')
   assert.ok(typeof accountsOutput === 'string')
-  assert.ok(accountsOutput.includes('ClinePass Accounts Pool') || accountsOutput.includes('Active Account'))
+  assert.ok(accountsOutput.includes('ClinePass Accounts'))
+  assert.ok(accountsOutput.includes('Active Account: CLINEBOT_API_KEY'))
+  assert.equal(accountsOutput.includes('###'), false)
+  assert.equal(accountsOutput.includes('**'), false)
+  assert.equal(accountsOutput.includes('`'), false)
+  assert.ok(accountsOutput.split('\n')[0].length <= 120)
 
   // 3. Behavioral test: /cline stats
   const statsOutput = await registeredCmd.execute('stats')
   assert.ok(typeof statsOutput === 'string')
-  assert.ok(statsOutput.includes('Stream Telemetry') || statsOutput.includes('Requests'))
+  assert.ok(statsOutput.includes('ClineBot Telemetry'))
+  assert.ok(statsOutput.includes('Requests:'))
+  assert.equal(statsOutput.includes('###'), false)
+  assert.equal(statsOutput.includes('**'), false)
+  assert.equal(statsOutput.includes('`'), false)
+  assert.ok(statsOutput.split('\n')[0].length <= 120)
 
   // 4. Behavioral test: /cline switch (missing parameter)
   const switchOutput = await registeredCmd.execute('switch')
   assert.ok(typeof switchOutput === 'string')
   assert.ok(switchOutput.includes('Please specify account'))
+  assert.equal(switchOutput.includes('`'), false)
 
-  // 5. Behavioral test: DSH command handler contract
+  // 5. Behavioral test: /cline quota (default) with accounts pool resolution (Issue #107)
+  const quotaOutput = await registeredCmd.execute('')
+  assert.ok(typeof quotaOutput === 'string')
+  assert.equal(quotaOutput.includes('###'), false, 'Quota output must not contain markdown headers')
+  assert.equal(quotaOutput.includes('**'), false, 'Quota output must not contain markdown bold syntax')
+  assert.equal(quotaOutput.includes('`'), false, 'Quota output must not contain markdown backticks')
+  assert.equal(quotaOutput.includes('undefined'), false, 'Active Key must not be undefined')
+  assert.match(quotaOutput, /Active Key:\s+CLINEBOT_API_KEY/, 'Active Key must be CLINEBOT_API_KEY')
+  const quotaFirstLine = quotaOutput.split('\n')[0]
+  assert.ok(quotaFirstLine.length <= 120, 'Quota first line summary must be <= 120 characters')
+
+  // 6. Behavioral test: /cline quota when activeAccount is pinned to account from pool
+  const poolCfg = { ...liveConfig, activeAccount: 'CLINEBOT_API_KEY_WORK' }
+  registerSlashCommand(ctx, {
+    live: () => poolCfg,
+    getSettingsApi: () => null,
+    syncProviderState: async () => {},
+  })
+  const pinnedQuotaOutput = await registeredCmd.execute('')
+  assert.match(pinnedQuotaOutput, /Active Key:\s+CLINEBOT_API_KEY_WORK/, 'Active Key must resolve to pinned pool account')
+  assert.equal(pinnedQuotaOutput.includes('undefined'), false)
+
+  // 7. Behavioral test: DSH command handler contract
   assert.equal(typeof registeredCmd.handler, 'function')
   const handlerResult = await registeredCmd.handler({ rawInput: 'models' })
   assert.equal(handlerResult.kind, 'success')
   assert.ok(typeof handlerResult.text === 'string')
-  assert.ok(handlerResult.text.includes('ClinePass Models Catalog'))
+  assert.ok(handlerResult.text.includes('ClinePass Models'))
 })
