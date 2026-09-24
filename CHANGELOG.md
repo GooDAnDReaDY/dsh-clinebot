@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The settings schema marks the user-editable fields volatile, so DSH includes the `dsh-clinebot` namespace and the configuration page is no longer stuck on "host namespace is not ready".
 - Nested fields inside an already volatile array stay plain. The plugin copies host volatile references to plain values before `structuredClone`, so startup does not reject the config or fail to clone a getter.
 - The configuration page renders its own status payload when the host form snapshot is still loading. A missing host namespace still shows the unavailable banner until that payload arrives.
+- Account credential names are read as text. A host volatile reference was sent through as an empty object, and React error #31 replaced the settings card.
 - The settings page binds `configForms.get('dsh-clinebot')` on DSH 0.1.7. The removed `settingsScope` and `lanSettings` services are no longer consulted, so the plugin configuration page can render after install.
 - `GET /dsh-clinebot/status`, `/config`, `/usage`, and `/auth/status` use the same trusted-request check as the write routes. Usage responses keep the quota fields the card shows and omit the raw provider payload.
 - `/cline models` prints the model total in English.
