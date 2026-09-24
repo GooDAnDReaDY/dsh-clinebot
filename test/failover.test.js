@@ -27,7 +27,7 @@ test('failover: rotateToNextAccount switches between multiple configured account
   }
 
   const mockCreds = {
-    resolve: async (ref) => ({ value: env[ref?.name] || '' }),
+    resolve: async (ref) => ({ value: env[typeof ref === "string" ? ref : ref?.name] || '' }),
   }
 
   const mutated = []
@@ -89,7 +89,7 @@ test('failover: rotateToNextAccount updates settings via settingsApi.replace whe
 
   const ctx = {
     get: (name) => {
-      if (name === 'credentials') return { resolve: async (r) => ({ value: env[r?.name] }) }
+      if (name === 'credentials') return { resolve: async (r) => ({ value: env[typeof r === "string" ? r : r?.name] }) }
       return null
     },
   }
@@ -121,7 +121,7 @@ test('failover: rotateToNextAccount clears usageCache and probeCache', async () 
 
   const env = { CLINEBOT_API_KEY: 'k1', CLINEBOT_API_KEY_2: 'k2' }
   const ctx = {
-    get: () => ({ resolve: async (r) => ({ value: env[r?.name] }) }),
+    get: () => ({ resolve: async (r) => ({ value: env[typeof r === "string" ? r : r?.name] }) }),
   }
   const cfg = {
     apiKeyEnv: 'CLINEBOT_API_KEY',
@@ -147,7 +147,7 @@ test('failover: rotateToNextAccount returns rotated: false and preserves cache i
   let warnLogged = null
   const ctx = {
     get: (name) => {
-      if (name === 'credentials') return { resolve: async (r) => ({ value: env[r?.name] }) }
+      if (name === 'credentials') return { resolve: async (r) => ({ value: env[typeof r === "string" ? r : r?.name] }) }
       return null
     },
     logger: {
@@ -205,7 +205,7 @@ test('failover: rotateToNextAccount returns rotated: false and preserves cache i
 
   const ctx = {
     get: (name) => {
-      if (name === 'credentials') return { resolve: async (r) => ({ value: env[r?.name] }) }
+      if (name === 'credentials') return { resolve: async (r) => ({ value: env[typeof r === "string" ? r : r?.name] }) }
       if (name === 'settings') return mockSettings
       return null
     },

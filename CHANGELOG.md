@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.23] - 2026-09-24
 
 ### Fixed
+- **React Error #185 Infinite Loop Fix (#74 / GitHub #6)**: Restored stable reference constant `SNAPSHOT_READY` in `SettingsPage.getSnapshot` for `useSyncExternalStore`. Returning an inline object literal caused `Object.is` mismatch on every render, triggering an infinite update depth loop (`Maximum update depth exceeded`). The snapshot fallback now returns frozen `SNAPSHOT_READY`, guaranteeing reference stability while keeping the page unblocked in standalone mode.
 - The settings page binds `configForms.get('dsh-clinebot')` on DSH 0.1.7. The removed `settingsScope` and `lanSettings` services are no longer consulted, so the plugin configuration page can render after install.
 - `GET /dsh-clinebot/status`, `/config`, `/usage`, and `/auth/status` use the same trusted-request check as the write routes. Usage responses keep the quota fields the card shows and omit the raw provider payload.
 - `/cline models` prints the model total in English.

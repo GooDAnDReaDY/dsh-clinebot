@@ -309,7 +309,7 @@ test('client: renders one-click update banner and button in settings card', () =
 test('client: binds configForms and does not touch settingsScope or lanSettings', () => {
   const record = loadClientRecord()
   const ReactMock = {
-    useState: (initial) => [initial, () => {}],
+    useState: (initial) => [true, () => {}],
     useEffect: (cb) => { try { cb() } catch (_) {} },
     useCallback: (cb) => cb,
     useMemo: (cb) => cb(),
@@ -370,4 +370,89 @@ test('client: binds configForms and does not touch settingsScope or lanSettings'
       cardComponent({ ctx: strictCtx })
     }
   })
+})
+
+test('client: getSnapshot returns stable SNAPSHOT_READY reference without React error #185 loop (#74)', () => {
+  const record = loadClientRecord()
+  let capturedGetSnapshot = null
+
+  const ReactMock = {
+    useState: (initial) => [true, () => {}],
+    useEffect: (cb) => { try { cb() } catch (_) {} },
+    useCallback: (cb) => cb,
+    useMemo: (cb) => cb(),
+    useSyncExternalStore: (sub, getSnap) => {
+      capturedGetSnapshot = getSnap
+      const snap1 = getSnap()
+      const snap2 = getSnap()
+      assert.strictEqual(Object.is(snap1, snap2), true, 'getSnapshot must return referentially stable snapshots')
+      assert.strictEqual(snap1.status, 'ready', 'Fallback snapshot must be ready to unblock standalone UI')
+      return snap1
+    },
+    createElement: (tag, props, ...children) => {
+      const finalProps = Object.assign({}, props, { children: children.length === 1 ? children[0] : (children.length > 1 ? children : undefined) })
+      return { tag, props: finalProps, children }
+    },
+    Component: class Component {
+      constructor(props) { this.props = props; this.state = {} }
+    }
+  }
+  ReactMock.Component.prototype.isReactComponent = {}
+
+  const exports = record.factory((spec) => {
+    if (spec === 'react') return ReactMock
+    throw new Error('Unexpected: ' + spec)
+  })
+
+  const registered = {}
+  const emptyCtx = {
+    effect: (fn) => fn(),
+    locale: { register: () => {}, bind: () => (k) => k },
+    slots: {
+      inject: (name, cb) => cb(),
+      register: (opts, comp) => {
+        registered[opts.name] = comp
+        return opts
+      }
+    },
+    get: () => null,
+  }
+
+  exports.apply(emptyCtx)
+  const cardComponent = registered['settings.plugin.item'] || registered['plugins.item']
+  assert.ok(cardComponent, 'Must register settings component')
+
+  function traverse(node, depth = 0) {
+    if (!node || depth > 20) return
+    if (typeof node.tag === 'function') {
+      try {
+        if (node.tag.prototype && node.tag.prototype.isReactComponent) {
+          const inst = new node.tag(node.props)
+          traverse(inst.render(), depth + 1)
+        } else {
+          traverse(node.tag(node.props), depth + 1)
+        }
+      } catch (_) {}
+    }
+    if (node.children) {
+      if (Array.isArray(node.children)) {
+        node.children.forEach(c => {
+          if (Array.isArray(c)) c.forEach(x => traverse(x, depth + 1))
+          else traverse(c, depth + 1)
+        })
+      } else {
+        traverse(node.children, depth + 1)
+      }
+    }
+  }
+
+  assert.doesNotThrow(() => {
+    const vdom = cardComponent({ ctx: emptyCtx })
+    traverse(vdom)
+  })
+
+  assert.ok(capturedGetSnapshot, 'getSnapshot callback must be captured')
+  const snapA = capturedGetSnapshot()
+  const snapB = capturedGetSnapshot()
+  assert.strictEqual(snapA, snapB, 'Repeated calls to fallback getSnapshot must return the exact same object reference')
 })
