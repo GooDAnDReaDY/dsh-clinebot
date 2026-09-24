@@ -184,6 +184,22 @@ dsh-clinebot:
 
 ---
 
+## 🌐 Маршруты HTTP API
+
+Все маршруты регистрируются с префиксом `/dsh-clinebot/*` и защищены от несанкционированных межсайтовых запросов (разрешены same-origin и loopback):
+
+* `GET /dsh-clinebot/status` — Текущее состояние провайдера, активный аккаунт, квоты и статистика сессий.
+* `GET /dsh-clinebot/config` — Диагностический маршрут, возвращающий открытую конфигурацию (без секретов).
+* `PUT /dsh-clinebot/config` — Обновление параметров конфигурации. Принимает только известные поля схемы (неизвестные поля и устаревшее `enabledModels` возвращают `400 Bad Request`).
+* `POST /dsh-clinebot/key/verify` — Проверка API-ключа на сервере `api.cline.bot` с возвратом email и названия тарифа.
+* `POST /dsh-clinebot/save-key` — Сохранение ключа в сервис credentials DSH под именем шаблона `CLINEBOT_API_KEY*`.
+* `POST /dsh-clinebot/models/sync` — Синхронизация списка моделей с официальным тарифом ClinePass.
+* `POST /dsh-clinebot/models/toggle` — Включение и отключение моделей через `disabledModels`.
+* `POST /dsh-clinebot/accounts/active` — Назначение активного аккаунта из пула.
+* `POST /dsh-clinebot/smoke` — Выполнение тестового пинга задержки.
+
+---
+
 ## 🧪 Тестирование
 
 Запуск автоматического набора тестов:
