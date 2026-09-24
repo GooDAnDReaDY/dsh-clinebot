@@ -1,33 +1,26 @@
+function readConfigForms(ctx) {
+  if (!ctx || typeof ctx.get !== 'function') return undefined
+  try {
+    return ctx.get('configForms') || undefined
+  } catch (err) {
+    console.warn('[dsh-clinebot] configForms is not available:', err)
+    return undefined
+  }
+}
+
 function SettingsPage(props) {
   const ctx = props?.ctx
   const t = props?.t || makeT(en, en)
 
   const scope = React.useMemo(() => {
-    let s = null
+    const svc = readConfigForms(ctx)
+    if (!svc || typeof svc.get !== 'function') return undefined
     try {
-      if (typeof ctx?.get === 'function') {
-        s = ctx.get('lanSettings') || ctx.get('settingsScope')
-      }
-    } catch (_) {
-      s = null
-    }
-    if (!s) {
-      try {
-        if (ctx && typeof ctx === 'object') {
-          s = ctx.lanSettings || ctx.settingsScope || null
-        }
-      } catch (_) {
-        s = null
-      }
-    }
-    if (!s) return undefined
-    try {
-      if (typeof s.bind === 'function') return s.bind({ namespace: NS })
-      if (typeof s.get === 'function') return s.get(NS)
-    } catch (_) {
+      return svc.get(NS)
+    } catch (err) {
+      console.warn('[dsh-clinebot] configForms.get failed:', err)
       return undefined
     }
-    return undefined
   }, [ctx])
 
   const subscribe = React.useMemo(() => {
@@ -42,11 +35,12 @@ function SettingsPage(props) {
   }, [scope])
 
   const getSnapshot = React.useCallback(() => {
-    if (!scope?.getSnapshot) return { status: 'ready', view: null }
+    if (!scope?.getSnapshot) return SNAPSHOT_LOADING
     try {
-      return scope.getSnapshot() || { status: 'ready', view: null }
-    } catch (_) {
-      return { status: 'ready', view: null }
+      return scope.getSnapshot() || SNAPSHOT_LOADING
+    } catch (err) {
+      console.warn('[dsh-clinebot] settings snapshot failed:', err)
+      return SNAPSHOT_LOADING
     }
   }, [scope])
 

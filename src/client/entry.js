@@ -1,46 +1,11 @@
-function refreshMirrorUntilVisible(ctx) {
-  const getSettingsService = () => {
-    try {
-      if (typeof ctx?.get === 'function') {
-        const s = ctx.get('lanSettings') || ctx.get('settingsScope')
-        if (s) return s
-      }
-    } catch (_) {}
-    try {
-      if (ctx && typeof ctx === 'object') {
-        return ctx.lanSettings || ctx.settingsScope || null
-      }
-    } catch (_) {}
-    return null
+function ensureSettingsForm(ctx) {
+  const svc = readConfigForms(ctx)
+  if (!svc || typeof svc.get !== 'function') return
+  try {
+    svc.get(NS)
+  } catch (err) {
+    console.warn('[dsh-clinebot] configForms.get failed:', err)
   }
-
-  const s = getSettingsService()
-  if (!s) return
-
-  const visible = () => {
-    try {
-      const current = getSettingsService()
-      const view = current?.describe?.()?.getSnapshot?.()?.view
-      return !!view && Array.isArray(view.namespaces) && view.namespaces.some((row) => row.ns === NS)
-    } catch (_) {
-      return false
-    }
-  }
-  if (visible()) return
-
-  if (typeof setInterval !== 'function') return
-
-  let tries = 0
-  const timer = setInterval(() => {
-    if (visible() || tries >= 15) { clearInterval(timer); return }
-    tries += 1
-    try {
-      const current = getSettingsService()
-      current?.describe?.()?.load?.()
-    } catch (e) {
-      console.debug?.('[dsh-clinebot] Polling settings mirror:', e)
-    }
-  }, 1000)
 }
 
 function apply(ctx) {
@@ -65,8 +30,8 @@ function apply(ctx) {
 
   if (typeof ctx.effect === 'function') {
     ctx.effect(
-      () => refreshMirrorUntilVisible(ctx),
-      'dsh-clinebot: re-read the settings mirror until our namespace appears',
+      () => { ensureSettingsForm(ctx) },
+      'dsh-clinebot: open the settings form for this namespace',
     )
   }
 
@@ -144,4 +109,4 @@ function apply(ctx) {
   )
 }
 
-module.exports = { apply, inject: ['slots', 'locale'] }
+module.exports = { apply, inject: ['slots', 'locale', 'configForms'] }

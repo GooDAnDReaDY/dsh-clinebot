@@ -46,7 +46,7 @@ test("client: factory materializes with a strict module table", () => {
   const record = loadClientRecord()
   const seen = []
   const exports = record.factory(strictRequire(seen))
-  assert.deepEqual(Array.from(exports.inject).sort(), ["locale", "slots"])
+  assert.deepEqual(Array.from(exports.inject).sort(), ["configForms", "locale", "slots"])
   assert.equal(typeof exports.apply, "function")
   assert.equal(seen.includes("@deepseek-ai/dsh-client-ui-primitives"), false)
 })
@@ -70,10 +70,10 @@ test("client: apply registers settings.plugin.item exclusively without settings.
         return decl
       },
     },
-    settingsScope: {
-      describe: () => ({
-        getSnapshot: () => ({ view: { namespaces: [{ ns: "dsh-clinebot" }] } }),
-        load() {},
+    configForms: {
+      get: () => ({
+        subscribe: () => () => {},
+        getSnapshot: () => ({ status: "ready", writable: true }),
       }),
     },
   }
@@ -106,10 +106,14 @@ test("client: dsh.client.inject names only modules the factory resolves", () => 
     assert.equal(spec.startsWith("@deepseek-ai/"), false, "client.js requires a module missing from the kernel table: " + spec)
   }
   const inject = (pkg.dsh && pkg.dsh.client && pkg.dsh.client.inject) || []
-  for (const name of inject) {
-    assert.equal(name.startsWith("@deepseek-ai/"), false, "dsh.client.inject names a module missing from the kernel table: " + name)
-    assert.ok(specifiers.includes(name), "dsh.client.inject names a module the factory never requires: " + name)
-  }
+  assert.deepEqual([...inject].sort(), [
+    "@deepseek-ai/dsh-client-locale",
+    "@deepseek-ai/dsh-client-ui-settings",
+    "@deepseek-ai/dsh-client-ui-slots",
+  ])
+  assert.equal(source.includes("settingsScope"), false)
+  assert.equal(source.includes("lanSettings"), false)
+  assert.ok(source.includes("configForms"))
 })
 
 test("client: full component tree render and event handler integrity", () => {
@@ -181,17 +185,15 @@ test("client: full component tree render and event handler integrity", () => {
       register: (opts, comp) => { registered[opts.name] = comp; return opts }
     },
     locale: { register: () => {}, bind: () => (k) => k },
-    settingsScope: {
-      describe: () => ({
-        getSnapshot: () => ({ view: { namespaces: [{ ns: 'dsh-clinebot' }] } }),
-        load: () => {}
-      }),
-      bind: () => ({
-        subscribe: () => () => {},
-        getSnapshot: () => ({ status: 'ready', value: {} }),
-        set: async () => {}
-      })
-    }
+    get: (name) => {
+      if (name !== 'configForms') throw new Error('unexpected service ' + name)
+      return {
+        get: () => ({
+          subscribe: () => () => {},
+          getSnapshot: () => ({ status: 'ready', writable: true }),
+        }),
+      }
+    },
   }
 
   exports.apply(ctx)
@@ -304,7 +306,7 @@ test('client: renders one-click update banner and button in settings card', () =
   assert.ok(source.includes("x-dsh-plugin-update': '1'"), 'Must pass x-dsh-plugin-update header on update trigger')
 })
 
-test('client: survives strict Cordis context without settingsScope or lanSettings injected (#67)', () => {
+test('client: binds configForms and does not touch settingsScope or lanSettings', () => {
   const record = loadClientRecord()
   const ReactMock = {
     useState: (initial) => [initial, () => {}],
@@ -337,7 +339,14 @@ test('client: survives strict Cordis context without settingsScope or lanSetting
       }
     },
     get: (name) => {
-      if (name === 'lanSettings' || name === 'settingsScope') return undefined
+      if (name === 'configForms') {
+        return {
+          get: () => ({
+            subscribe: () => () => {},
+            getSnapshot: () => ({ status: 'ready', writable: true }),
+          }),
+        }
+      }
       throw new TypeError(`cannot get property "${name}" without inject`)
     }
   }

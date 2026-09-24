@@ -69,4 +69,6 @@ test('commands: lib/index.js registers /cline command with subcommands', () => {
   assert.ok(allCmdSource.includes("subcmd === 'rotate'"), 'Subcommand /cline rotate must be supported')
   assert.ok(allCmdSource.includes("|| 'quota'"), 'Default subcommand must be quota')
   assert.ok(allCmdSource.includes("isSupportedModel(param, pub.dynamicModels)"), 'Subcommand /cline test must validate models via isSupportedModel')
+  assert.equal(slashSource.includes('Всего моделей'), false, 'slash output must not hardcode Russian')
+  assert.ok(slashSource.includes('Total models'), 'models summary is English')
 })

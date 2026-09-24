@@ -50,7 +50,7 @@
 * 🚀 **应用内一键更新**：直接在 DSH 界面检查并升级插件，或通过受保护的 `/dsh-clinebot/update` 进行本地安全更新。
 * ⚡ **SWR 配额与健康状态缓存**：状态查询毫秒级响应（<2ms），并在后台静默更新，不阻塞前端渲染。
 * 🔀 **智能配额故障转移 (Smart Failover)**：多账号池自动轮询，避开耗尽账号并在 `resetsAt` 到达后自动恢复。
-* 🖥️ **专属设置大页**：在 DSH 设置中提供全宽独立页面（`设置 → ClineBot`）。
+* 🖥️ **插件配置页**：打开已安装的 ClineBot，进入配置。页面包含凭据名、模型、配额和账号，不单独占用侧边栏。
 * 🔄 **订阅模型动态同步**：从官方 `GET /api/v1/users/me/plan` 自动提取真实包含模型，一键原子级同步至 DSH 提供商配置，无需等待插件更新。
 * ⚠️ **额度耗尽实时预警**：当 5 小时滑动窗口达到 80%（警告黄色）和 95%（即将耗尽红色）时展示醒目预警横幅与重置倒计时。
 * 📈 **会话统计与指标看板**：实时追踪请求调用次数、预估 Token（Prompt / Completion）、最近延迟及最后调用时间。
@@ -115,7 +115,7 @@ graph LR
   * `smokeChat`：毫秒级网络探活与非流式延迟测试，并记录会话指标。
   * `buildPiAiProvider`：构建 DSH `llm-pi-ai` 兼容的服务商定义 (`api: 'openai-completions'`)。
 * **`lib/index.js`**：Cordis 插件主生命周期服务，注册后端 REST API 路由（含 `/dsh-clinebot/models/sync`）、额度预警计算与 `/cline` 聊天斜杠指令。
-* **`lib/client.js`**：前端设置面板（`settings.section` 序号 28），内含预警横幅、会话指标卡片、一键模型同步按钮及插件折叠卡片。
+* **`lib/client.js`**：插件行配置页（`plugins.row.config`），含预警横幅、会话指标、一键模型同步，以及后备插件卡片（`settings.plugin.item`）。没有 `settings.section` 侧边栏项。
 
 ---
 
