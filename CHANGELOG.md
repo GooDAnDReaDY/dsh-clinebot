@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.22] - 2026-09-24
+
+### Fixed
+- **SettingsPage Crash on Cordis Strict Context (#67 / GitHub #4)**: Fixed unhandled `TypeError: cannot get property "settingsScope" without inject` thrown when accessing `ctx?.settingsScope` under DSH 0.17+ / Cordis v3+ strict proxy contexts. Replaced bare property access with defensive `ctx.get('lanSettings') || ctx.get('settingsScope')` inside `try/catch` across both `settings-page.js` and `entry.js`.
+- **Standalone Unblocked UI Rendering**: When `settingsScope` / `lanSettings` service is absent or not injected in the client fiber, `SettingsPage` snapshot now defaults to `{ status: 'ready', view: null }` instead of permanently hanging on `status: 'loading'`. The settings page is entirely functional via its own HTTP REST endpoints (`/dsh-clinebot/status`, `/save-key`, `/models/toggle`, etc.).
+
 ## [0.3.21] - 2026-09-23
 
 ### Fixed
