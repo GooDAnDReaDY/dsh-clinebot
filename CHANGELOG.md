@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-09-24
+
+### Fixed
+- **Slash Command Plain Text Formatting (#107)**: Eliminated raw markdown formatting (`###`, `**`, backticks) in `/cline` command responses, preventing unrendered markdown clutter in DSH chat `<pre>` blocks.
+- **Single-Line Collapsed Summary (#107)**: Added a concise first-line summary strictly `<= 120` characters across all subcommands (`quota`, `models`, `accounts`, `stats`, `test`), displaying cleanly in the collapsed command card without premature line breaks or truncation ellipses.
+- **Active Key Name Resolution (#107)**: Fixed `resolveActiveAccountKey` to consistently set both `apiKeyEnv` and `envName` for pooled and default accounts, preventing `Active Key: undefined` in command output and status payloads.
+
 ## [0.4.1] - 2026-09-24
 
 ### Fixed
