@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.24] - 2026-09-24
+
+### Fixed
+
+- The settings card opens. Host settings are published as a namespace, copied to plain values before use, and account credential names are read as text, so the form renders instead of a React error.
+
 ## [0.3.23] - 2026-09-24
 
 ### Fixed
