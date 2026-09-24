@@ -63,6 +63,9 @@
     "@deepseek-ai/dsh-settings": "^0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1"
   },
+  "devDependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
   "homepage": "https://github.com/GooDAnDReaDY/dsh-clinebot#readme",
   "bugs": {
     "url": "https://github.com/GooDAnDReaDY/dsh-clinebot/issues"
