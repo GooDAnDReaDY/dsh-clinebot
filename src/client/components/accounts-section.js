@@ -62,6 +62,13 @@ function AccountsSection({ status, busy, handlePinAccount, t }) {
           )
         })
       )
-    )
+    ),
+    status.lastRotation
+      ? React.createElement(
+          'div',
+          { className: 'cb-rotation-info', style: { marginTop: '10px', fontSize: '12px', opacity: 0.85 } },
+          `Last failover: ${status.lastRotation.from} → ${status.lastRotation.to} (${status.lastRotation.reason})`
+        )
+      : null
   )
 }

@@ -36,11 +36,14 @@
 .cb-btn-danger:hover:not(:disabled){background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent) !important;border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary) 50%, transparent)}
 .cb-btn-disabled{opacity:0.5;cursor:not-allowed}
 
-.cb-bar-container{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-2)}
-.cb-bar-head{display:flex;justify-content:space-between;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary)}
-.cb-bar-track{width:100%;height:10px;border-radius:999px;background:var(--dsw-alias-bg-layer-1);overflow:hidden;border:1px solid var(--dsw-alias-border-l2)}
-.cb-bar-fill{height:100%;border-radius:999px;transition:width .3s}
-.cb-bar-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.cb-progress-card, .cb-bar-container{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-2)}
+.cb-progress-head, .cb-bar-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary);width:100%}
+.cb-progress-label{font-weight:500;white-space:nowrap}
+.cb-progress-meta, .cb-bar-meta{font-size:12px;color:var(--dsw-alias-label-secondary);white-space:nowrap;margin-left:auto}
+.cb-progress-track, .cb-bar-track{width:100%;height:8px;border-radius:999px;background:var(--dsw-alias-bg-layer-1);overflow:hidden;border:1px solid var(--dsw-alias-border-l2)}
+.cb-progress-bar-fill, .cb-bar-fill{height:100%;border-radius:999px;transition:width .3s;background:var(--dsw-alias-state-brand-primary, var(--dsw-alias-state-success-primary))}
+.cb-progress-bar-warn{height:100%;border-radius:999px;transition:width .3s;background:var(--dsw-alias-state-warning-primary)}
+.cb-progress-bar-bad{height:100%;border-radius:999px;transition:width .3s;background:var(--dsw-alias-state-error-primary)}
 
 .cb-table{width:100%;border-collapse:collapse;margin-top:8px}
 .cb-table th{text-align:left;font-size:12px;color:var(--dsw-alias-label-secondary);padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l2);font-weight:600}
