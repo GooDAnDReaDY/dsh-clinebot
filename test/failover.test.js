@@ -240,3 +240,15 @@ test('failover: rotateToNextAccount returns rotated: false and preserves cache i
   usageCache.clear()
   probeCache.clear()
 })
+
+test('account pool reads a volatile credential name as text', async () => {
+  const { resolveAccountPool } = await import('../lib/account-pool.js')
+  const ctx = { get: () => ({ resolve: async () => ({ value: '' }) }) }
+  const pool = await resolveAccountPool(ctx, {
+    apiKeyEnv: Object.freeze({ get: () => 'CLINEBOT_API_KEY' }),
+    accounts: [],
+    activeAccount: Object.freeze({ get: () => '' }),
+  })
+  assert.equal(pool[0].apiKeyEnv, 'CLINEBOT_API_KEY')
+  assert.equal(pool[0].label, 'Default')
+})
