@@ -50,7 +50,7 @@ Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 * 🚀 **One-Click In-App Updater**: Upgrade `@goodandready/dsh-clinebot` directly from the DSH UI or trigger secure loopback updates via `/dsh-clinebot/update`.
 * ⚡ **SWR Quota & Health Caching**: Instantaneous response time (<2ms) on status queries with background revalidation.
 * 🔀 **Smart Quota-Aware Failover**: Automatic multi-account rotation skipping exhausted accounts and recovering when `resetsAt` is reached.
-* 🖥️ **Dedicated Settings Page**: Full-width page in DSH Settings (`Settings → ClineBot`).
+* 🖥️ **Plugin configuration page**: Open the installed ClineBot plugin and choose configure. The page shows the credential name, models, quota, and accounts. It is not a separate sidebar section.
 * 🔄 **Dynamic Subscription Model Sync**: Automatically pulls real models included in your ClinePass plan directly from `GET /api/v1/users/me/plan` with one-click DSH provider sync.
 * ⚠️ **Quota Exhaustion Alerts**: Real-time visual warning banners when 5-hour rolling limit reaches 80% (warning) and 95% (exhausted), complete with countdown to reset.
 * 📈 **Session Metrics Telemetry**: Live dashboard tracking request counts, token consumption estimates, latency, and last-request timestamp.
@@ -118,7 +118,7 @@ graph LR
 * **`lib/index.js`**:
   Cordis service module managing routes (including `POST /dsh-clinebot/models/sync`), quota warnings threshold evaluation, credentials, and registering the `/cline` slash command.
 * **`lib/client.js`**:
-  Full-featured dedicated Settings section (`settings.section`, order 28) with live quota bars, exhaustion warning banner, session metrics telemetry card, one-click plan sync button, and plugin accordion (`settings.plugin.item`).
+  Configuration page on the plugin row (`plugins.row.config`) with live quota bars, an exhaustion warning, session metrics, one-click plan sync, and a fallback plugins card (`settings.plugin.item`). There is no `settings.section` sidebar entry.
 
 ---
 
