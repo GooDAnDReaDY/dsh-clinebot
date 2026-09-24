@@ -5,6 +5,21 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-09-24
+
+### Fixed
+- **Slash Command Contract Fix**: Fixed `/cline` slash command handler to strictly adhere to DSH `@deepseek-ai/dsh-commands` runtime `CommandResult` contract `{ kind: 'success', text }` instead of returning raw strings, preventing `TypeError: command "cline" handler must return a CommandResult` in DSH chat.
+- **Provider Detection via SettingsForms describe() (#102)**: Updated `checkRegisteredInPiAi` to inspect `settings.describe()` descriptors directly without triggering `TypeError` on missing `get()` method in modern DSH `SettingsForms`. Added safe error absorption for `providers.clinebot` removal when already absent.
+- **Model Version Dots Preservation (#103)**: Fixed model parsing to preserve version dot notation (e.g. `claude-3.5-sonnet`, `deepseek-v4.5`), preventing incorrect dot stripping or catalog matching errors.
+- **Strict Credential Validation & HTTPS Key Verify (#82)**: Hardened `/save-key` and `/config` to strictly prevent bypassing `apiKeyEnv` naming rules (forbidding arbitrary standard env variables such as `OPENAI_API_KEY`), and enforced HTTPS for `/key/verify` remote endpoints.
+- **Settings Rollback & Error Display (#81)**: Implemented optimistic UI rollback and explicit error alert banner when model toggle or settings persistence fails, reloading current server state and properly cleaning up debounced unmount timers.
+- **Snapshot Warning Banner & Failover Localization (#104)**: Restored non-blocking warning banner when host `snapshotStatus === 'unavailable'`, and localized `Last failover: ...` via `t('accounts.last_failover')` across English and Chinese locale dictionaries.
+
+### Added
+- **Account Pool Form & Management Routes (#88)**: Completed full account pool UI with dedicated "Add Account" form (label, apiKeyEnv with auto-suggestions, secret input with show/hide toggle), account deletion with confirmation, model search input (`modelsSearch`), and category filter tabs (all, chat, coding, reasoning). Registered `POST /dsh-clinebot/accounts` and `POST /dsh-clinebot/accounts/delete` server endpoints.
+- **Provider Key Failover Verification (#85)**: Added behavioral test assertions confirming that `rotateToNextAccount` mutates `llm-pi-ai` provider settings with the rotated account's `apiKeyEnv`, and replaced source code string inspection in `settings-service.test.js` with pure behavioral mock tests.
+- **Repository Hygiene (#91)**: Pruned obsolete remote tracking branches, confirmed duplicate issue label resolution, and ensured clean working tree.
+
 ## [0.4.0] - 2026-09-24
 
 ### Added
