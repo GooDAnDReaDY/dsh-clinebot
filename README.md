@@ -49,7 +49,7 @@ Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 **`@goodandready/dsh-clinebot`** provides a complete solution:
 * 🚀 **One-Click In-App Updater**: Upgrade `@goodandready/dsh-clinebot` directly from the DSH UI or trigger secure loopback updates via `/dsh-clinebot/update`.
 * ⚡ **SWR Quota & Health Caching**: Instantaneous response time (<2ms) on status queries with background revalidation.
-* 🔀 **Smart Quota-Aware Failover**: Automatic multi-account rotation skipping exhausted accounts and recovering when `resetsAt` is reached.
+* 🔀 **Smart Quota-Aware Failover**: Automatic multi-account rotation on stream HTTP 429 and exhausted quota (with 30s storm protection; current request is not retried, subsequent chat requests use the next available account).
 * 🖥️ **Plugin configuration page**: Open the installed ClineBot plugin and choose configure. The page shows the credential name, models, quota, and accounts. It is not a separate sidebar section.
 * 🔄 **Dynamic Subscription Model Sync**: Automatically pulls real models included in your ClinePass plan directly from `GET /api/v1/users/me/plan` with one-click DSH provider sync.
 * ⚠️ **Quota Exhaustion Alerts**: Real-time visual warning banners when 5-hour rolling limit reaches 80% (warning) and 95% (exhausted), complete with countdown to reset.

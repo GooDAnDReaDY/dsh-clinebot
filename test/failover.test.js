@@ -252,3 +252,132 @@ test('account pool reads a volatile credential name as text', async () => {
   assert.equal(pool[0].apiKeyEnv, 'CLINEBOT_API_KEY')
   assert.equal(pool[0].label, 'Default')
 })
+
+test('failover: upsertPiAiProvider registers active account apiKeyEnv instead of hardcoded pub.apiKeyEnv', async () => {
+  const env = {
+    CLINEBOT_API_KEY: 'main-key',
+    CLINEBOT_API_KEY_2: 'second-key',
+  }
+  const mockCreds = {
+    resolve: async (r) => ({ value: env[typeof r === 'string' ? r : r?.name] || '' }),
+  }
+  const mutated = []
+  const mockSettings = {
+    mutate: async (ns, ops) => {
+      mutated.push({ ns, ops })
+    },
+  }
+  const ctx = {
+    get: (name) => {
+      if (name === 'credentials') return mockCreds
+      if (name === 'settings') return mockSettings
+      return null
+    },
+  }
+
+  const { upsertPiAiProvider } = await import('../lib/provider-sync.js')
+  const cfg = {
+    apiKeyEnv: 'CLINEBOT_API_KEY',
+    accounts: [{ label: 'Team', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
+    activeAccount: 'CLINEBOT_API_KEY_2',
+  }
+
+  await upsertPiAiProvider(ctx, cfg)
+  assert.equal(mutated.length, 1)
+  assert.equal(mutated[0].ns, 'llm-pi-ai')
+  assert.equal(mutated[0].ops[0].value.apiKeyEnv, 'CLINEBOT_API_KEY_2')
+})
+
+test('failover: llm/stream waterfall intercepts 429 error and rotates active account with storm protection', async () => {
+  const env = {
+    CLINEBOT_API_KEY: 'key-1',
+    CLINEBOT_API_KEY_2: 'key-2',
+  }
+  const mockCreds = {
+    resolve: async (r) => ({ value: env[typeof r === 'string' ? r : r?.name] || '' }),
+  }
+  let currentActive = 'CLINEBOT_API_KEY'
+  const mockSettingsScope = {
+    get: () => ({
+      apiKeyEnv: 'CLINEBOT_API_KEY',
+      accounts: [{ label: 'Two', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
+      activeAccount: currentActive,
+      dynamicModels: [],
+      enabledModels: ['cline-pass/deepseek-v4-pro'],
+    }),
+    replace: async (next) => {
+      currentActive = next.activeAccount
+    },
+    watch: () => () => {},
+  }
+  const mutated = []
+  const mockSettings = {
+    register: () => mockSettingsScope,
+    mutate: async (ns, ops) => mutated.push({ ns, ops }),
+  }
+
+  const listeners = []
+  const ctx = {
+    get: (name) => {
+      if (name === 'credentials') return mockCreds
+      if (name === 'settings') return mockSettings
+      return null
+    },
+    inject: (deps, fn) => fn({ settings: mockSettings, effect: (fn) => fn() }),
+    on: (evt, handler) => {
+      listeners.push({ evt, handler })
+      return () => {}
+    },
+    effect: (fn) => fn(),
+  }
+
+  const { apply } = await import('../lib/index.js')
+  apply(ctx, mockSettingsScope.get())
+
+  const streamListener = listeners.find((l) => l.evt === 'llm/stream')
+  assert.ok(streamListener, 'llm/stream listener must be registered')
+
+  // 1. Non-cline provider passes through without rotation
+  async function* otherStream() {
+    yield { type: 'chunk', text: 'hello' }
+    yield { type: 'finish', reason: { kind: 'error', failure: { status: 429, message: 'Too many requests' } } }
+  }
+  const wrappedOther = streamListener.handler({ provider: 'other-provider' }, otherStream)
+  const otherChunks = []
+  for await (const c of wrappedOther) otherChunks.push(c)
+  assert.equal(otherChunks.length, 2)
+  assert.equal(currentActive, 'CLINEBOT_API_KEY', 'Non-cline stream must not rotate account')
+
+  // 2. Clinebot provider encounters 429 -> triggers rotation to CLINEBOT_API_KEY_2
+  async function* cline429Stream() {
+    yield { type: 'usage', usage: { inputTokens: 10, outputTokens: 20 } }
+    yield { type: 'finish', reason: { kind: 'error', failure: { status: 429, message: 'Rate limit reached' } } }
+  }
+  const wrappedCline = streamListener.handler({ provider: 'clinebot' }, cline429Stream)
+  const clineChunks = []
+  for await (const c of wrappedCline) clineChunks.push(c)
+  assert.equal(clineChunks.length, 2)
+  assert.equal(clineChunks[0].type, 'usage')
+
+  // Wait a tick for async rotateToNextAccount
+  await new Promise((r) => setTimeout(r, 60))
+  assert.equal(currentActive, 'CLINEBOT_API_KEY_2', 'Active account must rotate to CLINEBOT_API_KEY_2 on 429')
+
+  // 3. Storm dampening: second 429 within 30s does not trigger another rotation
+  async function* second429Stream() {
+    yield { type: 'finish', reason: { kind: 'error', failure: { status: 429, message: 'Rate limit' } } }
+  }
+  const wrappedSecond = streamListener.handler({ provider: 'clinebot' }, second429Stream)
+  for await (const _ of wrappedSecond) {}
+  await new Promise((r) => setTimeout(r, 60))
+  assert.equal(currentActive, 'CLINEBOT_API_KEY_2', 'Rapid 429 must be throttled within 30s storm window')
+
+  // 4. Verify telemetry in getLastRotation
+  const { getLastRotation } = await import('../lib/cline-client.js')
+  const lastRot = getLastRotation()
+  assert.ok(lastRot)
+  assert.equal(lastRot.reason, 'stream_429')
+  assert.equal(lastRot.from, 'CLINEBOT_API_KEY')
+  assert.equal(lastRot.to, 'CLINEBOT_API_KEY_2')
+})
+

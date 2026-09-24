@@ -71,17 +71,31 @@ function ModelsSection({ modelsList, disabledSet, enabledCount, keyPresent, busy
                 : null
             ),
             React.createElement('td', null, React.createElement('code', null, m.id)),
-            React.createElement('td', null, `${Math.round((m.contextLength || 200000) / 1000)}k`),
+            React.createElement('td', null, `${Math.round((m.contextLength || 128000) / 1000)}k`),
             React.createElement(
               'td',
               null,
-              React.createElement('span', { className: 'cb-badge' }, m.category || 'general'),
-              m.input?.includes('image') || m.input?.includes('vision')
-                ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: '4px' } }, 'Vision')
-                : null,
-              (Array.isArray(m.reasoningEfforts) ? m.reasoningEfforts.length > 0 : (m.reasoningEfforts && typeof m.reasoningEfforts === 'object' ? Object.keys(m.reasoningEfforts).length > 0 : Boolean(m.reasoning)))
-                ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: '4px' }, title: t('models.reasoning_tooltip') }, '🧠 Reasoning')
-                : null
+              (() => {
+                const hasReasoning = Boolean(
+                  (Array.isArray(m.reasoningEfforts) && m.reasoningEfforts.length > 0) ||
+                  (m.reasoningEfforts && typeof m.reasoningEfforts === 'object' && Object.keys(m.reasoningEfforts).length > 0) ||
+                  m.reasoning ||
+                  m.category === 'reasoning'
+                )
+                const category = m.category && m.category !== 'reasoning' ? m.category : (hasReasoning ? null : 'general')
+                const hasVision = Boolean(m.input?.includes('image') || m.input?.includes('vision'))
+                return React.createElement(
+                  React.Fragment,
+                  null,
+                  category ? React.createElement('span', { className: 'cb-badge' }, category) : null,
+                  hasVision
+                    ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: category ? '4px' : '0' } }, 'Vision')
+                    : null,
+                  hasReasoning
+                    ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: (category || hasVision) ? '4px' : '0' }, title: t('models.reasoning_tooltip') }, '🧠 Reasoning')
+                    : null
+                )
+              })()
             )
           )
         })
