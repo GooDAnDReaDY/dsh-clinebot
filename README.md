@@ -38,7 +38,7 @@
 
 ## ⚡ Overview & The Problem
 
-**ClinePass** (`https://cline.bot`) is a flat-rate subscription service ($9.99/mo) providing developers with 2–5x higher rate limits across premier open-weights coding and reasoning models through a single OpenAI-compatible endpoint (`https://api.cline.bot/api/v1`).
+**ClinePass** (`https://cline.bot`) is a subscription service providing developers with 2–5x higher rate limits across premier open-weights coding and reasoning models through a single OpenAI-compatible endpoint (`https://api.cline.bot/api/v1`).
 
 Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 1. **No `/v1/models` Discovery**: `GET /v1/models` on `api.cline.bot` returns `404 Not Found`. Dynamic discovery fails silently or leaves the provider with 0 models.
@@ -49,11 +49,11 @@ Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 **`@goodandready/dsh-clinebot`** provides a complete solution:
 * 🚀 **One-Click In-App Updater**: Upgrade `@goodandready/dsh-clinebot` directly from the DSH UI or trigger secure loopback updates via `/dsh-clinebot/update`.
 * ⚡ **SWR Quota & Health Caching**: Instantaneous response time (<2ms) on status queries with background revalidation.
-* 🔀 **Smart Quota-Aware Failover**: Automatic multi-account rotation skipping exhausted accounts and recovering when `resetsAt` is reached.
+* 🔀 **Smart Quota-Aware Failover**: Automatic multi-account rotation on stream HTTP 429 and exhausted quota (with 30s storm protection; current request is not retried, subsequent chat requests use the next available account).
 * 🖥️ **Plugin configuration page**: Open the installed ClineBot plugin and choose configure. The page shows the credential name, models, quota, and accounts. It is not a separate sidebar section.
-* 🔄 **Dynamic Subscription Model Sync**: Automatically pulls real models included in your ClinePass plan directly from `GET /api/v1/users/me/plan` with one-click DSH provider sync.
+* 🔄 **Dynamic Subscription Model Sync**: Automatically pulls real models included in your ClinePass plan directly from `GET /api/v1/users/me/plan` with one-click DSH provider sync. Only actual plan models are registered in DSH, while the built-in catalog serves as a rich properties reference and fallback when unsynced.
 * ⚠️ **Quota Exhaustion Alerts**: Real-time visual warning banners when 5-hour rolling limit reaches 80% (warning) and 95% (exhausted), complete with countdown to reset.
-* 📈 **Session Metrics Telemetry**: Live dashboard tracking request counts, token consumption estimates, latency, and last-request timestamp.
+* 📈 **Session Metrics Telemetry**: Live dashboard tracking real in-flight DSH chat requests through the ClineBot provider, prompt and completion tokens, stream latency, and error counts since process startup.
 * 📊 **Live Quota Dashboard**: Visual progress bars for 5-hour rolling limits and weekly windows from the official `GET /users/me/plan/usage-limits` API.
 * 🔑 **In-UI Key Storage**: Paste your API key directly in the UI; it is saved securely via `ctx.credentials.set()` into `~/.dsh/.credentials.yaml`.
 * 🎯 **Model Picker Management**: Granular checkboxes to choose which models appear in the chat picker.
@@ -137,7 +137,7 @@ Restart your DeepSeek Harness instance and refresh the browser.
 From any DSH chat session, type `/cline` to inspect quota, warning alerts, and session telemetry:
 
 ```text
-### 🤖 ClinePass Status (ClinePass ($9.99/mo))
+### 🤖 ClinePass Status (ClinePass)
 * Latency: ✅ 210 ms
 * Active Key: CLINEBOT_API_KEY (credentials)
 * Default Model: `cline-pass/deepseek-v4-flash`
@@ -186,6 +186,22 @@ dsh-clinebot:
 | `smokeTimeoutMs` | `number` | `25000` | Smoke test latency ping timeout |
 | `enabledModels` | `array` | `[...]` | List of models exposed in the DSH chat picker |
 | `dynamicModels` | `array` | `[]` | Dynamic models automatically synced from the official plan |
+
+---
+
+## 🌐 HTTP API Endpoints
+
+All endpoints are registered under `/dsh-clinebot/*` and protected against untrusted cross-site origins (same-origin and loopback allowed):
+
+* `GET /dsh-clinebot/status` — Live status report including provider health, active credential, quota, and session metrics.
+* `GET /dsh-clinebot/config` — Diagnostic endpoint returning public configuration without secret keys.
+* `PUT /dsh-clinebot/config` — Update configuration fields. Accepts only known schema properties (unknown fields or deprecated `enabledModels` return `400 Bad Request`).
+* `POST /dsh-clinebot/key/verify` — Validates a candidate API key against `api.cline.bot` and returns account email and plan name.
+* `POST /dsh-clinebot/save-key` — Saves a key into DSH credentials service under a valid `CLINEBOT_API_KEY*` name.
+* `POST /dsh-clinebot/models/sync` — Synchronizes models with your active subscription plan.
+* `POST /dsh-clinebot/models/toggle` — Toggles models via `disabledModels`.
+* `POST /dsh-clinebot/accounts/active` — Pins an active account from the account pool.
+* `POST /dsh-clinebot/smoke` — Runs a live latency test ping.
 
 ---
 

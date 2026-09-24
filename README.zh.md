@@ -38,7 +38,7 @@
 
 ## ⚡ 概述与解决的核心痛点
 
-**ClinePass** (`https://cline.bot`) 是一项固定月费（\$9.99/月）的高性价比订阅服务，为开发者提供主流开源代码模型与推理模型 2–5 倍的高并发调用限额，统一通过 OpenAI 兼容接口 (`https://api.cline.bot/api/v1`) 提供服务。
+**ClinePass** (`https://cline.bot`) 是一项高性价比订阅服务，为开发者提供主流开源代码模型与推理模型 2–5 倍的高并发调用限额，统一通过 OpenAI 兼容接口 (`https://api.cline.bot/api/v1`) 提供服务。
 
 在将 ClinePass 接入 DeepSeek Harness (DSH) 时存在以下挑战：
 1. **缺失 `/v1/models` 接口**：`api.cline.bot` 的 `GET /v1/models` 会直接返回 `404 Not Found`，导致动态模型同步失败或模型列表为空。
@@ -49,11 +49,11 @@
 **`@goodandready/dsh-clinebot`** 完美解决以上痛点：
 * 🚀 **应用内一键更新**：直接在 DSH 界面检查并升级插件，或通过受保护的 `/dsh-clinebot/update` 进行本地安全更新。
 * ⚡ **SWR 配额与健康状态缓存**：状态查询毫秒级响应（<2ms），并在后台静默更新，不阻塞前端渲染。
-* 🔀 **智能配额故障转移 (Smart Failover)**：多账号池自动轮询，避开耗尽账号并在 `resetsAt` 到达后自动恢复。
+* 🔀 **智能配额故障转移 (Smart Failover)**：在流式请求遇到 HTTP 429 或配额耗尽时自动轮换多账号（具备 30 秒防风暴保护；当前失败请求不自动重试，后续对话请求无缝使用下一个账号）。
 * 🖥️ **插件配置页**：打开已安装的 ClineBot，进入配置。页面包含凭据名、模型、配额和账号，不单独占用侧边栏。
-* 🔄 **订阅模型动态同步**：从官方 `GET /api/v1/users/me/plan` 自动提取真实包含模型，一键原子级同步至 DSH 提供商配置，无需等待插件更新。
+* 🔄 **订阅模型动态同步**：从官方 `GET /api/v1/users/me/plan` 自动提取真实包含模型，一键原子级同步至 DSH 提供商配置。DSH 严格仅注册当前套餐模型，内置目录作为特性参考并在未同步时作为备用。
 * ⚠️ **额度耗尽实时预警**：当 5 小时滑动窗口达到 80%（警告黄色）和 95%（即将耗尽红色）时展示醒目预警横幅与重置倒计时。
-* 📈 **会话统计与指标看板**：实时追踪请求调用次数、预估 Token（Prompt / Completion）、最近延迟及最后调用时间。
+* 📈 **会话统计与指标看板**：实时监控进程启动后经由 ClineBot 提供商发出的真实 DSH 对话请求、Prompt/Completion Token 消耗、流式延迟及错误统计。
 * 📊 **实时用量仪表盘**：调用官方 `GET /users/me/plan/usage-limits` API，实时渲染 5 小时与每周额度进度条及重置倒计时。
 * 🔑 **界面直存密钥**：在 UI 中直接粘贴 API 密钥，通过 `ctx.credentials.set()` 自动安全保存至 `~/.dsh/.credentials.yaml`。
 * 🎯 **模型选择器管理**：支持勾选开启/关闭特定模型在聊天选择器中的显示。
@@ -136,7 +136,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 在任何聊天会话中输入 `/cline` 即可即时检查配额、预警状态与会话指标：
 
 ```text
-### 🤖 ClinePass Status (ClinePass ($9.99/mo))
+### 🤖 ClinePass Status (ClinePass)
 * 响应延迟: ✅ 210 ms
 * 活跃密钥: CLINEBOT_API_KEY (credentials)
 * 默认模型: `cline-pass/deepseek-v4-flash`
@@ -183,6 +183,22 @@ dsh-clinebot:
 | `smokeTimeoutMs` | `number` | `25000` | 探活测试超时时间（毫秒） |
 | `enabledModels` | `array` | `[...]` | 允许在聊天下拉框中显示的可用模型列表 |
 | `dynamicModels` | `array` | `[]` | 从官方套餐中自动同步的动态模型列表 |
+
+---
+
+## 🌐 HTTP API 接口说明
+
+所有接口注册于 `/dsh-clinebot/*` 路径，并受到严格的跨站防护保护（仅允许同源或环回请求）：
+
+* `GET /dsh-clinebot/status` — 服务运行状态，包括健康探活、当前凭据名称、配额限制及会话统计。
+* `GET /dsh-clinebot/config` — 诊断接口，安全获取脱敏后的公共配置。
+* `PUT /dsh-clinebot/config` — 更新配置项。仅接受模式中的已知字段（未知字段或已废弃的 `enabledModels` 返回 `400 Bad Request`）。
+* `POST /dsh-clinebot/key/verify` — 向 `api.cline.bot` 发送探活请求实时验证密钥，返回绑定邮箱及套餐名称。
+* `POST /dsh-clinebot/save-key` — 将 API 密钥安全存储到 DSH credentials 服务。
+* `POST /dsh-clinebot/models/sync` — 同步 ClinePass 官方套餐内包含的全部动态模型。
+* `POST /dsh-clinebot/models/toggle` — 通过 `disabledModels` 批量切换模型可用性。
+* `POST /dsh-clinebot/accounts/active` — 从多账号池中指定当前主账号。
+* `POST /dsh-clinebot/smoke` — 发起快速探测并返回实时延迟。
 
 ---
 
