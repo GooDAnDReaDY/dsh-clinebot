@@ -19,6 +19,7 @@ import {
 import os from 'node:os'
 import path from 'node:path'
 import fs from 'node:fs'
+import { publicConfig } from '../lib/config.js'
 
 test('models: catalog integrity', () => {
   assert.equal(PROVIDER_ID, 'clinebot')
@@ -82,10 +83,12 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
   assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/deepseek-v4-flash'))
   assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/glm-5.2'))
 
-  // Dynamic models merge into catalogue
+  // When plan models exist, getAllModels returns strictly plan models with enriched properties
   const dynamicList = [withNew[0]]
-  const merged = getAllModels(dynamicList)
-  assert.equal(merged.length, CLINE_MODELS.length + 1)
+  const planModelsOnly = getAllModels(dynamicList)
+  assert.equal(planModelsOnly.length, 1)
+  assert.equal(planModelsOnly[0].id, 'cline-pass/newsupermodel-v1')
+  assert.equal(planModelsOnly[0].unverified, false)
   assert.ok(findModel('cline-pass/newsupermodel-v1', dynamicList))
   assert.ok(isSupportedModel('cline-pass/newsupermodel-v1', dynamicList))
 })
@@ -93,6 +96,8 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
 test('models: getActiveModelIds respects disabled models and auto-enables new models', () => {
   const dynamicList = [
     { id: 'cline-pass/brand-new-ai', name: 'Brand New AI', contextLength: 128000, input: ['text'] },
+    { id: DEFAULT_MODEL_ID, name: 'DeepSeek V4 Flash' },
+    { id: 'cline-pass/kimi-k3', name: 'Kimi K3' },
   ]
   const all = getAllModels(dynamicList)
   const disabled = ['cline-pass/kimi-k3']
@@ -107,6 +112,51 @@ test('models: getActiveModelIds respects disabled models and auto-enables new mo
 
   // Default models not in disabled list are included
   assert.ok(activeIds.includes(DEFAULT_MODEL_ID))
+})
+
+test('models: plan with 3 models registers strictly 3 models with curated catalog properties mixed in', () => {
+  const planModels = [
+    { id: 'cline-pass/deepseek-v4-flash' },
+    { id: 'cline-pass/deepseek-v4-pro' },
+    { id: 'cline-pass/glm-5.2' },
+  ]
+  const result = getAllModels(planModels)
+  assert.equal(result.length, 3)
+  assert.deepEqual(result.map((m) => m.id), [
+    'cline-pass/deepseek-v4-flash',
+    'cline-pass/deepseek-v4-pro',
+    'cline-pass/glm-5.2',
+  ])
+  const flash = result.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
+  assert.equal(flash.name, 'DeepSeek V4 Flash')
+  assert.equal(flash.contextLength, 128000)
+  assert.deepEqual(flash.input, ['text', 'image'])
+  assert.deepEqual(flash.reasoningEfforts, ['low', 'medium', 'high'])
+  assert.equal(flash.unverified, false)
+})
+
+test('models: when plan is unavailable and cache is empty, returns full catalog marked unverified', () => {
+  const result = getAllModels([])
+  assert.equal(result.length, CLINE_MODELS.length)
+  for (const m of result) {
+    assert.equal(m.unverified, true)
+  }
+})
+
+test('models: defaultModel missing from plan triggers warning and fallback replacement', () => {
+  const planModels = [
+    { id: 'cline-pass/glm-5.2', name: 'GLM 5.2' },
+    { id: 'cline-pass/kimi-k3', name: 'Kimi K3' },
+  ]
+  const cfg = {
+    defaultModel: 'cline-pass/deepseek-v4-flash',
+    dynamicModels: planModels,
+  }
+  const pub = publicConfig(cfg)
+  assert.equal(pub.defaultModel, 'cline-pass/glm-5.2', 'Should fall back to first available plan model')
+  assert.ok(pub.defaultModelWarning, 'Should produce a defaultModelWarning')
+  assert.match(pub.defaultModelWarning, /cline-pass\/deepseek-v4-flash/)
+  assert.match(pub.defaultModelWarning, /cline-pass\/glm-5.2/)
 })
 
 test('models: formatModelContext and formatModelDescription', () => {

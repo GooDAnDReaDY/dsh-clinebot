@@ -1,11 +1,37 @@
-function ModelsSection({ modelsList, disabledSet, enabledCount, keyPresent, busy, handleSyncPlanModels, handleSetModelsFilter, handleToggleModel, t }) {
+function ModelsSection({
+  modelsList,
+  disabledSet,
+  enabledCount,
+  keyPresent,
+  busy,
+  handleSyncPlanModels,
+  handleSetModelsFilter,
+  handleToggleModel,
+  planSynced,
+  planSyncedAt,
+  defaultModelWarning,
+  t,
+}) {
+  const syncDateStr = planSyncedAt ? new Date(planSyncedAt).toLocaleDateString() : ''
+
   return React.createElement(
     'div',
     { className: 'cb-section-card' },
+    defaultModelWarning
+      ? React.createElement('div', { className: 'cb-alert-bad', style: { marginBottom: '12px' } }, `⚠️ ${defaultModelWarning}`)
+      : null,
     React.createElement(
       'div',
       { className: 'cb-section-title' },
-      t('models.title', { enabled: enabledCount, total: modelsList.length }),
+      React.createElement(
+        'span',
+        null,
+        t('models.title', { enabled: enabledCount, total: modelsList.length }),
+        planSynced
+          ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: '8px', fontSize: '11px' } }, t('models.verified'))
+          : React.createElement('span', { className: 'cb-badge cb-badge-warn', style: { marginLeft: '8px', fontSize: '11px' } }, t('models.unverified')),
+        syncDateStr ? React.createElement('span', { style: { marginLeft: '8px', fontSize: '11px', color: 'var(--dsw-alias-label-secondary)' } }, t('models.synced_at', { date: syncDateStr })) : null
+      ),
       React.createElement(
         'div',
         { className: 'cb-row' },
