@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.25] - 2026-09-24
+
+### Fixed
+
+- **SettingsPage "Settings Unavailable" Banner Removal (#96 / GitHub #7)**: Removed the blocking `snapshotStatus === 'unavailable'` render gate in `SettingsPage`. When DSH serves no native settings form or when the page is accessed over non-loopback connections (`persistence === 'memory'`), the page no longer displays the dead-end warning banner and instead smoothly renders its fully functional standalone REST UI from `/dsh-clinebot/status` and `/dsh-clinebot/config`.
+- **Modern DSH `SettingsForms` Adapter**: In `lib/index.js`, implemented a robust adapter for modern DSH `SettingsForms` (`svc.replace` / `svc.update` / `svc.describe`). DSH 0.1.7 removed `sctx.settings.register`, which previously caused `PUT /dsh-clinebot/config` to fail with HTTP 503 `settings not ready` and prevented key changes, account switching, and model toggles from persisting to DSH.
+- **Volatile Field Projection (`volatileConfig`)**: Marked only user-editable settings as `.volatile()`, leaving internal derived fields (`dynamicModels` and deprecated `enabledModels`) non-volatile. Added `volatileConfig` helper to strip non-volatile fields before passing payloads to `SettingsForms.replace`, preventing DSH from rejecting configuration writes with `Config field is not volatile`.
+
 ## [0.3.24] - 2026-09-24
 
 ### Fixed
