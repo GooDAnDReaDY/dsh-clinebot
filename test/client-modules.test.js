@@ -303,3 +303,62 @@ test('client: renders one-click update banner and button in settings card', () =
   assert.ok(source.includes("t('update.checking')"), 'Must render localized checking indicator')
   assert.ok(source.includes("x-dsh-plugin-update': '1'"), 'Must pass x-dsh-plugin-update header on update trigger')
 })
+
+test('client: survives strict Cordis context without settingsScope or lanSettings injected (#67)', () => {
+  const record = loadClientRecord()
+  const ReactMock = {
+    useState: (initial) => [initial, () => {}],
+    useEffect: (cb) => { try { cb() } catch (_) {} },
+    useCallback: (cb) => cb,
+    useMemo: (cb) => cb(),
+    useSyncExternalStore: (sub, getSnap) => getSnap(),
+    createElement: (tag, props, ...children) => ({ tag, props, children }),
+    Component: class Component {
+      constructor(props) { this.props = props; this.state = {} }
+    }
+  }
+  ReactMock.Component.prototype.isReactComponent = {}
+
+  const exports = record.factory((spec) => {
+    if (spec === 'react') return ReactMock
+    throw new Error('Unexpected: ' + spec)
+  })
+
+  const registered = {}
+  const allowed = new Set(['slots', 'locale', 'effect', 'get'])
+  const strictTarget = {
+    effect: (fn) => fn(),
+    locale: { register: () => {}, bind: () => (k) => k },
+    slots: {
+      inject: (name, cb) => cb(),
+      register: (opts, comp) => {
+        registered[opts.name || opts.id || 'reg_' + Math.random()] = comp || opts
+        return opts
+      }
+    },
+    get: (name) => {
+      if (name === 'lanSettings' || name === 'settingsScope') return undefined
+      throw new TypeError(`cannot get property "${name}" without inject`)
+    }
+  }
+
+  const strictCtx = new Proxy(strictTarget, {
+    get(target, prop) {
+      if (typeof prop === 'symbol' || prop in Object.prototype) return target[prop]
+      if (allowed.has(prop)) return target[prop]
+      throw new TypeError(`cannot get property "${String(prop)}" without inject`)
+    }
+  })
+
+  assert.doesNotThrow(() => {
+    exports.apply(strictCtx)
+  })
+
+  const cardComponent = registered['plugins.item'] || registered['settings.plugin.item']
+  assert.ok(cardComponent, 'Must register settings component')
+  assert.doesNotThrow(() => {
+    if (typeof cardComponent === 'function') {
+      cardComponent({ ctx: strictCtx })
+    }
+  })
+})
