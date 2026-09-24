@@ -384,4 +384,85 @@ test("host: checkRegisteredInPiAi accurately detects provider via SettingsForms 
   assert.equal(res.ok, true, "removePiAiProvider must safely absorb 'not found' errors")
 })
 
+test("host: boot and reload survives functional getters and profile-shaped dynamicModels without DataCloneError", async () => {
+  const { apply } = await import("../lib/index.js")
+
+  let watchCb = null
+  let currentRawConfig = () => ({
+    enabled: () => true,
+    baseUrl: () => "https://api.cline.bot/api/v1",
+    apiKeyEnv: () => "CLINEBOT_API_KEY",
+    dynamicModels: [
+      {
+        id: "cline-pass/deepseek-v41-flash",
+        name: () => "DeepSeek V41 Flash",
+        description: () => "Official plan model",
+        contextLength: 200000,
+        maxTokens: 8192,
+      },
+    ],
+    accounts: [
+      { label: () => "Primary", apiKeyEnv: () => "CLINEBOT_API_KEY" },
+    ],
+  })
+
+  const mockScope = {
+    get: () => currentRawConfig,
+    watch: (cb) => {
+      watchCb = cb
+      return () => {}
+    },
+    replace: async () => {},
+  }
+
+  const registeredRoutes = {}
+  const mockCtx = {
+    inject: (deps, cb) => {
+      cb({
+        settings: {
+          register: () => mockScope,
+        },
+        effect: () => () => {},
+      })
+    },
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (fn) => fn(),
+  }
+
+  assert.doesNotThrow(() => {
+    apply(mockCtx, currentRawConfig)
+  })
+
+  const makeReq = () => {
+    const req = Readable.from([])
+    req.method = "GET"
+    req.headers = { "sec-fetch-site": "same-origin" }
+    req.socket = { remoteAddress: "127.0.0.1" }
+    return req
+  }
+
+  let status = 0
+  let body = ""
+  const res = {
+    writeHead: (code) => { status = code },
+    end: (data) => { body = data },
+  }
+
+  await registeredRoutes["/dsh-clinebot/status"](makeReq(), res)
+  assert.equal(status, 200)
+  const parsed = JSON.parse(body)
+  assert.equal(parsed.ok, true)
+  assert.equal(parsed.config.dynamicModels[0].id, "cline-pass/deepseek-v41-flash")
+  assert.equal(parsed.config.dynamicModels[0].name, "DeepSeek V41 Flash")
+
+  assert.doesNotThrow(() => {
+    if (watchCb) watchCb(currentRawConfig)
+  })
+})
+
 

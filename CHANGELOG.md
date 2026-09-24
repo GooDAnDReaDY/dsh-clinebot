@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-09-24
+
+### Fixed
+- **DSH Settings Reload & DataCloneError Normalization (#96)**: Extended `plainConfig` in `lib/config.js` to recursively resolve functional getters (`() => current`), nested volatile getter objects, and arrays before passing configuration to `structuredClone`, completely eliminating `DataCloneError: () => current could not be cloned` during Cordis plugin reload and settings updates.
+- **Config Schema Non-Volatile Alignment (#96)**: Removed the `.volatile()` marker from `planSyncedAt`, ensuring that internal synchronization timestamps are preserved as runtime state and not serialized into user settings forms.
+- **Boot and Reload Regression Test (#96)**: Added regression tests covering deep functional getter resolution in `plainConfig` and verifying host boot/reload stability with profile-shaped `dynamicModels`.
+
 ## [0.4.2] - 2026-09-24
 
 ### Fixed
