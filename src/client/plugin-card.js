@@ -49,7 +49,7 @@ function PluginCard(props) {
           React.createElement(
             ErrorBoundary,
             null,
-            React.createElement(SettingsPage, { ...props, ctx: (props && props.ctx) || ctx })
+            React.createElement(SettingsPage, { ...props, ctx: props && props.ctx })
           )
         )
       : null

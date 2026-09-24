@@ -441,6 +441,9 @@ function SettingsPage(props) {
       handleSyncPlanModels,
       handleSetModelsFilter,
       handleToggleModel,
+      planSynced: !!(status?.config?.planSynced || (status?.config?.dynamicModels && status.config.dynamicModels.length > 0)),
+      planSyncedAt: status?.config?.planSyncedAt || 0,
+      defaultModelWarning: status?.config?.defaultModelWarning || '',
       t,
     }),
 

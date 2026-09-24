@@ -456,3 +456,57 @@ test('client: getSnapshot returns stable SNAPSHOT_READY reference without React 
   const snapB = capturedGetSnapshot()
   assert.strictEqual(snapA, snapB, 'Repeated calls to fallback getSnapshot must return the exact same object reference')
 })
+
+test('client: PluginCard renders without ReferenceError when ctx is omitted from props', () => {
+  const record = loadClientRecord()
+  const exports = record.factory(strictRequire([]))
+  let cardComp = null
+  const mockCtx = {
+    effect: (fn) => fn(),
+    locale: { register() {}, bind: () => (k) => k },
+    slots: {
+      inject(name, cb) {
+        return cb()
+      },
+      register(decl, comp) {
+        if (decl.name === 'plugins.item') {
+          cardComp = comp
+        }
+        return decl
+      },
+    },
+    configForms: {
+      get: () => ({
+        subscribe: () => () => {},
+        getSnapshot: () => ({ status: 'ready', writable: true }),
+      }),
+    },
+  }
+  exports.apply(mockCtx)
+  assert.ok(typeof cardComp === 'function', 'cardComp must be a function')
+
+  // Rendering with view: 'page' and no ctx should not throw ReferenceError: ctx is not defined
+  assert.doesNotThrow(() => {
+    cardComp({ view: 'page' })
+  })
+})
+
+test('client: no-undef check on lib/client.js passes with zero undeclared variables', async () => {
+  const { execFileSync } = await import('node:child_process')
+  try {
+    execFileSync('eslint', [
+      '--no-config-lookup',
+      '--rule', 'no-undef: 2',
+      '--global', 'window,document,console,fetch,setTimeout,clearTimeout',
+      path.join(root, 'lib', 'client.js')
+    ], { stdio: 'pipe' })
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      // eslint binary not available, skip CLI lint
+      return
+    }
+    const output = (err.stdout ? err.stdout.toString() : '') + (err.stderr ? err.stderr.toString() : '')
+    assert.fail('no-undef violations found in lib/client.js:\n' + output)
+  }
+})
+

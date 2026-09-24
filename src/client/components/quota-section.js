@@ -44,7 +44,7 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, t }
             'div',
             { className: 'cb-section-desc' },
             usage?.user?.email
-              ? t('quota.account', { email: usage.user.email, plan: usage.plan || 'ClinePass ($9.99/mo)' })
+              ? t('quota.account', { email: usage.user.email, plan: usage.plan || 'ClinePass' })
               : t('quota.desc')
           ),
           React.createElement(
