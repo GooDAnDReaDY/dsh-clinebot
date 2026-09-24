@@ -8,7 +8,7 @@ import { publicConfig, plainConfig } from '../lib/config.js'
 import { smokeChat } from '../lib/cline-client.js'
 import { Readable } from 'node:stream'
 
-function capture(register, { credentials = { set: async () => true } } = {}) {
+function capture(register, { credentials = { set: async () => true }, liveConfig = {} } = {}) {
   const handlers = []
   const ctx = {
     effect: (fn) => fn(),
@@ -21,7 +21,7 @@ function capture(register, { credentials = { set: async () => true } } = {}) {
     credentials,
   }
   register(ctx, {
-    live: () => ({ enabled: true, accounts: [], dynamicModels: [] }),
+    live: () => ({ enabled: true, accounts: [], dynamicModels: [], ...liveConfig }),
     getSettingsApi: () => null,
     syncProviderState: async () => {},
     triggerAutoDiscover: () => {},
@@ -130,8 +130,10 @@ test('POST /save-key rejects disallowed targetEnvName', async () => {
   assert.match(payload.body.error, /Disallowed apiKeyEnv/)
 })
 
-test('POST /save-key accepts valid targetEnvName matching CLINEBOT_API_KEY pattern', async () => {
-  const handler = capture(registerSettingsRoutes).find((route) => route.path === '/dsh-clinebot/save-key').handler
+test('POST /save-key accepts valid targetEnvName matching CLINEBOT_API_KEY pattern when in accounts pool', async () => {
+  const handler = capture(registerSettingsRoutes, {
+    liveConfig: { accounts: [{ label: 'Secondary', apiKeyEnv: 'CLINEBOT_API_KEY_SECONDARY' }] }
+  }).find((route) => route.path === '/dsh-clinebot/save-key').handler
   const req = Readable.from([Buffer.from(JSON.stringify({ apiKey: 'test-key', apiKeyEnv: 'CLINEBOT_API_KEY_SECONDARY' }))])
   req.method = 'POST'
   req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
@@ -143,6 +145,40 @@ test('POST /save-key accepts valid targetEnvName matching CLINEBOT_API_KEY patte
   assert.equal(payload.status, 200)
   assert.equal(payload.body.ok, true)
   assert.equal(payload.body.envName, 'CLINEBOT_API_KEY_SECONDARY')
+})
+
+test('POST /save-key rejects disallowed apiKeyEnv even if forged into accounts', async () => {
+  const handler = capture(registerSettingsRoutes, {
+    liveConfig: { accounts: [{ label: 'Forged', apiKeyEnv: 'OPENAI_API_KEY' }] }
+  }).find((route) => route.path === '/dsh-clinebot/save-key').handler
+  const req = Readable.from([Buffer.from(JSON.stringify({ apiKey: 'test-key', apiKeyEnv: 'OPENAI_API_KEY' }))])
+  req.method = 'POST'
+  req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  req.socket = { remoteAddress: '127.0.0.1' }
+
+  const out = respond()
+  await handler(req, out.res)
+  const payload = out.read()
+  assert.equal(payload.status, 400)
+  assert.equal(payload.body.ok, false)
+  assert.match(payload.body.error, /Disallowed apiKeyEnv/)
+})
+
+test('POST /dsh-clinebot/key/verify rejects insecure remote http baseUrl', async () => {
+  const handler = capture(registerAuthRoutes, {
+    liveConfig: { baseUrl: 'http://insecure-remote.com/api/v1' }
+  }).find((route) => route.path === '/dsh-clinebot/key/verify').handler
+  const req = Readable.from([Buffer.from(JSON.stringify({ key: 'valid-test-key-string' }))])
+  req.method = 'POST'
+  req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  req.socket = { remoteAddress: '127.0.0.1' }
+
+  const out = respond()
+  await handler(req, out.res)
+  const payload = out.read()
+  assert.equal(payload.status, 400)
+  assert.equal(payload.body.ok, false)
+  assert.match(payload.body.error, /Insecure baseUrl/)
 })
 
 test('smokeChat rejects insecure remote http baseUrl', async () => {
