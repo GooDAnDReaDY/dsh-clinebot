@@ -232,4 +232,66 @@ test("routes: /models/toggle and /accounts/active unwrap volatile live getters w
   assert.equal(toggleRes.get().data.ok, true)
 })
 
+test("host: checkRegisteredInPiAi accurately detects provider via SettingsForms describe() without get", async () => {
+  const { checkRegisteredInPiAi, removePiAiProvider } = await import("../lib/provider-sync.js")
+
+  // 1. SettingsForms with describe() returning llm-pi-ai with clinebot provider, no get()
+  const mockSettingsFormsRegistered = {
+    describe: () => [
+      {
+        ns: "llm-pi-ai",
+        value: {
+          providers: {
+            clinebot: { displayName: "ClineBot" }
+          }
+        }
+      }
+    ],
+    mutate: async (ns, ops) => {}
+  }
+
+  const ctxRegistered = {
+    get: (name) => (name === "settings" ? mockSettingsFormsRegistered : null)
+  }
+
+  const isReg = await checkRegisteredInPiAi(ctxRegistered)
+  assert.equal(isReg, true, "checkRegisteredInPiAi must return true when describe() contains clinebot")
+
+  // 2. SettingsForms with describe() without clinebot provider
+  const mockSettingsFormsEmpty = {
+    describe: () => [
+      {
+        ns: "llm-pi-ai",
+        value: {
+          providers: {}
+        }
+      }
+    ]
+  }
+
+  const ctxEmpty = {
+    get: (name) => (name === "settings" ? mockSettingsFormsEmpty : null)
+  }
+
+  const isNotReg = await checkRegisteredInPiAi(ctxEmpty)
+  assert.equal(isNotReg, false, "checkRegisteredInPiAi must return false when describe() lacks clinebot")
+
+  // 3. removePiAiProvider tolerates 'path not found' error during safe remove
+  let mutateCalled = false
+  const mockSettingsFormsNotFound = {
+    mutate: async (ns, ops) => {
+      mutateCalled = true
+      throw new Error("Path not found: providers.clinebot")
+    }
+  }
+
+  const ctxNotFound = {
+    get: (name) => (name === "settings" ? mockSettingsFormsNotFound : null)
+  }
+
+  const res = await removePiAiProvider(ctxNotFound)
+  assert.equal(mutateCalled, true)
+  assert.equal(res.ok, true, "removePiAiProvider must safely absorb 'not found' errors")
+})
+
 
