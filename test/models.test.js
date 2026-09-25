@@ -13,6 +13,9 @@ import {
   formatModelContext,
   formatModelDescription,
   isVisionModel,
+  migrateModelId,
+  migrateModelEntry,
+  OBSOLETE_MODEL_ID_MAP,
   saveModelsDiskCache,
   loadModelsDiskCache,
   getOriginalModelContext,
@@ -291,4 +294,28 @@ test('models: model context customization and authentic original provider specs'
   const deepseek = allOverridden.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
   assert.equal(deepseek.contextLength, 128000)
   assert.equal(deepseek.isContextOverridden, false)
+})
+
+
+test('models: obsolete model ID migration and normalization', async () => {
+  // 1. Direct ID migration mapping
+  assert.equal(migrateModelId('cline-pass/deepseek-v41-flash'), 'cline-pass/deepseek-v4.1-flash')
+  assert.equal(migrateModelId('cline-pass/qwen38-max'), 'cline-pass/qwen3.8-max')
+  assert.equal(migrateModelId('cline-pass/glm-53'), 'cline-pass/glm-5.3')
+  assert.equal(migrateModelId('cline-pass/glm-53-flash'), 'cline-pass/glm-5.3-flash')
+  assert.equal(migrateModelId('cline-pass/muse-spark-13-contributor'), 'cline-pass/muse-spark-1.3-contributor')
+  assert.equal(migrateModelId('cline-pass/kimi-k3'), 'cline-pass/kimi-k3')
+
+  // 2. getAllModels migrates obsolete IDs in dynamicModels
+  const oldDynamic = [
+    { id: 'cline-pass/deepseek-v41-flash', name: 'DeepSeek V41 Flash', contextLength: 200000 },
+    { id: 'cline-pass/qwen38-max', name: 'Qwen38 Max', contextLength: 200000 },
+    { id: 'cline-pass/glm-53', name: 'GLM 53', contextLength: 200000 },
+  ]
+  const normalized = getAllModels(oldDynamic)
+  const ids = normalized.map((m) => m.id)
+  assert.ok(ids.includes('cline-pass/deepseek-v4.1-flash'))
+  assert.ok(ids.includes('cline-pass/qwen3.8-max'))
+  assert.ok(ids.includes('cline-pass/glm-5.3'))
+  assert.ok(!ids.includes('cline-pass/deepseek-v41-flash'))
 })

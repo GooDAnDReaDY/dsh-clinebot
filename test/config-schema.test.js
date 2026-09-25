@@ -59,9 +59,10 @@ test('plainConfig copies volatile field references and resolves function getters
 
   // Config validation must succeed with the normalized object
   const validated = Config(cloned)
-  assert.equal(validated.enabled, true)
-  assert.equal(validated.dynamicModels.length, 1)
-  assert.equal(validated.dynamicModels[0].id, 'cline-pass/deepseek-v41-flash')
+  const plainValidated = plainConfig(validated)
+  assert.equal(plainValidated.enabled, true)
+  assert.equal(plainValidated.dynamicModels.length, 1)
+  assert.equal(plainValidated.dynamicModels[0].id, 'cline-pass/deepseek-v41-flash')
 })
 
 test('volatileConfig filters out non-volatile fields before persistence to DSH settings', () => {

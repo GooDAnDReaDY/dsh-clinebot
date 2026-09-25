@@ -117,3 +117,46 @@ graph LR
     * `lib/updater.js`: SemVer 2.0.0 comparator and host-side one-click plugin updater.
     * `lib/cline-client.js`: ClinePass network client, retry backoff, SWR health probes, token telemetry, Cordis provider builder.
     * `lib/index.js`: Cordis lifecycle, settings registration, `/cline` slash commands, and HTTP route declarations.
+
+
+## 11. Политика маршрутов (Route Security Policy)
+
+Все HTTP-эндпоинты регистрируются через DSH `webServer` под единым префиксом `/dsh-clinebot/` и защищены строгой политикой проверки источника запроса (Origin, Host, Referer, Sec-Fetch-Site, Remote Address).
+
+| Путь | Метод | Проверка источника | Аутентификация / Ограничения | Назначение |
+|---|---|---|---|---|
+| `/dsh-clinebot/status` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Сводный статус плагина: состояние провайдера, ping, квоты, активная учётная запись. Секреты скрыты. |
+| `/dsh-clinebot/config` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Публичная конфигурация: настройки, список аккаунтов (без секретов), переопределения контекста. |
+| `/dsh-clinebot/config` | PUT | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Обновление настроек плагина с синхронизацией в DSH Settings и `llm-pi-ai`. |
+| `/dsh-clinebot/usage` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Телеметрия лимитов и скользящего окна запросов активного аккаунта из SWR-кэша. |
+| `/dsh-clinebot/accounts` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Добавление нового аккаунта в пул с безопасным сохранением ключа в DSH Credentials. |
+| `/dsh-clinebot/accounts/active` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Переключение активного аккаунта, инвалидация кэшей квот и обновление провайдера. |
+| `/dsh-clinebot/accounts/delete` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Удаление аккаунта из пула и очистка связанного секрета из Credentials. |
+| `/dsh-clinebot/models/toggle` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Включение/выключение модели в DSH чате через массив `disabledModels`. |
+| `/dsh-clinebot/models/sync` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Принудительная синхронизация моделей активного тарифного плана ClinePass. |
+| `/dsh-clinebot/models/context` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Настройка размера контекста модели (ручной ввод, дефолт провайдера, оригинальный лимит). |
+| `/dsh-clinebot/key/verify` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; HTTPS enforce | Проверка валидности API-ключа в ClinePass без его сохранения; блокировка небезопасных remote HTTP. |
+| `/dsh-clinebot/save-key` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; allowlist env | Безопасное сохранение API-ключа в хранилище credentials (~/.dsh/.credentials.yaml). |
+| `/dsh-clinebot/smoke` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Запуск быстрого тестового инференса с замером задержки первого токена и валидацией модели. |
+| `/dsh-clinebot/register` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Декларативная регистрация и обновление провайдера ClineBot в `llm-pi-ai`. |
+| `/dsh-clinebot/unregister` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Удаление регистрации провайдера ClineBot из настроек `llm-pi-ai`. |
+| `/dsh-clinebot/update` | POST | `isTrustedUpdateRequest` | Loopback only, Same-Origin, Header `x-dsh-plugin-update: 1` | Безопасное инициирование фонового обновления плагина через `dsh plugin update` / `pnpm`. |
+
+## 12. Что публикуется (Packaging & Distribution Policy)
+
+Состав пакета строго контролируется декларативным белым списком `files` в `package.json` и правилами `.gitignore`:
+
+### 12.1 Состав npm-пакета (`files`)
+* `lib/` — хост-рантайм (`index.js`, `cline-client.js`, `credential-refs.js`, `models.js`, `http.js`, `updater.js`, `routes/`) и собранный бандл клиентского интерфейса (`lib/client.js`).
+* `cordis.patch.yml` — cordis patch-конфигурация внедрения плагина.
+* `README.md` — каноническая пользовательская документация на английском языке.
+* `README.ru.md` — полная пользовательская документация на русском языке.
+* `README.zh.md` — полная пользовательская документация на китайском языке.
+* `CHANGELOG.md` — история изменений и версий.
+* `LICENSE` — лицензия проекта (MIT).
+* `media/visual-verification.png` — визуальное свидетельство интерфейса (входит в дистрибутив для отображения в npm/DSH).
+
+### 12.2 Исключения из публикации (npm и Git)
+* Исключено из npm: `src/` (исходники UI), `test/` (тесты), `scripts/` (скрипты сборки и релиза), `docs/` (архитектурный контракт `docs/design/DESIGN.md` отслеживается только в репозитории).
+* Исключено из Git: `.worktrees/`, `.planning/`, `.dsh-test/`, `node_modules/`, `*.tgz`, `.env*`, `credentials*`, служебные дампы.
+* Дата последней проверки состава пакета: **2026-09-25**.

@@ -252,7 +252,7 @@ function ModelsSection({
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '6px',
-                        background: 'var(--dsw-alias-bg-hover, rgba(0,0,0,0.04))',
+                        background: 'var(--dsw-alias-bg-hover, color-mix(in srgb, currentColor 4%, transparent))',
                         padding: '6px',
                         borderRadius: '6px',
                         border: '1px solid var(--dsw-alias-border-l2)',

@@ -206,6 +206,14 @@ All endpoints are registered under `/dsh-clinebot/*` and protected against untru
 
 ---
 
+## Visual verification
+
+Settings card in DeepSeek Harness, Dark and Light themes side by side:
+
+![dsh-clinebot visual verification](media/visual-verification.png)
+
+---
+
 ## 🧪 Testing
 
 Run the automated test suite:
