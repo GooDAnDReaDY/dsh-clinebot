@@ -454,3 +454,35 @@ test('cline-client: fetchUsageLimits does not sleep/retry on aborted signal (Iss
   assert.equal(res.ok, false)
   assert.equal(attempts, 1, 'Should fail immediately without retrying on AbortError')
 })
+
+test('cline-client: buildPiAiProvider preserves custom overridden contextWindow and maxTokens', () => {
+  const models = [
+    {
+      id: 'cline-pass/kimi-k3',
+      name: 'Kimi K3',
+      contextLength: 2000000,
+      maxTokens: 16384,
+    },
+    {
+      id: 'cline-pass/qwen3.7-max',
+      name: 'Qwen 3.7 Max',
+      contextWindow: 1000000,
+      maxTokens: 8192,
+    },
+  ]
+  const provider = buildPiAiProvider({
+    baseUrl: 'https://api.cline.bot/api/v1',
+    apiKeyEnv: 'MY_KEY',
+    models,
+  })
+
+  const kimi = provider.models.find((m) => m.id === 'cline-pass/kimi-k3')
+  assert.ok(kimi)
+  assert.equal(kimi.contextWindow, 2000000)
+  assert.equal(kimi.maxTokens, 16384)
+
+  const qwen = provider.models.find((m) => m.id === 'cline-pass/qwen3.7-max')
+  assert.ok(qwen)
+  assert.equal(qwen.contextWindow, 1000000)
+  assert.equal(qwen.maxTokens, 8192)
+})

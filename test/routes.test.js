@@ -154,6 +154,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
   const writeRoutes = [
     { path: '/dsh-clinebot/save-key', allowedMethod: 'POST', badBody: {}, goodBody: { apiKey: 'test-key', apiKeyEnv: 'CLINEBOT_API_KEY' } },
     { path: '/dsh-clinebot/models/toggle', allowedMethod: 'POST', badBody: null, goodBody: { disabledModels: ['cline-pass/kimi-k3'] } },
+    { path: '/dsh-clinebot/models/context', allowedMethod: 'POST', badBody: {}, goodBody: { modelId: 'cline-pass/kimi-k3', contextLength: 2000000 } },
     { path: '/dsh-clinebot/accounts/active', allowedMethod: 'POST', badBody: null, goodBody: { account: 'CLINEBOT_API_KEY_WORK' } },
     { path: '/dsh-clinebot/accounts', allowedMethod: 'POST', badBody: { apiKey: '' }, goodBody: { label: 'New Acc', apiKeyEnv: 'CLINEBOT_API_KEY_2', apiKey: 'test-key' } },
     { path: '/dsh-clinebot/accounts/delete', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } },
@@ -188,7 +189,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
   }
 
   // 4. Settings service unavailable (503) for settings-dependent write endpoints
-  const settingsDependent = ['/dsh-clinebot/models/toggle', '/dsh-clinebot/accounts/active', '/dsh-clinebot/accounts', '/dsh-clinebot/accounts/delete', '/dsh-clinebot/config']
+  const settingsDependent = ['/dsh-clinebot/models/toggle', '/dsh-clinebot/models/context', '/dsh-clinebot/accounts/active', '/dsh-clinebot/accounts', '/dsh-clinebot/accounts/delete', '/dsh-clinebot/config']
   for (const p of settingsDependent) {
     const { getHandler } = setupRouter({ settingsAvailable: false })
     const handler = getHandler(p)
@@ -208,6 +209,50 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     assert.equal(out.read().body.ok, true)
     assert.deepEqual(plainConfig(getReplacedConfig()).disabledModels, ['cline-pass/kimi-k3'])
     assert.equal(isProviderSynced(), true)
+  }
+
+  // 5b. Successful write execution: /models/context
+  {
+    const { getHandler, getReplacedConfig, isProviderSynced } = setupRouter()
+    const handler = getHandler('/dsh-clinebot/models/context')
+
+    // Single model override
+    const outSingle = createRes()
+    await handler(createReq({ method: 'POST', body: { modelId: 'cline-pass/kimi-k3', contextLength: 2000000, maxTokens: 16384 } }), outSingle.res)
+    assert.equal(outSingle.read().status, 200)
+    assert.equal(outSingle.read().body.ok, true)
+    const replacedSingle = plainConfig(getReplacedConfig())
+    assert.ok(Array.isArray(replacedSingle.modelContextOverrides))
+    assert.equal(replacedSingle.modelContextOverrides.length, 1)
+    assert.equal(replacedSingle.modelContextOverrides[0].modelId, 'cline-pass/kimi-k3')
+    assert.equal(replacedSingle.modelContextOverrides[0].contextLength, 2000000)
+    assert.equal(isProviderSynced(), true)
+
+    // mode: 'all-original'
+    const outAllOrig = createRes()
+    await handler(createReq({ method: 'POST', body: { mode: 'all-original' } }), outAllOrig.res)
+    assert.equal(outAllOrig.read().status, 200)
+    const replacedAllOrig = plainConfig(getReplacedConfig())
+    assert.ok(replacedAllOrig.modelContextOverrides.length >= 2)
+    const kimiOrig = replacedAllOrig.modelContextOverrides.find((o) => o.modelId === 'cline-pass/kimi-k3')
+    assert.equal(kimiOrig.contextLength, 2000000)
+    const dsOrig = replacedAllOrig.modelContextOverrides.find((o) => o.modelId === 'cline-pass/deepseek-v4-flash')
+    assert.equal(dsOrig.contextLength, 128000)
+
+    // mode: 'all-default'
+    const outReset = createRes()
+    await handler(createReq({ method: 'POST', body: { mode: 'all-default' } }), outReset.res)
+    assert.equal(outReset.read().status, 200)
+    const replacedReset = plainConfig(getReplacedConfig())
+    assert.deepEqual(replacedReset.modelContextOverrides, [])
+
+    // Single model reset
+    await handler(createReq({ method: 'POST', body: { modelId: 'cline-pass/kimi-k3', contextLength: 2000000 } }), createRes().res)
+    const outSingleReset = createRes()
+    await handler(createReq({ method: 'POST', body: { modelId: 'cline-pass/kimi-k3', reset: true } }), outSingleReset.res)
+    assert.equal(outSingleReset.read().status, 200)
+    const replacedAfterReset = plainConfig(getReplacedConfig())
+    assert.deepEqual(replacedAfterReset.modelContextOverrides, [])
   }
 
   // 6. Successful write execution: /accounts/active
