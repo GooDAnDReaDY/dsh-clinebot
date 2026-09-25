@@ -5,6 +5,7 @@ function ModelsSection({
   keyPresent,
   busy,
   handleSyncPlanModels,
+  handleUpdateModelContext,
   handleSetModelsFilter,
   handleToggleModel,
   planSynced,
@@ -15,6 +16,21 @@ function ModelsSection({
   const syncDateStr = planSyncedAt ? new Date(planSyncedAt).toLocaleDateString() : ''
   const [search, setSearch] = React.useState('')
   const [viewFilter, setViewFilter] = React.useState('all')
+  const [editingModelId, setEditingModelId] = React.useState(null)
+  const [customCtxVal, setCustomCtxVal] = React.useState('')
+
+  function formatCtx(num) {
+    num = Number(num) || 200000
+    if (num >= 1000000) {
+      const m = num / 1000000
+      return `${m % 1 === 0 ? m : m.toFixed(1)}M`
+    }
+    if (num >= 1000) {
+      const k = num / 1000
+      return `${k % 1 === 0 ? k : k.toFixed(1)}K`
+    }
+    return String(num)
+  }
 
   const filteredModels = modelsList.filter((m) => {
     if (viewFilter === 'vision') {
@@ -67,6 +83,28 @@ function ModelsSection({
             onClick: handleSyncPlanModels,
           },
           busy === 'sync-models' ? t('models.syncing') : t('models.sync')
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: 'cb-btn',
+            disabled: !!busy,
+            title: t('models.apply_original_all'),
+            onClick: () => typeof handleUpdateModelContext === 'function' && handleUpdateModelContext({ mode: 'all-original' }),
+          },
+          t('models.apply_original_all')
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: 'cb-btn',
+            disabled: !!busy,
+            title: t('models.reset_contexts_all'),
+            onClick: () => typeof handleUpdateModelContext === 'function' && handleUpdateModelContext({ mode: 'all-default' }),
+          },
+          t('models.reset_contexts_all')
         ),
         React.createElement('button', { type: 'button', className: 'cb-btn', onClick: () => handleSetModelsFilter('all') }, t('models.all')),
         React.createElement('button', { type: 'button', className: 'cb-btn', onClick: () => handleSetModelsFilter('vision') }, t('models.vision')),
@@ -173,6 +211,12 @@ function ModelsSection({
         null,
         filteredModels.map((m) => {
           const isEnabled = !disabledSet.has(m.id)
+          const defaultCtx = m.defaultContextLength || m.clineContextLength || 200000
+          const origCtx = m.originalContextLength || 200000
+          const origProv = m.originalProvider || 'Original'
+          const isOverridden = Boolean(m.isContextOverridden)
+          const isOriginal = isOverridden && (m.contextLength === origCtx)
+
           return React.createElement(
             'tr',
             { key: m.id },
@@ -197,7 +241,140 @@ function ModelsSection({
                 : null
             ),
             React.createElement('td', null, React.createElement('code', null, m.id)),
-            React.createElement('td', null, `${Math.round((m.contextLength || 128000) / 1000)}k`),
+            React.createElement(
+              'td',
+              null,
+              editingModelId === m.id
+                ? React.createElement(
+                    'div',
+                    {
+                      style: {
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        background: 'var(--dsw-alias-bg-hover, rgba(0,0,0,0.04))',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--dsw-alias-border-l2)',
+                      },
+                    },
+                    React.createElement(
+                      'div',
+                      { style: { display: 'flex', gap: '4px', flexWrap: 'wrap' } },
+                      React.createElement(
+                        'button',
+                        {
+                          type: 'button',
+                          className: `cb-btn ${!isOverridden ? 'cb-btn-active' : ''}`,
+                          style: { padding: '2px 6px', fontSize: '11px' },
+                          onClick: () => {
+                            if (typeof handleUpdateModelContext === 'function') {
+                              handleUpdateModelContext({ modelId: m.id, reset: true })
+                            }
+                            setEditingModelId(null)
+                          },
+                        },
+                        t('models.ctx_default', { ctx: formatCtx(defaultCtx) })
+                      ),
+                      React.createElement(
+                        'button',
+                        {
+                          type: 'button',
+                          className: `cb-btn ${isOriginal ? 'cb-btn-active' : ''}`,
+                          style: { padding: '2px 6px', fontSize: '11px' },
+                          onClick: () => {
+                            if (typeof handleUpdateModelContext === 'function') {
+                              handleUpdateModelContext({ modelId: m.id, contextLength: origCtx })
+                            }
+                            setEditingModelId(null)
+                          },
+                        },
+                        t('models.ctx_original', { ctx: formatCtx(origCtx), provider: origProv })
+                      )
+                    ),
+                    React.createElement(
+                      'div',
+                      { style: { display: 'flex', gap: '4px', alignItems: 'center' } },
+                      React.createElement('input', {
+                        type: 'number',
+                        className: 'cb-input',
+                        style: { height: '24px', fontSize: '11px', padding: '0 6px', width: '120px' },
+                        placeholder: t('models.ctx_custom_placeholder'),
+                        value: customCtxVal,
+                        onChange: (e) => setCustomCtxVal(e.target.value),
+                      }),
+                      React.createElement(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'cb-btn cb-btn-primary',
+                          style: { padding: '2px 8px', fontSize: '11px' },
+                          onClick: () => {
+                            const val = parseInt(customCtxVal, 10)
+                            if (val > 0 && typeof handleUpdateModelContext === 'function') {
+                              handleUpdateModelContext({ modelId: m.id, contextLength: val })
+                            }
+                            setEditingModelId(null)
+                          },
+                        },
+                        t('models.ctx_save')
+                      ),
+                      React.createElement(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'cb-btn',
+                          style: { padding: '2px 6px', fontSize: '11px' },
+                          onClick: () => setEditingModelId(null),
+                        },
+                        t('models.ctx_cancel')
+                      )
+                    )
+                  )
+                : React.createElement(
+                    'div',
+                    { style: { display: 'flex', alignItems: 'center', gap: '6px' } },
+                    React.createElement(
+                      'span',
+                      {
+                        style: { fontWeight: '600', cursor: 'pointer' },
+                        onClick: () => {
+                          setCustomCtxVal(String(m.contextLength || defaultCtx))
+                          setEditingModelId(m.id)
+                        },
+                      },
+                      formatCtx(m.contextLength || defaultCtx)
+                    ),
+                    isOverridden
+                      ? React.createElement(
+                          'span',
+                          {
+                            className: isOriginal ? 'cb-badge cb-badge-ok' : 'cb-badge cb-badge-warn',
+                            style: { fontSize: '10px', padding: '1px 6px', cursor: 'pointer' },
+                            onClick: () => {
+                              setCustomCtxVal(String(m.contextLength || defaultCtx))
+                              setEditingModelId(m.id)
+                            },
+                          },
+                          isOriginal ? t('models.ctx_tag_original') : t('models.ctx_tag_custom')
+                        )
+                      : null,
+                    React.createElement(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'cb-btn',
+                        style: { padding: '2px 6px', fontSize: '11px', lineHeight: '1', border: 'none', background: 'transparent' },
+                        title: t('models.ctx_edit'),
+                        onClick: () => {
+                          setCustomCtxVal(String(m.contextLength || defaultCtx))
+                          setEditingModelId(m.id)
+                        },
+                      },
+                      '✎'
+                    )
+                  )
+            ),
             React.createElement(
               'td',
               null,

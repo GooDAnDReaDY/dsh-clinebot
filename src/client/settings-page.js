@@ -137,6 +137,20 @@ function SettingsPage(props) {
     })
   }
 
+  async function handleUpdateModelContext(payload) {
+    await performAction('update-context', async () => {
+      const res = await fetch(`${ROUTE_PREFIX}/models/context`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      setMsg(t('models.context_updated_msg'))
+      await load()
+    })
+  }
+
   async function handleSyncPlanModels() {
     await performAction('sync-models', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/models/sync`, { method: 'POST' })
@@ -433,6 +447,7 @@ function SettingsPage(props) {
       keyPresent,
       busy,
       handleSyncPlanModels,
+      handleUpdateModelContext,
       handleSetModelsFilter,
       handleToggleModel,
       planSynced: !!(status?.config?.planSynced || (status?.config?.dynamicModels && status.config.dynamicModels.length > 0)),

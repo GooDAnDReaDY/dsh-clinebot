@@ -15,6 +15,8 @@ import {
   isVisionModel,
   saveModelsDiskCache,
   loadModelsDiskCache,
+  getOriginalModelContext,
+  getOriginalModelProvider,
 } from '../lib/models.js'
 import os from 'node:os'
 import path from 'node:path'
@@ -238,4 +240,55 @@ test('models: reasoning efforts catalog coverage and dynamic assignment', () => 
   const parsed = parsePlanIncludedModels('Includes Future DeepSeek Reasoning Model')
   assert.equal(parsed.length, 1)
   assert.ok(Array.isArray(parsed[0].reasoningEfforts) && parsed[0].reasoningEfforts.length > 0)
+})
+
+test('models: model context customization and authentic original provider specs', () => {
+  // 1. Verify original specs
+  assert.equal(getOriginalModelContext('cline-pass/kimi-k3'), 2000000)
+  assert.equal(getOriginalModelProvider('cline-pass/kimi-k3'), 'Moonshot AI')
+  assert.equal(getOriginalModelContext('qwen3.7-max'), 1000000)
+  assert.equal(getOriginalModelProvider('qwen3.7-max'), 'Alibaba Cloud')
+  assert.equal(getOriginalModelContext('minimax-m3'), 1000000)
+  assert.equal(getOriginalModelProvider('minimax-m3'), 'MiniMax')
+  assert.equal(getOriginalModelContext('mimo-v2.5'), 1000000)
+  assert.equal(getOriginalModelProvider('mimo-v2.5'), 'Xiaomi')
+  assert.equal(getOriginalModelContext('deepseek-v4-flash'), 128000)
+  assert.equal(getOriginalModelProvider('deepseek-v4-flash'), 'DeepSeek')
+
+  // 2. formatModelContext handles various units cleanly
+  assert.equal(formatModelContext(2000000), '2M')
+  assert.equal(formatModelContext(1000000), '1M')
+  assert.equal(formatModelContext(1500000), '1.5M')
+  assert.equal(formatModelContext(200000), '200K')
+  assert.equal(formatModelContext(128000), '128K')
+
+  // 3. Default models catalog has clineContextLength and original specs
+  const allDefault = getAllModels([])
+  const kimi = allDefault.find((m) => m.id === 'cline-pass/kimi-k3')
+  assert.ok(kimi)
+  assert.equal(kimi.contextLength, 200000)
+  assert.equal(kimi.defaultContextLength, 200000)
+  assert.equal(kimi.originalContextLength, 2000000)
+  assert.equal(kimi.originalProvider, 'Moonshot AI')
+  assert.equal(kimi.isContextOverridden, false)
+
+  // 4. Overrides apply correctly
+  const overrides = [
+    { modelId: 'cline-pass/kimi-k3', contextLength: 2000000, maxTokens: 16384 },
+    { modelId: 'cline-pass/qwen3.7-max', contextLength: 1000000 },
+  ]
+  const allOverridden = getAllModels([], overrides)
+  const kimiOverridden = allOverridden.find((m) => m.id === 'cline-pass/kimi-k3')
+  assert.equal(kimiOverridden.contextLength, 2000000)
+  assert.equal(kimiOverridden.maxTokens, 16384)
+  assert.equal(kimiOverridden.isContextOverridden, true)
+  assert.equal(kimiOverridden.defaultContextLength, 200000)
+
+  const qwenOverridden = allOverridden.find((m) => m.id === 'cline-pass/qwen3.7-max')
+  assert.equal(qwenOverridden.contextLength, 1000000)
+  assert.equal(qwenOverridden.isContextOverridden, true)
+
+  const deepseek = allOverridden.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
+  assert.equal(deepseek.contextLength, 128000)
+  assert.equal(deepseek.isContextOverridden, false)
 })

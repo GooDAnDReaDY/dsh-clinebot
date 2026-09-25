@@ -179,6 +179,7 @@ dsh-clinebot:
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI 兼容接口地址 |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | 凭据管理系统中的密钥名称 |
 | `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | 默认选中的模型 ID |
+| `modelContextOverrides` | `array` | `[]` | 用户自定义模型上下文窗口与最大 Token 数量覆盖 |
 | `timeoutMs` | `number` | `15000` | HTTP 请求超时时间（毫秒） |
 | `smokeTimeoutMs` | `number` | `25000` | 探活测试超时时间（毫秒） |
 | `enabledModels` | `array` | `[...]` | 允许在聊天下拉框中显示的可用模型列表 |

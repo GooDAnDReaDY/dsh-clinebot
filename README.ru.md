@@ -177,6 +177,7 @@ dsh-clinebot:
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | Базовый URL OpenAI-совместимого API ClinePass |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Имя переменной / ключа в хранилище credentials |
 | `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Модель, выбираемая по умолчанию |
+| `modelContextOverrides` | `array` | `[]` | Пользовательские переопределения размера контекста и лимита токенов |
 | `timeoutMs` | `number` | `15000` | Таймаут HTTP-запросов (мс) |
 | `smokeTimeoutMs` | `number` | `25000` | Таймаут тестового пинга (мс) |
 | `enabledModels` | `array` | `[...]` | Список моделей, активных в селекторе чата |

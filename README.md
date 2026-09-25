@@ -182,6 +182,7 @@ dsh-clinebot:
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI-compatible base URL |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Environment variable / credentials key name |
 | `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Default selected model ID |
+| `modelContextOverrides` | `array` | `[]` | User-defined model context length and max token overrides |
 | `timeoutMs` | `number` | `15000` | HTTP request timeout in milliseconds |
 | `smokeTimeoutMs` | `number` | `25000` | Smoke test latency ping timeout |
 | `enabledModels` | `array` | `[...]` | List of models exposed in the DSH chat picker |
