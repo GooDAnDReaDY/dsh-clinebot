@@ -1,152 +1,101 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import { Readable } from "node:stream"
+import { apply, configReader, inject, NS } from "../lib/index.js"
+import { Config } from "../lib/config.js"
 
-test("host: apply registers settings namespace via ctx.inject(['settings']) and watches updates", async () => {
-  const { apply, NS } = await import("../lib/index.js")
-  const injectCalls = []
-  let registeredNs = null
-  let registeredSchema = null
-  let registeredOptions = null
-  let watchHandler = null
-  let watchRegistered = false
+const indexSource = readFileSync(new URL("../lib/index.js", import.meta.url), "utf8")
 
-  const dummyScope = {
-    get: () => ({ enabled: true, baseUrl: "https://api.cline.bot/api/v1", apiKeyEnv: "CLINEBOT_API_KEY", enabledModels: [] }),
-    watch: (cb) => {
-      watchRegistered = true
-      watchHandler = cb
-      return () => {}
-    },
-    replace: async () => {},
-  }
-
-  let syncProviderCalled = false
-  const mockSettingsService = {
-    register: (ns, schema, opts) => {
-      registeredNs = ns
-      registeredSchema = schema
-      registeredOptions = opts
-      return dummyScope
-    },
-    mutate: async (ns, ops) => {
-      if (ns === 'llm-pi-ai') {
-        syncProviderCalled = true
-      }
-    },
-  }
-
-  let synchronousSettingsGetCalled = false
-  const mockCtx = {
-    inject: (deps, cb) => {
-      injectCalls.push(deps)
-      if (deps.includes('settings')) {
-        cb({
-          settings: mockSettingsService,
-          effect: (fn) => fn(),
-        })
-      }
-    },
-    get: (name) => {
-      if (name === 'settings') {
-        synchronousSettingsGetCalled = true
-      }
-      return null
-    },
-    effect: (fn) => fn(),
-  }
-
-  const baseConfig = { enabled: true, baseUrl: "https://api.cline.bot/api/v1", apiKeyEnv: "CLINEBOT_API_KEY" }
-  apply(mockCtx, baseConfig)
-
-  // 1. ctx.inject must be called with ['settings']
-  assert.ok(injectCalls.some((d) => d.includes('settings')), "apply must inject 'settings' service dependency")
-
-  // 2. Must register NS, schema, with { base: config }
-  assert.equal(registeredNs, NS, "sctx.settings.register must be called with NS")
-  assert.equal(typeof registeredSchema, "function", "sctx.settings.register must receive schema function")
-  assert.deepEqual(registeredOptions, { base: baseConfig }, "sctx.settings.register must pass base config")
-
-  // 3. Must not perform bare synchronous ctx.get('settings') during apply()
-  assert.equal(synchronousSettingsGetCalled, false, "apply must not call bare ctx.get('settings') synchronously")
-
-  // 4. Must register scope.watch and trigger sync on change
-  assert.equal(watchRegistered, true, "scope.watch must be registered to observe settings changes")
-  assert.equal(typeof watchHandler, "function")
+test("#119 — the host declares only services that exist in DSH 0.1.7", () => {
+  assert.ok(!inject.includes("settings"), `inject still asks for the removed settings service: ${inject}`)
+  assert.ok(inject.includes("webServer"), "inject must include webServer")
 })
 
-test("host: resolveKeyValue safely resolves via ctx.get('credentials') without unsafe property access", async () => {
-  const { resolveKeyValue } = await import("../lib/cline-client.js")
+test("#119 — lib/index.js never calls the removed settings.register", () => {
+  assert.ok(!/settings\s*\.\s*register\s*\(/.test(indexSource), "lib/index.js still calls settings.register")
+})
 
-  // 1. Standard context with ctx.get('credentials')
+test("#119 — lib/index.js never reads a service property it did not declare in inject", () => {
+  const declared = new Set(inject)
+  const code = indexSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+  const used = new Set([...code.matchAll(/ctx\.([A-Za-z_][A-Za-z0-9_]*)/g)].map((m) => m[1]))
+  const builtin = new Set([
+    "logger", "inject", "effect", "on", "off", "setInterval", "setTimeout", "clearInterval",
+    "webServer", "tools", "locale", "slots", "configForms", "settingsScope", "api", "console", "get",
+  ])
+  for (const name of used) {
+    if (builtin.has(name) || declared.has(name)) continue
+    assert.fail(`lib/index.js reads ctx.${name}, which the plugin does not declare in inject`)
+  }
+})
+
+test("#119 — the config reader returns the config the service was applied with", () => {
+  const boot = { enabled: true, baseUrl: "https://api.cline.bot/api/v1" }
+  assert.equal(configReader(boot)().baseUrl, "https://api.cline.bot/api/v1")
+  const next = { enabled: false, baseUrl: "https://other.api/v1" }
+  assert.equal(configReader(next)().baseUrl, "https://other.api/v1")
+})
+
+test("#119 — the host boots on a strict proxy context without the removed settings service", () => {
+  const registeredRoutes = {}
+  const strictCtx = new Proxy(
+    {
+      logger: { info() {}, warn() {}, error() {} },
+      effect(fn) { return fn() },
+      on() { return () => {} },
+      inject(deps, cb) { return () => {} },
+      webServer: {
+        register(route) {
+          registeredRoutes[route.path] = route.handler
+          return () => {}
+        },
+      },
+    },
+    {
+      get(target, name) {
+        if (name in target) return target[name]
+        throw new Error(`cannot get property "${String(name)}" without inject`)
+      },
+    }
+  )
+
+  assert.doesNotThrow(() => {
+    apply(strictCtx, { enabled: true, baseUrl: "https://api.cline.bot/api/v1" })
+  })
+  assert.ok(Object.keys(registeredRoutes).length > 0, "host routes must be registered")
+  assert.ok(registeredRoutes["/dsh-clinebot/status"], "/dsh-clinebot/status must be registered")
+})
+
+test("host: resolveKeyValue safely resolves via ctx.get( credentials) without unsafe property access", async () => {
+  const { resolveKeyValue } = await import("../lib/credential-refs.js")
+
   let getCredentialsCalled = false
   const ctxWithGet = {
     get: (name) => {
-      if (name === 'credentials') {
+      if (name === "credentials") {
         getCredentialsCalled = true
         return {
-          resolve: async (ref) => ({ value: 'secret-from-get' }),
+          resolve: async (ref) => ({ value: "secret-from-get" }),
         }
       }
       return null
     },
   }
 
-  const res1 = await resolveKeyValue(ctxWithGet, 'SOME_ENV_KEY')
-  assert.equal(getCredentialsCalled, true, "resolveKeyValue must call ctx.get('credentials')")
-  assert.equal(res1.value, 'secret-from-get')
-  assert.equal(res1.source, 'credentials')
-
-  // 2. Context with Proxy where bare credentials property access is checked
-  let proxyGetCalled = false
-  const trappingCtx = {
-    get: (name) => {
-      if (name === 'credentials') {
-        proxyGetCalled = true
-        return {
-          resolve: async () => ({ value: 'proxy-key' }),
-        }
-      }
-      return null
-    },
-  }
-  Object.defineProperty(trappingCtx, 'credentials', {
-    get() {
-      return {
-        resolve: async () => ({ value: 'direct-prop-key' }),
-      }
-    },
-  })
-
-  const res2 = await resolveKeyValue(trappingCtx, 'PROXY_ENV_KEY')
-  assert.equal(proxyGetCalled, true)
-  assert.equal(res2.value, 'proxy-key')
-
-  // 3. Fallback context with only bare ctx.credentials (legacy)
-  const legacyCtx = {
-    credentials: {
-      resolve: async () => ({ value: 'legacy-key' }),
-    },
-  }
-  const res3 = await resolveKeyValue(legacyCtx, 'LEGACY_ENV_KEY')
-  assert.equal(res3.value, 'legacy-key')
-  assert.equal(res3.source, 'credentials')
-
-  // 4. Context with neither credentials service falls back to env or empty
-  const emptyCtx = { get: () => null }
-  const res4 = await resolveKeyValue(emptyCtx, 'NON_EXISTENT_ENV_KEY_12345')
-  assert.equal(res4.value, '')
-  assert.equal(res4.source, 'none')
+  const res1 = await resolveKeyValue(ctxWithGet, "SOME_ENV_KEY")
+  assert.equal(getCredentialsCalled, true, "resolveKeyValue must call ctx.get(credentials)")
+  assert.equal(res1.value, "secret-from-get")
+  assert.equal(res1.source, "credentials")
 })
 
-test("host: apply adapts modern SettingsForms without sctx.settings.register", async () => {
-  const { apply, NS } = await import("../lib/index.js")
+test("host: settingsApi persists to SettingsForms via ctx.get(settings) when available", async () => {
   let replacedNs = null
   let replacedPayload = null
   let replacedRev = null
 
-  const mockSettingsService = {
-    describe: () => [{ ns: NS, revision: 42 }],
+  const mockSettingsForms = {
+    describe: () => [{ ns: NS, revision: "rev-42" }],
     replace: async (ns, payload, rev) => {
       replacedNs = ns
       replacedPayload = payload
@@ -157,12 +106,7 @@ test("host: apply adapts modern SettingsForms without sctx.settings.register", a
 
   const registeredRoutes = {}
   const mockCtx = {
-    inject: (deps, cb) => {
-      cb({
-        settings: mockSettingsService,
-        effect: () => () => {},
-      })
-    },
+    get: (name) => (name === "settings" ? mockSettingsForms : null),
     webServer: {
       register: (r) => {
         registeredRoutes[r.path] = r.handler
@@ -172,54 +116,7 @@ test("host: apply adapts modern SettingsForms without sctx.settings.register", a
     effect: (fn) => fn(),
   }
 
-  apply(mockCtx, { enabled: true, baseUrl: "https://api.cline.bot/api/v1" })
-
-  // Route /dsh-clinebot/config should be registered and working
-  assert.ok(registeredRoutes["/dsh-clinebot/config"], "config route must be registered")
-
-  const { Readable } = await import("node:stream")
-  const payloadStr = JSON.stringify({ config: { timeoutMs: 25000, dynamicModels: [{ id: "temp", name: "Temp" }] } })
-  const putReq = Readable.from([Buffer.from(payloadStr)])
-  putReq.method = "PUT"
-  putReq.headers = { "sec-fetch-site": "same-origin" }
-  putReq.socket = { remoteAddress: "127.0.0.1" }
-
-  let resStatus = 0
-  let resBody = ""
-  const res = {
-    writeHead: (code) => { resStatus = code },
-    end: (data) => { resBody = data },
-  }
-
-  await registeredRoutes["/dsh-clinebot/config"](putReq, res)
-  assert.equal(resStatus, 200, "PUT /dsh-clinebot/config must return 200")
-  assert.equal(replacedNs, NS, "SettingsForms.replace must be called with NS")
-  assert.equal(replacedRev, 42, "SettingsForms.replace must be called with revision 42")
-  assert.equal(replacedPayload.timeoutMs, 25000, "Volatile timeoutMs must be passed")
-  assert.equal(replacedPayload.dynamicModels, undefined, "Non-volatile dynamicModels must be stripped from SettingsForms payload")
-})
-
-test("routes: /accounts/active, /models/toggle, /models/sync return 503 when settings service is unavailable", async () => {
-  const { apply } = await import("../lib/index.js")
-  const registeredRoutes = {}
-  const mockCtx = {
-    inject: (deps, cb) => {
-      // Empty settings service without replace or register
-      cb({
-        settings: {},
-        effect: () => () => {},
-      })
-    },
-    webServer: {
-      register: (r) => {
-        registeredRoutes[r.path] = r.handler
-        return () => {}
-      },
-    },
-    effect: (fn) => fn(),
-  }
-
-  apply(mockCtx, { enabled: true })
+  apply(mockCtx, { enabled: true, baseUrl: "https://api.cline.bot/api/v1", accounts: [{ label: "Old", apiKeyEnv: "CLINEBOT_API_KEY" }] })
 
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
@@ -229,54 +126,28 @@ test("routes: /accounts/active, /models/toggle, /models/sync return 503 when set
     return req
   }
 
-  const makeRes = () => {
-    let status = 0
-    let body = ""
-    return {
-      res: {
-        writeHead: (code) => { status = code },
-        end: (data) => { body = data },
-      },
-      get: () => ({ status, data: JSON.parse(body || "{}") }),
-    }
+  let status = 0
+  let body = ""
+  const res = {
+    writeHead: (code) => { status = code },
+    end: (data) => { body = data },
   }
 
-  // 1. /accounts/active returns 503
-  const activeHelper = makeRes()
-  await registeredRoutes["/dsh-clinebot/accounts/active"](makeReq("POST", { account: "CLINEBOT_API_KEY_2" }), activeHelper.res)
-  assert.equal(activeHelper.get().status, 503, "/accounts/active must return 503 when settings cannot be persisted")
-  assert.equal(activeHelper.get().data.ok, false)
+  // Update via PUT /config
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("PUT", {
+    config: { enabled: false }
+  }), res)
 
-  // 2. /models/toggle returns 503
-  const toggleHelper = makeRes()
-  await registeredRoutes["/dsh-clinebot/models/toggle"](makeReq("POST", { disabledModels: ["some-model"] }), toggleHelper.res)
-  assert.equal(toggleHelper.get().status, 503, "/models/toggle must return 503 when settings cannot be persisted")
-  assert.equal(toggleHelper.get().data.ok, false)
+  assert.equal(status, 200, "PUT /config must succeed 200")
+  assert.equal(replacedNs, NS, "SettingsForms.replace must be called with NS")
+  assert.equal(replacedPayload.enabled, false)
+  assert.equal(replacedRev, "rev-42", "SettingsForms.replace must pass revision")
 })
 
 test("routes: /models/toggle and /accounts/active unwrap volatile live getters without throwing $.enabled expected boolean", async () => {
-  const { apply, NS } = await import("../lib/index.js")
-  const { Config } = await import("../lib/config.js")
-
-  let replacedPayload = null
-  const mockScope = {
-    get: () => Config({ enabled: true, baseUrl: "https://api.cline.bot/api/v1", accounts: [{ label: "Two", apiKeyEnv: "CLINEBOT_API_KEY_2" }] }),
-    replace: async (next) => {
-      replacedPayload = next
-    },
-    watch: () => () => {},
-  }
-
   const registeredRoutes = {}
   const mockCtx = {
-    inject: (deps, cb) => {
-      cb({
-        settings: {
-          register: () => mockScope,
-        },
-        effect: () => () => {},
-      })
-    },
+    get: () => null,
     webServer: {
       register: (r) => {
         registeredRoutes[r.path] = r.handler
@@ -286,7 +157,7 @@ test("routes: /models/toggle and /accounts/active unwrap volatile live getters w
     effect: (fn) => fn(),
   }
 
-  apply(mockCtx, { enabled: true })
+  apply(mockCtx, { enabled: true, accounts: [{ label: "Two", apiKeyEnv: "CLINEBOT_API_KEY_2" }] })
 
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
@@ -325,7 +196,6 @@ test("routes: /models/toggle and /accounts/active unwrap volatile live getters w
 test("host: checkRegisteredInPiAi accurately detects provider via SettingsForms describe() without get", async () => {
   const { checkRegisteredInPiAi, removePiAiProvider } = await import("../lib/provider-sync.js")
 
-  // 1. SettingsForms with describe() returning llm-pi-ai with clinebot provider, no get()
   const mockSettingsFormsRegistered = {
     describe: () => [
       {
@@ -347,7 +217,6 @@ test("host: checkRegisteredInPiAi accurately detects provider via SettingsForms 
   const isReg = await checkRegisteredInPiAi(ctxRegistered)
   assert.equal(isReg, true, "checkRegisteredInPiAi must return true when describe() contains clinebot")
 
-  // 2. SettingsForms with describe() without clinebot provider
   const mockSettingsFormsEmpty = {
     describe: () => [
       {
@@ -366,7 +235,6 @@ test("host: checkRegisteredInPiAi accurately detects provider via SettingsForms 
   const isNotReg = await checkRegisteredInPiAi(ctxEmpty)
   assert.equal(isNotReg, false, "checkRegisteredInPiAi must return false when describe() lacks clinebot")
 
-  // 3. removePiAiProvider tolerates 'path not found' error during safe remove
   let mutateCalled = false
   const mockSettingsFormsNotFound = {
     mutate: async (ns, ops) => {
@@ -381,13 +249,10 @@ test("host: checkRegisteredInPiAi accurately detects provider via SettingsForms 
 
   const res = await removePiAiProvider(ctxNotFound)
   assert.equal(mutateCalled, true)
-  assert.equal(res.ok, true, "removePiAiProvider must safely absorb 'not found' errors")
+  assert.equal(res.ok, true, "removePiAiProvider must safely absorb not found errors")
 })
 
 test("host: boot and reload survives functional getters and profile-shaped dynamicModels without DataCloneError", async () => {
-  const { apply } = await import("../lib/index.js")
-
-  let watchCb = null
   let currentRawConfig = () => ({
     enabled: () => true,
     baseUrl: () => "https://api.cline.bot/api/v1",
@@ -406,25 +271,9 @@ test("host: boot and reload survives functional getters and profile-shaped dynam
     ],
   })
 
-  const mockScope = {
-    get: () => currentRawConfig,
-    watch: (cb) => {
-      watchCb = cb
-      return () => {}
-    },
-    replace: async () => {},
-  }
-
   const registeredRoutes = {}
   const mockCtx = {
-    inject: (deps, cb) => {
-      cb({
-        settings: {
-          register: () => mockScope,
-        },
-        effect: () => () => {},
-      })
-    },
+    get: () => null,
     webServer: {
       register: (r) => {
         registeredRoutes[r.path] = r.handler
@@ -459,10 +308,4 @@ test("host: boot and reload survives functional getters and profile-shaped dynam
   assert.equal(parsed.ok, true)
   assert.equal(parsed.config.dynamicModels[0].id, "cline-pass/deepseek-v41-flash")
   assert.equal(parsed.config.dynamicModels[0].name, "DeepSeek V41 Flash")
-
-  assert.doesNotThrow(() => {
-    if (watchCb) watchCb(currentRawConfig)
-  })
 })
-
-

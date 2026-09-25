@@ -332,7 +332,13 @@ test('failover: llm/stream waterfall intercepts 429 error and rotates active acc
   }
   const mutated = []
   const mockSettings = {
-    register: () => mockSettingsScope,
+    describe: () => [{ ns: "dsh-clinebot", revision: "1" }],
+    replace: async (ns, payload) => {
+      if (payload?.activeAccount) currentActive = payload.activeAccount
+    },
+    update: async (ns, payload) => {
+      if (payload?.activeAccount) currentActive = payload.activeAccount
+    },
     mutate: async (ns, ops) => mutated.push({ ns, ops }),
   }
 
