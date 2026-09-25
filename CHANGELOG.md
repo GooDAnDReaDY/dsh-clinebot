@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-09-25
+
+### Fixed
+- **Obsolete Settings Service Dependency Removal (#119)**: Removed ` settings` from `inject` and eradicated legacy `ctx.inject([settings], ...)` and `sctx.settings.register(...)` calls, adapting to DSH 0.1.7 kernel architecture where the Cordis `settings` service was removed.
+- **Config Reader Export (#119)**: Exported `configReader(config)` returning `() => config` to provide standard DSH configuration introspection.
+- **Defensive SettingsForms Adapter (#119)**: Implemented lightweight `settingsApi` adapter providing `get()`, `replace()`, `update()`, and `watch()` without declaring `settings` in `inject`, accessing `ctx?.get?.(settings)` defensively.
+- **Failover & Settings Regression Tests (#119)**: Added 5 strict DoD regression tests verifying `inject`, absence of `settings.register`, proxy property safety, config reader, and strict proxy boot.
+
 ## [0.4.5] - 2026-09-25
 
 ### Fixed
