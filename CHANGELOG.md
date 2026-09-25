@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-09-25
+
+### Added
+- **Model Context Customization & Authentic Provider Specs (#110, GitHub #8)**: User-controlled context length configuration allowing custom context windows per model, resetting to gateway defaults (128K/200K), or one-click application of authentic original model specifications (Moonshot Kimi 2M, Alibaba Qwen 1M, MiniMax 1M, Xiaomi MiMo 1M, DeepSeek 128K, Zhipu GLM 128K).
+- **Batch Context Controls (#110)**: Global 1-click batch actions in the models management header ("⚡ Original Specs" and "↺ Reset Contexts") to instantly apply or reset context windows across all models simultaneously.
+- **Immediate DSH Provider Synchronization (#110)**: Dynamic synchronization of overridden context windows directly to `llm-pi-ai` provider settings, preventing chat sessions from prematurely compacting or truncating context at 128k/200k when larger context is selected.
+- **Context Management Endpoint (`POST /dsh-clinebot/models/context`) (#110)**: Full REST route supporting single model updates (`modelId`, `contextLength`, `maxTokens`), single model resets (`reset: true`), batch mode `all-original`, batch mode `all-default`, and array bulk overrides.
+- **Interactive UI & Localization (#110)**: Inline context badges, quick edit popover, clean token input, and bilingual English / Chinese localization across all context actions.
+
 ## [0.4.3] - 2026-09-24
 
 ### Fixed
