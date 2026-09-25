@@ -5,6 +5,17 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-09-25
+
+### Fixed
+- **Obsolete Model ID Migration & Canonical Normalization (#103)**: Automatically migrate historical model identifiers lacking dots (e.g., `deepseek-v41-flash` -> `deepseek-v4.1-flash`, `qwen38-max` -> `qwen3.8-max`, `glm-53` -> `glm-5.3`, `glm-53-flash` -> `glm-5.3-flash`, `muse-spark-13-contributor` -> `muse-spark-1.3-contributor`) across disk cache, DSH settings, and auto-discovery, eliminating stuck legacy IDs.
+- **Config Schema Test Assertion for Schemastery 3.18.4 (#112)**: Aligned `test/config-schema.test.js` with Schemastery 3.18.4 volatile getter behavior using `plainConfig(validated).enabled`.
+- **UI Color Compliance & Token Hardening (#116)**: Replaced hardcoded `rgba()` fallbacks in `accounts-section.js` and `models-section.js` with canonical DSH `color-mix()` and design tokens.
+- **Decomposition Compliance (#117)**: Extracted credentials helpers into `lib/credential-refs.js`, reducing `lib/cline-client.js` from 590 to 511 lines (well below the 600-line ceiling).
+- **Client Localization Pruning (#115)**: Removed 6 obsolete dead locale keys from `src/client/locales.js` in both `en` and `zh`.
+- **Route Policy & Packaging Contract (#113)**: Documented mandatory «Политика маршрутов» (16 registered endpoints) and «Что публикуется» sections in `docs/design/DESIGN.md`.
+- **Visual Verification Evidence (#114)**: Added dual-theme production visual verification artifact `media/visual-verification.png` and embedded under `## Visual verification` in `README.md`.
+
 ## [0.4.4] - 2026-09-25
 
 ### Added
