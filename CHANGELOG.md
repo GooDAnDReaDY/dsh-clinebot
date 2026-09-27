@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.7] - 2026-09-27
+
+### Fixed & Cleaned
+- **Unused Imports Elimination (#121)**: Pruned dead imports across `lib/index.js` (`resolveKeyValue`, `smokeChat`, `fetchUsageLimits`, `checkRegisteredInPiAi`, `buildStatus`), `lib/config.js` (`getDefaultModelIds`), and `lib/routes/settings.js` (`isTrustedSettingsRequest`).
+- **Design Contract Synchronization (#122)**: Updated `docs/design/DESIGN.md` Section 2.1 and Section 12.2 to accurately reflect DSH 0.1.7 settings architecture (`inject = ['webServer', 'credentials']`, direct `settingsApi` adapter, `docs/plans/` exclusion).
+- **Peer Dependencies Alignment (#123)**: Removed obsolete `@deepseek-ai/dsh-settings` from `peerDependencies` in `package.json`, eliminating pnpm peer dependency installation warnings.
+- **Repository Hygiene & Service Plans Exclusion (#124)**: Untracked internal implementation plan `docs/plans/13-issues-refactor-plan.md` and added `docs/plans/` to `.gitignore`.
+- **Root Artifact Cleanup (#125)**: Removed stale packed `.tgz` archives from DEV root, ensuring clean workspace.
+
 ## [0.4.6] - 2026-09-25
 
 ### Fixed
