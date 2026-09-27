@@ -7,7 +7,7 @@
 The plugin consists of two runtime boundaries conforming to DSH authoring standards:
 
 ### 2.1 Host Runtime (`lib/index.js`, `lib/cline-client.js`, `lib/models.js`, `lib/http.js`)
-* **Cordis Service Registration & Modern Settings Adapter**: Declares `inject = ['settings', 'webServer', 'credentials']` and integrates with DSH settings via `ctx.inject(['settings'], (sctx) => ...)`. Supports both legacy `sctx.settings.register` and modern DSH 0.1.7+ `SettingsForms` (`svc.replace` / `svc.update` / `svc.describe`). Only user-editable fields are marked `.volatile()`, while `volatileConfig()` strips derived and non-volatile properties prior to DSH settings writes.
+* **Cordis Service Registration & Modern Settings Adapter**: Declares `inject = ['webServer', 'credentials']`, adapting to DSH 0.1.7+ where the legacy Cordis `settings` service was removed. Uses a lightweight direct `settingsApi` adapter (`get`, `replace`, `update`, `watch`) accessing `ctx?.get?.('settings')` defensively, and exports `configReader(config)` for DSH configuration introspection. Only user-editable fields are marked `.volatile()`, while `volatileConfig()` strips derived and non-volatile properties prior to DSH settings writes.
 * **Safe Service Resolution**: Service lookups utilize defensive proxy resolution `(ctx?.get && ctx.get('credentials')) || ctx?.credentials` to prevent `undefined` properties on Cordis proxies.
 * **Credential Isolation**: The plugin NEVER stores plain API keys in its configuration. The setting `apiKeyEnv` holds the credential identifier (default: `CLINEBOT_API_KEY`), resolved via `ctx.get('credentials').resolve()` or `process.env`.
 * **State Synchronization & Auto-Registration**: Mutates the core `llm-pi-ai` settings space (`op: 'set', path: ['providers', 'clinebot']`) declaratively and automatically when enabled or key is saved.
@@ -158,5 +158,5 @@ graph LR
 
 ### 12.2 Исключения из публикации (npm и Git)
 * Исключено из npm: `src/` (исходники UI), `test/` (тесты), `scripts/` (скрипты сборки и релиза), `docs/` (архитектурный контракт `docs/design/DESIGN.md` отслеживается только в репозитории).
-* Исключено из Git: `.worktrees/`, `.planning/`, `.dsh-test/`, `node_modules/`, `*.tgz`, `.env*`, `credentials*`, служебные дампы.
+* Исключено из Git: `.worktrees/`, `.planning/`, `docs/plans/`, `.dsh-test/`, `node_modules/`, `*.tgz`, `.env*`, `credentials*`, служебные дампы.
 * Дата последней проверки состава пакета: **2026-09-25**.
