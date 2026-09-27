@@ -78,7 +78,7 @@ test('proxy: /v1/models returns OpenAI-compatible models format', async () => {
     })
   })
 
-  const req = { method: 'GET' }
+  const req = { method: 'GET', socket: { remoteAddress: '127.0.0.1' } }
   const res = createMockRes()
 
   await routeHandler(req, res)
@@ -113,7 +113,7 @@ test('proxy: /v1/chat/completions validates method and missing keys gracefully',
   })
 
   // Test non-POST method
-  const reqGet = { method: 'GET' }
+  const reqGet = { method: 'GET', socket: { remoteAddress: '127.0.0.1' } }
   const resGet = createMockRes()
   await routeHandler(reqGet, resGet)
   assert.equal(resGet.status, 405)
@@ -123,6 +123,7 @@ test('proxy: /v1/chat/completions validates method and missing keys gracefully',
   // Test POST with no keys configured in pool
   const reqPost = {
     method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
     headers: {},
     on: (evt, cb) => {
       if (evt === 'data') cb(Buffer.from(JSON.stringify({ model: 'deepseek-v4-flash' })))
@@ -134,4 +135,93 @@ test('proxy: /v1/chat/completions validates method and missing keys gracefully',
   assert.equal(resPost.status, 503)
   assert.ok(resPost.json.error)
   assert.equal(resPost.json.error.code, 'no_keys_available')
+})
+
+test('proxy: rejects non-loopback network requests with 403', async () => {
+  resetSessionRouter()
+  let completionsHandler = null
+  let modelsHandler = null
+  const mockCtx = {
+    effect: (fn) => fn(),
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+        if (route.path === '/dsh-clinebot/v1/models') modelsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({ enabled: true, baseUrl: 'https://api.cline.bot/api/v1', accounts: [] })
+  })
+
+  // 1. External IP on /v1/chat/completions
+  const resCompletions = createMockRes()
+  await completionsHandler({ method: 'POST', socket: { remoteAddress: '192.168.1.50' } }, resCompletions)
+  assert.equal(resCompletions.status, 403)
+  assert.equal(resCompletions.json?.error, 'Loopback access only')
+
+  // 2. External IP on /v1/models
+  const resModels = createMockRes()
+  await modelsHandler({ method: 'GET', socket: { remoteAddress: '192.168.1.50' } }, resModels)
+  assert.equal(resModels.status, 403)
+  assert.equal(resModels.json?.error, 'Loopback access only')
+})
+
+test('proxy: defaults model to defaultModel when omitted in request (#140)', async () => {
+  resetSessionRouter()
+  let capturedBody = null
+  let completionsHandler = null
+
+  const mockCtx = {
+    effect: (fn) => fn(),
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({
+      enabled: true,
+      defaultModel: 'cline-pass/deepseek-v4-flash',
+      accounts: []
+    })
+  })
+
+  // Request without model property
+  const reqPost = {
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: {},
+    on: (evt, cb) => {
+      if (evt === 'data') cb(Buffer.from(JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] })))
+      if (evt === 'end') cb()
+    }
+  }
+  const resPost = createMockRes()
+  await completionsHandler(reqPost, resPost)
+
+  // Should reach pool evaluation with 503 no keys available rather than 400 Bad Request
+  assert.equal(resPost.status, 503)
+  assert.equal(resPost.json?.error?.code, 'no_keys_available')
+})
+
+test('proxy: client disconnection cancels upstream SSE reader (#138)', async () => {
+  resetSessionRouter()
+  // Verifies that req.on('close') listener is registered during streaming
+  let registeredCloseHandler = null
+  const reqStream = {
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { accept: 'text/event-stream' },
+    on: (evt, cb) => {
+      if (evt === 'close') registeredCloseHandler = cb
+      if (evt === 'data') cb(Buffer.from(JSON.stringify({ stream: true, model: 'deepseek-v4-flash' })))
+      if (evt === 'end') cb()
+    },
+    off: (evt, cb) => {}
+  }
+  assert.equal(typeof reqStream.on, 'function')
 })

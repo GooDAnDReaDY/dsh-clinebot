@@ -7,7 +7,11 @@ import {
   isAccountInCooldown,
   clearAccountCooldown,
   resetSessionRouter,
-  releaseSession
+  releaseSession,
+  pruneSessions,
+  MAX_SESSIONS,
+  SESSION_TTL_MS,
+  getSessionRouterStatus
 } from '../lib/session-router.js'
 
 test('session-router: selectLeastUsedAccount picks account with lowest percentUsed', () => {
@@ -93,4 +97,43 @@ test('session-router: releaseSession removes session mapping', () => {
 
   const res = resolveSessionAccount('temp-session', pool)
   assert.equal(res.reason, 'new_session_assigned')
+})
+
+test('session-router: LRU bounds and capacity eviction', () => {
+  resetSessionRouter()
+  const pool = [{ id: 'acc1', percentUsed: 10, present: true }]
+
+  // Fill up to custom max limit 3
+  const now = Date.now()
+  for (let i = 1; i <= 3; i++) {
+    resolveSessionAccount(`session-${i}`, pool)
+  }
+
+  const statusBefore = getSessionRouterStatus()
+  assert.equal(statusBefore.activeSessionsCount, 3)
+
+  // prune with maxLimit = 2
+  pruneSessions(now, 2, SESSION_TTL_MS)
+  const statusAfter = getSessionRouterStatus()
+  assert.equal(statusAfter.activeSessionsCount, 2)
+  assert.equal(statusAfter.maxSessions, MAX_SESSIONS)
+})
+
+test('session-router: TTL expiration removes stale sessions', () => {
+  resetSessionRouter()
+  const pool = [
+    { id: 'acc1', percentUsed: 10, present: true },
+    { id: 'acc2', percentUsed: 50, present: true }
+  ]
+
+  resolveSessionAccount('stale-session', pool)
+  const status = getSessionRouterStatus()
+  assert.equal(status.activeSessionsCount, 1)
+
+  // Fast forward past SESSION_TTL_MS
+  const future = Date.now() + SESSION_TTL_MS + 1000
+  pruneSessions(future, MAX_SESSIONS, SESSION_TTL_MS)
+
+  const statusAfter = getSessionRouterStatus()
+  assert.equal(statusAfter.activeSessionsCount, 0)
 })
