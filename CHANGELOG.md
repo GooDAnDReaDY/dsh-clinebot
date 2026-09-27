@@ -5,6 +5,18 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-09-27
+
+### Security
+- **Loopback Proxy Access Protection (#133)**: Strictly restricted OpenAI-compatible proxy endpoints (`POST /dsh-clinebot/v1/chat/completions` and `GET /dsh-clinebot/v1/models`) to loopback callers (`127.0.0.1`, `::1`, `localhost`). External network requests are rejected immediately with HTTP 403 Forbidden (`Loopback access only`).
+
+### Added & Improved
+- **Session Router Bounded Memory & LRU Eviction (#134)**: Introduced hard session limit `MAX_SESSIONS = 1000` and session expiration TTL `SESSION_TTL_MS = 24h` in `lib/session-router.js`. Prevents unbounded Map growth under high concurrency by pruning expired sessions and evicting least-recently-used sessions.
+
+### Fixed & Cleaned
+- **Dead & Test-Only Exports Elimination (#135)**: Pruned dead and internal-only exports across server modules (`USAGE_CACHE_TTL_MS` in `lib/cline-client.js`, `queueSaveStats` in `lib/stats-storage.js`, and `migrateModelId`, `getOriginalModelProvider`, `findModel`, `getDefaultModelIds` in `lib/models.js`), aligning module boundaries with public contract.
+- **Design Token Purity in Progress Bar (#136)**: Replaced hardcoded fallback hex `#f87171` in `src/client/progress-bar.js` with semantic design system token `var(--dsw-alias-status-danger)`, eliminating color hardcodes across all client components.
+
 ## [0.4.8] - 2026-09-27
 
 ### Added

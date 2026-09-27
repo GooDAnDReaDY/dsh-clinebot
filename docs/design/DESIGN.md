@@ -140,8 +140,8 @@ graph LR
 | `/dsh-clinebot/smoke` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Запуск быстрого тестового инференса с замером задержки первого токена и валидацией модели. |
 | `/dsh-clinebot/register` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Декларативная регистрация и обновление провайдера ClineBot в `llm-pi-ai`. |
 | `/dsh-clinebot/unregister` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Удаление регистрации провайдера ClineBot из настроек `llm-pi-ai`. |
-| `/dsh-clinebot/v1/chat/completions` | POST | Transparent Loopback Proxy | Loopback / OpenAI-compatible client | Прозрачный потоковый OpenAI-совместимый прокси с failover при HTTP 429 и сессионным роутингом. |
-| `/dsh-clinebot/v1/models` | GET | Transparent Loopback Proxy | Loopback / OpenAI-compatible client | Каталог активных моделей ClinePass в OpenAI-формате. |
+| `/dsh-clinebot/v1/chat/completions` | POST | Loopback Only (`isLoopbackAddress`) | Loopback (127.0.0.1, ::1); 403 otherwise | Прозрачный потоковый OpenAI-совместимый прокси с защитой loopback, failover при HTTP 429 и сессионным роутингом. |
+| `/dsh-clinebot/v1/models` | GET | Loopback Only (`isLoopbackAddress`) | Loopback (127.0.0.1, ::1); 403 otherwise | Каталог активных моделей ClinePass в OpenAI-формате с обязательной loopback-защитой. |
 | `/dsh-clinebot/stats` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Сводная персистентная статистика запросов и токенов (~/.dsh/clinebot-stats.json). |
 | `/dsh-clinebot/stats/reset` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Сброс накопленной статистики использования токенов. |
 | `/dsh-clinebot/update` | POST | `isTrustedUpdateRequest` | Loopback only, Same-Origin, Header `x-dsh-plugin-update: 1` | Безопасное инициирование фонового обновления плагина через `dsh plugin update` / `pnpm`. |
@@ -149,8 +149,8 @@ graph LR
 ## 12. Архитектура версии 0.4.8 (Pack Features)
 
 ### 12.1 Transparent Loopback Proxy & Session Routing (`lib/routes/proxy.js`, `lib/session-router.js`)
-* **Loopback Proxy (`/dsh-clinebot/v1`)**: Выступает локальным мостом между DSH `llm-pi-ai` и облаком ClinePass. Поддерживает стриминг SSE, отслеживание токенов инференса, прозрачный failover на резервный ключ при HTTP 429 до отправки первого чанка клиенту.
-* **Sticky Session Least-Used Routing**: При старте новой сессии выбирает аккаунт из пула с максимальным остатком квоты (`remainingPercent`). Закрепляет аккаунт за сессией (`sessionId`). При 429 или исчерпании квоты временно переводит ключ в кулдаун и переключает сессию на следующий доступный аккаунт. Реализовано автоматическое восстановление из кулдауна (`cooldownExpiresAt`).
+* **Loopback Proxy (`/dsh-clinebot/v1`)**: Выступает локальным мостом между DSH `llm-pi-ai` и облаком ClinePass. Эндпоинты строго ограничены loopback-интерфейсом (`isLoopbackAddress(req.socket?.remoteAddress)` -> 403 Forbidden для внешних сетевых запросов). Поддерживает стриминг SSE, отслеживание токенов инференса, прозрачный failover на резервный ключ при HTTP 429 до отправки первого чанка клиенту.
+* **Sticky Session Least-Used Routing & Bounded Memory**: При старте новой сессии выбирает аккаунт из пула с максимальным остатком квоты (`remainingPercent`). Закрепляет аккаунт за сессией (`sessionId`). Для предотвращения утечек памяти при высокой нагрузке размер таблицы сессий ограничен константой `MAX_SESSIONS = 1000`, а устаревшие сессии вытесняются по TTL (`SESSION_TTL_MS = 24h`) и LRU-алгоритму (`pruneSessions`). При 429 или исчерпании квоты временно переводит ключ в кулдаун и переключает сессию на следующий доступный аккаунт. Реализовано автоматическое восстановление из кулдауна (`cooldownExpiresAt`).
 
 ### 12.2 Persistent JSON Analytics (`lib/stats-storage.js`)
 * Персистентное хранилище метрик в `~/.dsh/clinebot-stats.json`.

@@ -4,22 +4,18 @@ import {
   CLINE_MODELS,
   PROVIDER_ID,
   DEFAULT_MODEL_ID,
-  findModel,
   isSupportedModel,
   getAllModels,
-  getDefaultModelIds,
   getActiveModelIds,
   parsePlanIncludedModels,
   formatModelContext,
   formatModelDescription,
   isVisionModel,
-  migrateModelId,
   migrateModelEntry,
   OBSOLETE_MODEL_ID_MAP,
   saveModelsDiskCache,
   loadModelsDiskCache,
   getOriginalModelContext,
-  getOriginalModelProvider,
 } from '../lib/models.js'
 import os from 'node:os'
 import path from 'node:path'
@@ -44,18 +40,18 @@ test('models: catalog integrity', () => {
 })
 
 test('models: lookup functions', () => {
-  const defaultModel = findModel(DEFAULT_MODEL_ID)
+  const all = getAllModels()
+  const defaultModel = all.find(m => m.id === DEFAULT_MODEL_ID)
   assert.ok(defaultModel)
   assert.equal(defaultModel.name, 'DeepSeek V4 Flash')
 
-  assert.equal(findModel('unknown-model'), null)
+  assert.equal(all.find(m => m.id === 'unknown-model') || null, null)
   assert.equal(isSupportedModel('cline-pass/kimi-k3'), true)
   assert.equal(isSupportedModel('gpt-4o'), false)
 
-  const all = getAllModels()
   assert.equal(all.length, CLINE_MODELS.length)
 
-  const defaultIds = getDefaultModelIds()
+  const defaultIds = all.map(m => m.id)
   assert.equal(defaultIds.length, CLINE_MODELS.length)
   assert.ok(defaultIds.includes(DEFAULT_MODEL_ID))
 })
@@ -105,7 +101,7 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
   assert.equal(planModelsOnly.length, 1)
   assert.equal(planModelsOnly[0].id, 'cline-pass/newsupermodel-v1')
   assert.equal(planModelsOnly[0].unverified, false)
-  assert.ok(findModel('cline-pass/newsupermodel-v1', dynamicList))
+  assert.ok(planModelsOnly.some(m => m.id === 'cline-pass/newsupermodel-v1'))
   assert.ok(isSupportedModel('cline-pass/newsupermodel-v1', dynamicList))
 })
 
@@ -232,8 +228,9 @@ test('models: reasoning efforts catalog coverage and dynamic assignment', () => 
     'cline-pass/mimo-v2.5',
     'cline-pass/mimo-v2.5-pro',
   ]
+  const allCatalog = getAllModels()
   for (const id of reasoningIds) {
-    const m = findModel(id)
+    const m = allCatalog.find(item => item.id === id)
     assert.ok(m, 'Model must exist: ' + id)
     assert.ok(Array.isArray(m.reasoningEfforts) && m.reasoningEfforts.length > 0, 'Model must have reasoningEfforts: ' + id)
     assert.ok(m.reasoningEfforts.includes('low') && m.reasoningEfforts.includes('high'), 'Model must include low and high: ' + id)
@@ -246,17 +243,19 @@ test('models: reasoning efforts catalog coverage and dynamic assignment', () => 
 })
 
 test('models: model context customization and authentic original provider specs', () => {
-  // 1. Verify original specs
+  // 1. Verify original specs via catalog
+  const catalog = getAllModels([])
+  const findOriginal = (id) => catalog.find(m => m.id === id || m.id === `cline-pass/${id}`)
   assert.equal(getOriginalModelContext('cline-pass/kimi-k3'), 2000000)
-  assert.equal(getOriginalModelProvider('cline-pass/kimi-k3'), 'Moonshot AI')
+  assert.equal(findOriginal('cline-pass/kimi-k3')?.originalProvider, 'Moonshot AI')
   assert.equal(getOriginalModelContext('qwen3.7-max'), 1000000)
-  assert.equal(getOriginalModelProvider('qwen3.7-max'), 'Alibaba Cloud')
+  assert.equal(findOriginal('qwen3.7-max')?.originalProvider, 'Alibaba Cloud')
   assert.equal(getOriginalModelContext('minimax-m3'), 1000000)
-  assert.equal(getOriginalModelProvider('minimax-m3'), 'MiniMax')
+  assert.equal(findOriginal('minimax-m3')?.originalProvider, 'MiniMax')
   assert.equal(getOriginalModelContext('mimo-v2.5'), 1000000)
-  assert.equal(getOriginalModelProvider('mimo-v2.5'), 'Xiaomi')
+  assert.equal(findOriginal('mimo-v2.5')?.originalProvider, 'Xiaomi')
   assert.equal(getOriginalModelContext('deepseek-v4-flash'), 128000)
-  assert.equal(getOriginalModelProvider('deepseek-v4-flash'), 'DeepSeek')
+  assert.equal(findOriginal('deepseek-v4-flash')?.originalProvider, 'DeepSeek')
 
   // 2. formatModelContext handles various units cleanly
   assert.equal(formatModelContext(2000000), '2M')
@@ -298,13 +297,14 @@ test('models: model context customization and authentic original provider specs'
 
 
 test('models: obsolete model ID migration and normalization', async () => {
-  // 1. Direct ID migration mapping
-  assert.equal(migrateModelId('cline-pass/deepseek-v41-flash'), 'cline-pass/deepseek-v4.1-flash')
-  assert.equal(migrateModelId('cline-pass/qwen38-max'), 'cline-pass/qwen3.8-max')
-  assert.equal(migrateModelId('cline-pass/glm-53'), 'cline-pass/glm-5.3')
-  assert.equal(migrateModelId('cline-pass/glm-53-flash'), 'cline-pass/glm-5.3-flash')
-  assert.equal(migrateModelId('cline-pass/muse-spark-13-contributor'), 'cline-pass/muse-spark-1.3-contributor')
-  assert.equal(migrateModelId('cline-pass/kimi-k3'), 'cline-pass/kimi-k3')
+  // 1. Direct ID migration mapping via migrateModelEntry and OBSOLETE_MODEL_ID_MAP
+  assert.equal(migrateModelEntry({ id: 'cline-pass/deepseek-v41-flash' }).id, 'cline-pass/deepseek-v4.1-flash')
+  assert.equal(migrateModelEntry({ id: 'cline-pass/qwen38-max' }).id, 'cline-pass/qwen3.8-max')
+  assert.equal(migrateModelEntry({ id: 'cline-pass/glm-53' }).id, 'cline-pass/glm-5.3')
+  assert.equal(migrateModelEntry({ id: 'cline-pass/glm-53-flash' }).id, 'cline-pass/glm-5.3-flash')
+  assert.equal(migrateModelEntry({ id: 'cline-pass/muse-spark-13-contributor' }).id, 'cline-pass/muse-spark-1.3-contributor')
+  assert.equal(migrateModelEntry({ id: 'cline-pass/kimi-k3' }).id, 'cline-pass/kimi-k3')
+  assert.equal(OBSOLETE_MODEL_ID_MAP['cline-pass/deepseek-v41-flash'], 'cline-pass/deepseek-v4.1-flash')
 
   // 2. getAllModels migrates obsolete IDs in dynamicModels
   const oldDynamic = [
