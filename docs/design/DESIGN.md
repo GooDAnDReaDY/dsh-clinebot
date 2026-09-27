@@ -140,14 +140,37 @@ graph LR
 | `/dsh-clinebot/smoke` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Запуск быстрого тестового инференса с замером задержки первого токена и валидацией модели. |
 | `/dsh-clinebot/register` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Декларативная регистрация и обновление провайдера ClineBot в `llm-pi-ai`. |
 | `/dsh-clinebot/unregister` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Удаление регистрации провайдера ClineBot из настроек `llm-pi-ai`. |
+| `/dsh-clinebot/v1/chat/completions` | POST | Transparent Loopback Proxy | Loopback / OpenAI-compatible client | Прозрачный потоковый OpenAI-совместимый прокси с failover при HTTP 429 и сессионным роутингом. |
+| `/dsh-clinebot/v1/models` | GET | Transparent Loopback Proxy | Loopback / OpenAI-compatible client | Каталог активных моделей ClinePass в OpenAI-формате. |
+| `/dsh-clinebot/stats` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Сводная персистентная статистика запросов и токенов (~/.dsh/clinebot-stats.json). |
+| `/dsh-clinebot/stats/reset` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Сброс накопленной статистики использования токенов. |
 | `/dsh-clinebot/update` | POST | `isTrustedUpdateRequest` | Loopback only, Same-Origin, Header `x-dsh-plugin-update: 1` | Безопасное инициирование фонового обновления плагина через `dsh plugin update` / `pnpm`. |
 
-## 12. Что публикуется (Packaging & Distribution Policy)
+## 12. Архитектура версии 0.4.8 (Pack Features)
+
+### 12.1 Transparent Loopback Proxy & Session Routing (`lib/routes/proxy.js`, `lib/session-router.js`)
+* **Loopback Proxy (`/dsh-clinebot/v1`)**: Выступает локальным мостом между DSH `llm-pi-ai` и облаком ClinePass. Поддерживает стриминг SSE, отслеживание токенов инференса, прозрачный failover на резервный ключ при HTTP 429 до отправки первого чанка клиенту.
+* **Sticky Session Least-Used Routing**: При старте новой сессии выбирает аккаунт из пула с максимальным остатком квоты (`remainingPercent`). Закрепляет аккаунт за сессией (`sessionId`). При 429 или исчерпании квоты временно переводит ключ в кулдаун и переключает сессию на следующий доступный аккаунт. Реализовано автоматическое восстановление из кулдауна (`cooldownExpiresAt`).
+
+### 12.2 Persistent JSON Analytics (`lib/stats-storage.js`)
+* Персистентное хранилище метрик в `~/.dsh/clinebot-stats.json`.
+* Атомарная запись (`.tmp` + rename) с дебаунсом (500 мс).
+* Агрегация по дням, месяцам, моделям и аккаунтам, фиксация 429 ошибок.
+
+### 12.3 Reasoning Defaults & Custom Models (`lib/models.js`, `lib/config.js`)
+* Дефолтный `reasoning_effort` (`low`, `medium`, `high`, `max`) для reasoning-моделей в конфигурации и UI.
+* Поддержка пользовательских моделей (`config.customModels`) с подмешиванием в каталог и DSH chat picker.
+
+### 12.4 Quota UX & Proactive Monitoring
+* Человекочитаемый обратный отсчёт (`formatResetCountdown`) для недельных и месячных окон сброса.
+* Предупреждающий баннер в UI и статусная индикация `⚠️ < 10%` при критическом остатке квоты.
+
+## 13. Что публикуется (Packaging & Distribution Policy)
 
 Состав пакета строго контролируется декларативным белым списком `files` в `package.json` и правилами `.gitignore`:
 
-### 12.1 Состав npm-пакета (`files`)
-* `lib/` — хост-рантайм (`index.js`, `cline-client.js`, `credential-refs.js`, `models.js`, `http.js`, `updater.js`, `routes/`) и собранный бандл клиентского интерфейса (`lib/client.js`).
+### 13.1 Состав npm-пакета (`files`)
+* `lib/` — хост-рантайм (`index.js`, `cline-client.js`, `credential-refs.js`, `models.js`, `http.js`, `updater.js`, `session-router.js`, `stats-storage.js`, `routes/`) и собранный бандл клиентского интерфейса (`lib/client.js`).
 * `cordis.patch.yml` — cordis patch-конфигурация внедрения плагина.
 * `README.md` — каноническая пользовательская документация на английском языке.
 * `README.ru.md` — полная пользовательская документация на русском языке.
@@ -156,7 +179,7 @@ graph LR
 * `LICENSE` — лицензия проекта (MIT).
 * `media/visual-verification.png` — визуальное свидетельство интерфейса (входит в дистрибутив для отображения в npm/DSH).
 
-### 12.2 Исключения из публикации (npm и Git)
+### 13.2 Исключения из публикации (npm и Git)
 * Исключено из npm: `src/` (исходники UI), `test/` (тесты), `scripts/` (скрипты сборки и релиза), `docs/` (архитектурный контракт `docs/design/DESIGN.md` отслеживается только в репозитории).
 * Исключено из Git: `.worktrees/`, `.planning/`, `docs/plans/`, `.dsh-test/`, `node_modules/`, `*.tgz`, `.env*`, `credentials*`, служебные дампы.
-* Дата последней проверки состава пакета: **2026-09-25**.
+* Дата последней проверки состава пакета: **2026-09-27**.

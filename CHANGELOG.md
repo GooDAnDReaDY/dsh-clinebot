@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-09-27
+
+### Added
+- **Transparent Loopback Proxy (#127)**: High-performance streaming proxy endpoints at `/dsh-clinebot/v1/chat/completions` and `/dsh-clinebot/v1/models` compatible with OpenAI spec. Features zero-downtime retry on HTTP 429 before stream commits, live SSE token tracking, and direct binding into DSH `llm-pi-ai` provider.
+- **Sticky Session Least-Used Routing (#128)**: Session-aware routing selecting account with maximum quota remaining (`remainingPercent`) at session inception. Pins active session to selected account and triggers seamless failover on quota exhaustion or HTTP 429, with automatic cooldown expiration recovery.
+- **Persistent JSON Token Analytics (#129)**: Atomic file-based telemetry storage at `~/.dsh/clinebot-stats.json` tracking cumulative prompt/completion tokens, requests, and rate limits across models and accounts with debounced write operations. Accessible via `GET /dsh-clinebot/stats` and resettable via `POST /dsh-clinebot/stats/reset`.
+- **Per-Model Reasoning Effort Defaults & Custom Models (#130)**: Fine-grained `reasoning_effort` defaults (`low`, `medium`, `high`, `max`) per reasoning model in configuration and UI. Added support for user-defined custom models (`config.customModels`) integrated into dynamic catalog.
+- **Quota UX & Proactive Monitoring (#131)**: Human-readable reset countdown timer (`formatResetCountdown`) for rolling weekly and monthly quotas, proactive warning banners in settings and progress bars when remaining quota drops below 10%, and monthly billing cycle visibility.
+
 ## [0.4.7] - 2026-09-27
 
 ### Fixed & Cleaned

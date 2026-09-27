@@ -12,15 +12,19 @@ test('decomposition: all server modules are <= 600 lines', () => {
     'lib/account-pool.js',
     'lib/cline-client.js',
     'lib/config.js',
+    'lib/credential-refs.js',
     'lib/http.js',
     'lib/index.js',
     'lib/models.js',
     'lib/provider-sync.js',
+    'lib/session-router.js',
     'lib/slash-command.js',
+    'lib/stats-storage.js',
     'lib/updater.js',
     'lib/routes/accounts.js',
     'lib/routes/auth.js',
     'lib/routes/models.js',
+    'lib/routes/proxy.js',
     'lib/routes/settings.js',
   ]
 
@@ -82,6 +86,16 @@ test('decomposition: exported domain functions and objects exist', async () => {
   assert.equal(typeof pool.rotateToNextAccount, 'function')
   assert.equal(typeof pool.isAccountQuotaExhausted, 'function')
 
+  const sessionRouter = await import('../lib/session-router.js')
+  assert.equal(typeof sessionRouter.resolveSessionAccount, 'function')
+  assert.equal(typeof sessionRouter.selectLeastUsedAccount, 'function')
+  assert.equal(typeof sessionRouter.markAccountCooldown, 'function')
+
+  const statsStorage = await import('../lib/stats-storage.js')
+  assert.equal(typeof statsStorage.recordUsage, 'function')
+  assert.equal(typeof statsStorage.loadStats, 'function')
+  assert.equal(typeof statsStorage.getStatsSummary, 'function')
+
   // Static export checks on peer-dependent modules
   const configSource = readFileSync(path.join(root, 'lib', 'config.js'), 'utf8')
   assert.ok(configSource.includes('export const Config ='), 'Config schema must be exported')
@@ -104,6 +118,9 @@ test('decomposition: exported domain functions and objects exist', async () => {
 
   const authRoutes = readFileSync(path.join(root, 'lib', 'routes', 'auth.js'), 'utf8')
   assert.ok(authRoutes.includes('export function registerAuthRoutes'), 'registerAuthRoutes must be exported')
+
+  const proxyRoutes = readFileSync(path.join(root, 'lib', 'routes', 'proxy.js'), 'utf8')
+  assert.ok(proxyRoutes.includes('export function registerProxyRoutes'), 'registerProxyRoutes must be exported')
 
   const slash = readFileSync(path.join(root, 'lib', 'slash-command.js'), 'utf8')
   assert.ok(slash.includes('export function registerSlashCommand'), 'registerSlashCommand must be exported')

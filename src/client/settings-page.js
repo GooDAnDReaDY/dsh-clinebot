@@ -24,14 +24,8 @@ function SettingsPage(props) {
   const [smokeResult, setSmokeResult] = React.useState(null)
 
   const [updateState, setUpdateState] = React.useState({
-    checking: false,
-    updating: false,
-    currentVersion: '',
-    latestVersion: '',
-    updateAvailable: false,
-    canAutoUpdate: true,
-    error: '',
-    notice: '',
+    checking: false, updating: false, currentVersion: '', latestVersion: '',
+    updateAvailable: false, canAutoUpdate: true, error: '', notice: '',
   })
 
   const [apiKeyInput, setApiKeyInput] = React.useState('')
@@ -41,10 +35,14 @@ function SettingsPage(props) {
 
   const load = React.useCallback(async () => {
     setErr('')
-    const res = await fetch(`${ROUTE_PREFIX}/status`, { cache: 'no-store' })
+    const [res, statsRes] = await Promise.all([
+      fetch(`${ROUTE_PREFIX}/status`, { cache: 'no-store' }),
+      fetch(`${ROUTE_PREFIX}/stats`, { cache: 'no-store' }).catch(() => null),
+    ])
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-    setStatus(data)
+    const statsData = statsRes && statsRes.ok ? await statsRes.json().catch(() => null) : null
+    setStatus({ ...data, statsSummary: statsData || data.statsSummary })
     setDraft(data.config || {})
   }, [])
 
@@ -273,6 +271,28 @@ function SettingsPage(props) {
     })
   }
 
+  async function handleConfigPatch(patch) {
+    await performAction('patch-config', async () => {
+      const res = await fetch(`${ROUTE_PREFIX}/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      await load()
+    })
+  }
+
+  async function handleResetStats() {
+    await performAction('reset-stats', async () => {
+      const res = await fetch(`${ROUTE_PREFIX}/stats/reset`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      await load()
+    })
+  }
+
   const debounceTimerRef = typeof React.useRef === 'function' ? React.useRef(null) : { current: null }
 
   React.useEffect(() => {
@@ -342,19 +362,7 @@ function SettingsPage(props) {
         'div',
         { className: 'cb-page' },
         React.createElement('div', { className: 'cb-alert cb-alert-err' }, `${t('settings.loading')}: ${err}`),
-        React.createElement(
-          'button',
-          {
-            type: 'button',
-            className: 'cb-btn',
-            style: { marginTop: '12px', alignSelf: 'flex-start' },
-            onClick: () => {
-              setErr('')
-              load().catch((e) => setErr(String(e.message || e)))
-            },
-          },
-          t('settings.retry')
-        )
+        React.createElement('button', { type: 'button', className: 'cb-btn', style: { marginTop: '12px' }, onClick: () => { setErr(''); load().catch((e) => setErr(String(e.message || e))) } }, t('settings.retry'))
       )
     }
     return React.createElement('div', { className: 'cb-page' }, t('settings.loading'))
@@ -453,11 +461,20 @@ function SettingsPage(props) {
       planSynced: !!(status?.config?.planSynced || (status?.config?.dynamicModels && status.config.dynamicModels.length > 0)),
       planSyncedAt: status?.config?.planSyncedAt || 0,
       defaultModelWarning: status?.config?.defaultModelWarning || '',
+      customModels: draft?.customModels || [],
+      modelReasoningDefaults: draft?.modelReasoningDefaults || {},
+      onConfigUpdate: handleConfigPatch,
+      onUpdateReasoningEffort: (modelId, effort) => {
+        const next = { ...(draft?.modelReasoningDefaults || {}) }
+        if (!effort) delete next[modelId]
+        else next[modelId] = effort
+        handleConfigPatch({ modelReasoningDefaults: next })
+      },
       t,
     }),
 
     // Card 4: Session Metrics & Usage Tracking
-    React.createElement(StatsSection, { status, t }),
+    React.createElement(StatsSection, { status, onResetStats: handleResetStats, busy, t }),
 
     // Card 5: Diagnostics & Sync with DSH
     React.createElement(DiagSection, {
