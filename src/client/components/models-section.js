@@ -11,6 +11,10 @@ function ModelsSection({
   planSynced,
   planSyncedAt,
   defaultModelWarning,
+  customModels,
+  modelReasoningDefaults,
+  onConfigUpdate,
+  onUpdateReasoningEffort,
   t,
 }) {
   const syncDateStr = planSyncedAt ? new Date(planSyncedAt).toLocaleDateString() : ''
@@ -395,7 +399,30 @@ function ModelsSection({
                     ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: category ? '4px' : '0' } }, 'Vision')
                     : null,
                   hasReasoning
-                    ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: (category || hasVision) ? '4px' : '0' }, title: t('models.reasoning_tooltip') }, '🧠 Reasoning')
+                    ? React.createElement(
+                        React.Fragment,
+                        null,
+                        React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: (category || hasVision) ? '4px' : '0' }, title: t('models.reasoning_tooltip') }, '🧠 Reasoning'),
+                        React.createElement(
+                          'select',
+                          {
+                            className: 'cb-select',
+                            style: { marginLeft: '4px', fontSize: '10px', padding: '1px 3px' },
+                            value: (modelReasoningDefaults && modelReasoningDefaults[m.id]) || '',
+                            disabled: !!busy,
+                            onChange: (e) => {
+                              if (typeof onUpdateReasoningEffort === 'function') {
+                                onUpdateReasoningEffort(m.id, e.target.value)
+                              }
+                            },
+                          },
+                          React.createElement('option', { value: '' }, t('models.effort_auto')),
+                          React.createElement('option', { value: 'low' }, 'Low'),
+                          React.createElement('option', { value: 'medium' }, 'Medium'),
+                          React.createElement('option', { value: 'high' }, 'High'),
+                          React.createElement('option', { value: 'max' }, 'Max')
+                        )
+                      )
                     : null
                 )
               })()
@@ -403,6 +430,14 @@ function ModelsSection({
           )
         })
       )
-    )
+    ),
+    typeof CustomModelsSub === 'function'
+      ? React.createElement(CustomModelsSub, {
+          customModels: customModels || [],
+          onConfigUpdate: onConfigUpdate,
+          busy: busy,
+          t: t,
+        })
+      : null
   )
 }

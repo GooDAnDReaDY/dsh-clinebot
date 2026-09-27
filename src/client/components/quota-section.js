@@ -1,4 +1,10 @@
 function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, t }) {
+  const isLowQuota = Boolean(
+    (usage?.windows?.weekly && typeof usage.windows.weekly.remainingPercent === 'number' && usage.windows.weekly.remainingPercent <= 10) ||
+    (usage?.windows?.monthly && typeof usage.windows.monthly.remainingPercent === 'number' && usage.windows.monthly.remainingPercent <= 10) ||
+    (usage?.windows?.fiveHour && typeof usage.windows.fiveHour.remainingPercent === 'number' && usage.windows.fiveHour.remainingPercent <= 10)
+  )
+
   return React.createElement(
     React.Fragment,
     null,
@@ -20,7 +26,14 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, t }
               : null
           )
         )
-      : null,
+      : (isLowQuota
+          ? React.createElement(
+              'div',
+              { className: 'cb-banner-warning' },
+              React.createElement('span', { style: { fontSize: '16px' } }, '⚠️'),
+              React.createElement('div', { style: { flex: 1 } }, t('quota.warning_low'))
+            )
+          : null),
     keyPresent
       ? React.createElement(
           'div',
@@ -49,21 +62,32 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, t }
           ),
           React.createElement(
             'div',
-            { className: 'cb-grid-2' },
-            React.createElement(ProgressBar, {
-              label: t('quota.window_5h'),
-              percentUsed: usage?.windows?.fiveHour?.percentUsed || 0,
-              remainingPercent: usage?.windows?.fiveHour?.remainingPercent || 100,
-              resetsAt: usage?.windows?.fiveHour?.resetsAt,
-              t,
-            }),
+            { className: 'cb-grid-2', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' } },
+            usage?.windows?.fiveHour
+              ? React.createElement(ProgressBar, {
+                  label: t('quota.window_5h'),
+                  percentUsed: usage.windows.fiveHour.percentUsed || 0,
+                  remainingPercent: usage.windows.fiveHour.remainingPercent || 100,
+                  resetsAt: usage.windows.fiveHour.resetsAt,
+                  t,
+                })
+              : null,
             React.createElement(ProgressBar, {
               label: t('quota.window_weekly'),
               percentUsed: usage?.windows?.weekly?.percentUsed || 0,
               remainingPercent: usage?.windows?.weekly?.remainingPercent || 100,
               resetsAt: usage?.windows?.weekly?.resetsAt,
               t,
-            })
+            }),
+            usage?.windows?.monthly
+              ? React.createElement(ProgressBar, {
+                  label: t('quota.window_monthly'),
+                  percentUsed: usage.windows.monthly.percentUsed || 0,
+                  remainingPercent: usage.windows.monthly.remainingPercent || 100,
+                  resetsAt: usage.windows.monthly.resetsAt,
+                  t,
+                })
+              : null
           )
         )
       : null
