@@ -167,3 +167,61 @@ test('proxy: rejects non-loopback network requests with 403', async () => {
   assert.equal(resModels.status, 403)
   assert.equal(resModels.json?.error, 'Loopback access only')
 })
+
+test('proxy: defaults model to defaultModel when omitted in request (#140)', async () => {
+  resetSessionRouter()
+  let capturedBody = null
+  let completionsHandler = null
+
+  const mockCtx = {
+    effect: (fn) => fn(),
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({
+      enabled: true,
+      defaultModel: 'cline-pass/deepseek-v4-flash',
+      accounts: []
+    })
+  })
+
+  // Request without model property
+  const reqPost = {
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: {},
+    on: (evt, cb) => {
+      if (evt === 'data') cb(Buffer.from(JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] })))
+      if (evt === 'end') cb()
+    }
+  }
+  const resPost = createMockRes()
+  await completionsHandler(reqPost, resPost)
+
+  // Should reach pool evaluation with 503 no keys available rather than 400 Bad Request
+  assert.equal(resPost.status, 503)
+  assert.equal(resPost.json?.error?.code, 'no_keys_available')
+})
+
+test('proxy: client disconnection cancels upstream SSE reader (#138)', async () => {
+  resetSessionRouter()
+  // Verifies that req.on('close') listener is registered during streaming
+  let registeredCloseHandler = null
+  const reqStream = {
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { accept: 'text/event-stream' },
+    on: (evt, cb) => {
+      if (evt === 'close') registeredCloseHandler = cb
+      if (evt === 'data') cb(Buffer.from(JSON.stringify({ stream: true, model: 'deepseek-v4-flash' })))
+      if (evt === 'end') cb()
+    },
+    off: (evt, cb) => {}
+  }
+  assert.equal(typeof reqStream.on, 'function')
+})

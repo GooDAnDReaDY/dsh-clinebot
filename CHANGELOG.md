@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed & Cleaned
 - **Dead & Test-Only Exports Elimination (#135)**: Pruned dead and internal-only exports across server modules (`USAGE_CACHE_TTL_MS` in `lib/cline-client.js`, `queueSaveStats` in `lib/stats-storage.js`, and `migrateModelId`, `getOriginalModelProvider`, `findModel`, `getDefaultModelIds` in `lib/models.js`), aligning module boundaries with public contract.
 - **Design Token Purity in Progress Bar (#136)**: Replaced hardcoded fallback hex `#f87171` in `src/client/progress-bar.js` with semantic design system token `var(--dsw-alias-status-danger)`, eliminating color hardcodes across all client components.
+- **Proxy Client Abort Stream Cancellation (#138)**: Connected `req.on('close')` in streaming SSE completions (`POST /dsh-clinebot/v1/chat/completions`) to immediately cancel upstream response reader via `reader.cancel()`, preventing orphaned background inference and quota drain when clients disconnect.
+- **Circular Module Dependency Removal (#139)**: Eradicated artificial circular import cycle between `lib/cline-client.js` and `lib/account-pool.js` by removing legacy re-exports from `cline-client.js` and routing consumers directly to `lib/account-pool.js`.
+- **Proxy Model Fallback (#140)**: Implemented seamless fallback to `pub.defaultModel` in `/dsh-clinebot/v1/chat/completions` when `model` parameter is omitted, preventing upstream HTTP 400 Bad Request.
 
 ## [0.4.8] - 2026-09-27
 

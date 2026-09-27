@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { rotateToNextAccount, isAccountQuotaExhausted, usageCache, probeCache } from '../lib/cline-client.js'
+import { rotateToNextAccount, isAccountQuotaExhausted } from '../lib/account-pool.js'
+import { usageCache, probeCache } from '../lib/cline-client.js'
 
 test('failover: isAccountQuotaExhausted logic and auto-recovery', () => {
   // 1. Under 95% is not exhausted
@@ -404,7 +405,7 @@ test('failover: llm/stream waterfall intercepts 429 error and rotates active acc
   assert.equal(currentActive, 'CLINEBOT_API_KEY_2', 'Rapid 429 must be throttled within 30s storm window')
 
   // 4. Verify telemetry in getLastRotation
-  const { getLastRotation } = await import('../lib/cline-client.js')
+  const { getLastRotation } = await import('../lib/account-pool.js')
   const lastRot = getLastRotation()
   assert.ok(lastRot)
   assert.equal(lastRot.reason, 'stream_429')
