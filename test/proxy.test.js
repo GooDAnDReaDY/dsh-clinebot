@@ -1,7 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { registerProxyRoutes } from '../lib/routes/proxy.js'
+import { registerProxyRoutes, USER_AGENT } from '../lib/routes/proxy.js'
 import { resetSessionRouter, getSessionRouterStatus } from '../lib/session-router.js'
+import { getLocalProxyToken, setLocalProxyToken } from '../lib/proxy-token.js'
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
+const pkg = require('../package.json')
+
+const TEST_TOKEN = 'test-secret-token-12345'
+setLocalProxyToken(TEST_TOKEN)
 
 function createMockRes() {
   let jsonResult = null
@@ -56,7 +64,7 @@ test('proxy: registers /v1/chat/completions and /v1/models endpoints', () => {
   assert.ok(paths.includes('/dsh-clinebot/v1/models'))
 })
 
-test('proxy: /v1/models returns OpenAI-compatible models format', async () => {
+test('proxy: /v1/models returns OpenAI-compatible models format when authorized (#145)', async () => {
   resetSessionRouter()
   let routeHandler = null
   const mockCtx = {
@@ -78,7 +86,11 @@ test('proxy: /v1/models returns OpenAI-compatible models format', async () => {
     })
   })
 
-  const req = { method: 'GET', socket: { remoteAddress: '127.0.0.1' } }
+  const req = {
+    method: 'GET',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { authorization: `Bearer ${TEST_TOKEN}` }
+  }
   const res = createMockRes()
 
   await routeHandler(req, res)
@@ -88,6 +100,140 @@ test('proxy: /v1/models returns OpenAI-compatible models format', async () => {
   assert.ok(Array.isArray(res.json.data))
   assert.ok(res.json.data.some(m => m.id === 'cline-pass/custom-llama'))
   assert.ok(res.json.data.some(m => m.id === 'cline-pass/deepseek-v4-flash'))
+})
+
+test('proxy: rejects unauthorized requests missing or with invalid Bearer token (#145)', async () => {
+  resetSessionRouter()
+  let completionsHandler = null
+  let modelsHandler = null
+  const mockCtx = {
+    effect: (fn) => fn(),
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+        if (route.path === '/dsh-clinebot/v1/models') modelsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({ enabled: true, baseUrl: 'https://api.cline.bot/api/v1', accounts: [] })
+  })
+
+  // 1. Missing Authorization on /v1/chat/completions
+  const res1 = createMockRes()
+  await completionsHandler({ method: 'POST', socket: { remoteAddress: '127.0.0.1' }, headers: {} }, res1)
+  assert.equal(res1.status, 401)
+  assert.ok(res1.json?.error?.includes('Unauthorized'))
+
+  // 2. Invalid Bearer token on /v1/chat/completions
+  const res2 = createMockRes()
+  await completionsHandler({ method: 'POST', socket: { remoteAddress: '127.0.0.1' }, headers: { authorization: 'Bearer wrong-token' } }, res2)
+  assert.equal(res2.status, 401)
+  assert.ok(res2.json?.error?.includes('Unauthorized'))
+
+  // 3. Missing Authorization on /v1/models
+  const res3 = createMockRes()
+  await modelsHandler({ method: 'GET', socket: { remoteAddress: '127.0.0.1' }, headers: {} }, res3)
+  assert.equal(res3.status, 401)
+  assert.ok(res3.json?.error?.includes('Unauthorized'))
+})
+
+test('proxy: rejects browser cross-site or Origin requests with 403 (#145)', async () => {
+  resetSessionRouter()
+  let completionsHandler = null
+  let modelsHandler = null
+  const mockCtx = {
+    effect: (fn) => fn(),
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+        if (route.path === '/dsh-clinebot/v1/models') modelsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({ enabled: true, baseUrl: 'https://api.cline.bot/api/v1', accounts: [] })
+  })
+
+  // 1. Request with Sec-Fetch-Site: cross-site
+  const res1 = createMockRes()
+  await completionsHandler({
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: {
+      authorization: `Bearer ${TEST_TOKEN}`,
+      'sec-fetch-site': 'cross-site'
+    }
+  }, res1)
+  assert.equal(res1.status, 403)
+  assert.ok(res1.json?.error?.includes('Cross-site or browser requests to proxy are forbidden'))
+
+  // 2. Request with Origin header
+  const res2 = createMockRes()
+  await completionsHandler({
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: {
+      authorization: `Bearer ${TEST_TOKEN}`,
+      origin: 'https://evil.example.com'
+    }
+  }, res2)
+  assert.equal(res2.status, 403)
+  assert.ok(res2.json?.error?.includes('Cross-site or browser requests to proxy are forbidden'))
+
+  // 3. Models request with Origin
+  const res3 = createMockRes()
+  await modelsHandler({
+    method: 'GET',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: {
+      authorization: `Bearer ${TEST_TOKEN}`,
+      origin: 'https://evil.example.com'
+    }
+  }, res3)
+  assert.equal(res3.status, 403)
+  assert.ok(res3.json?.error?.includes('Cross-site or browser requests to proxy are forbidden'))
+})
+
+test('proxy: rejects non-loopback network requests with 403', async () => {
+  resetSessionRouter()
+  let completionsHandler = null
+  let modelsHandler = null
+  const mockCtx = {
+    effect: (fn) => fn(),
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+        if (route.path === '/dsh-clinebot/v1/models') modelsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({ enabled: true, baseUrl: 'https://api.cline.bot/api/v1', accounts: [] })
+  })
+
+  // 1. External IP on /v1/chat/completions
+  const resCompletions = createMockRes()
+  await completionsHandler({
+    method: 'POST',
+    socket: { remoteAddress: '192.168.1.50' },
+    headers: { authorization: `Bearer ${TEST_TOKEN}` }
+  }, resCompletions)
+  assert.equal(resCompletions.status, 403)
+  assert.equal(resCompletions.json?.error, 'Loopback access only')
+
+  // 2. External IP on /v1/models
+  const resModels = createMockRes()
+  await modelsHandler({
+    method: 'GET',
+    socket: { remoteAddress: '192.168.1.50' },
+    headers: { authorization: `Bearer ${TEST_TOKEN}` }
+  }, resModels)
+  assert.equal(resModels.status, 403)
+  assert.equal(resModels.json?.error, 'Loopback access only')
 })
 
 test('proxy: /v1/chat/completions validates method and missing keys gracefully', async () => {
@@ -124,7 +270,7 @@ test('proxy: /v1/chat/completions validates method and missing keys gracefully',
   const reqPost = {
     method: 'POST',
     socket: { remoteAddress: '127.0.0.1' },
-    headers: {},
+    headers: { authorization: `Bearer ${TEST_TOKEN}` },
     on: (evt, cb) => {
       if (evt === 'data') cb(Buffer.from(JSON.stringify({ model: 'deepseek-v4-flash' })))
       if (evt === 'end') cb()
@@ -137,40 +283,8 @@ test('proxy: /v1/chat/completions validates method and missing keys gracefully',
   assert.equal(resPost.json.error.code, 'no_keys_available')
 })
 
-test('proxy: rejects non-loopback network requests with 403', async () => {
-  resetSessionRouter()
-  let completionsHandler = null
-  let modelsHandler = null
-  const mockCtx = {
-    effect: (fn) => fn(),
-    webServer: {
-      register: (route) => {
-        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
-        if (route.path === '/dsh-clinebot/v1/models') modelsHandler = route.handler
-      }
-    }
-  }
-
-  registerProxyRoutes(mockCtx, {
-    live: () => ({ enabled: true, baseUrl: 'https://api.cline.bot/api/v1', accounts: [] })
-  })
-
-  // 1. External IP on /v1/chat/completions
-  const resCompletions = createMockRes()
-  await completionsHandler({ method: 'POST', socket: { remoteAddress: '192.168.1.50' } }, resCompletions)
-  assert.equal(resCompletions.status, 403)
-  assert.equal(resCompletions.json?.error, 'Loopback access only')
-
-  // 2. External IP on /v1/models
-  const resModels = createMockRes()
-  await modelsHandler({ method: 'GET', socket: { remoteAddress: '192.168.1.50' } }, resModels)
-  assert.equal(resModels.status, 403)
-  assert.equal(resModels.json?.error, 'Loopback access only')
-})
-
 test('proxy: defaults model to defaultModel when omitted in request (#140)', async () => {
   resetSessionRouter()
-  let capturedBody = null
   let completionsHandler = null
 
   const mockCtx = {
@@ -190,11 +304,10 @@ test('proxy: defaults model to defaultModel when omitted in request (#140)', asy
     })
   })
 
-  // Request without model property
   const reqPost = {
     method: 'POST',
     socket: { remoteAddress: '127.0.0.1' },
-    headers: {},
+    headers: { authorization: `Bearer ${TEST_TOKEN}` },
     on: (evt, cb) => {
       if (evt === 'data') cb(Buffer.from(JSON.stringify({ messages: [{ role: 'user', content: 'hi' }] })))
       if (evt === 'end') cb()
@@ -203,27 +316,8 @@ test('proxy: defaults model to defaultModel when omitted in request (#140)', asy
   const resPost = createMockRes()
   await completionsHandler(reqPost, resPost)
 
-  // Should reach pool evaluation with 503 no keys available rather than 400 Bad Request
   assert.equal(resPost.status, 503)
   assert.equal(resPost.json?.error?.code, 'no_keys_available')
-})
-
-test('proxy: client disconnection cancels upstream SSE reader (#138)', async () => {
-  resetSessionRouter()
-  // Verifies that req.on('close') listener is registered during streaming
-  let registeredCloseHandler = null
-  const reqStream = {
-    method: 'POST',
-    socket: { remoteAddress: '127.0.0.1' },
-    headers: { accept: 'text/event-stream' },
-    on: (evt, cb) => {
-      if (evt === 'close') registeredCloseHandler = cb
-      if (evt === 'data') cb(Buffer.from(JSON.stringify({ stream: true, model: 'deepseek-v4-flash' })))
-      if (evt === 'end') cb()
-    },
-    off: (evt, cb) => {}
-  }
-  assert.equal(typeof reqStream.on, 'function')
 })
 
 test('proxy: /v1/chat/completions accepts request bodies > 256KB without 400 body too large (#142, GH #10)', async () => {
@@ -247,7 +341,6 @@ test('proxy: /v1/chat/completions accepts request bodies > 256KB without 400 bod
     })
   })
 
-  // Create a payload larger than 256 KB (e.g. 512 KB of simulated conversation)
   const largeContent = 'A'.repeat(512 * 1024)
   const largePayload = JSON.stringify({
     model: 'cline-pass/deepseek-v4-flash',
@@ -257,7 +350,7 @@ test('proxy: /v1/chat/completions accepts request bodies > 256KB without 400 bod
   const reqLarge = {
     method: 'POST',
     socket: { remoteAddress: '127.0.0.1' },
-    headers: {},
+    headers: { authorization: `Bearer ${TEST_TOKEN}` },
     on: (evt, cb) => {
       if (evt === 'data') cb(Buffer.from(largePayload))
       if (evt === 'end') cb()
@@ -266,9 +359,31 @@ test('proxy: /v1/chat/completions accepts request bodies > 256KB without 400 bod
   const resLarge = createMockRes()
   await completionsHandler(reqLarge, resLarge)
 
-  // Under 256 KB limit, this failed with status 400 and error 'body too large'.
-  // With 64MB limit, it successfully parses body and reaches key evaluation (status 503 no keys).
   assert.notEqual(resLarge.status, 400)
   assert.equal(resLarge.status, 503)
   assert.equal(resLarge.json?.error?.code, 'no_keys_available')
+})
+
+test('proxy: User-Agent dynamically reflects package version (#147)', () => {
+  assert.equal(USER_AGENT, `@goodandready/dsh-clinebot/${pkg.version}`)
+})
+
+test('proxy: client disconnection cancels upstream SSE reader (#138)', async () => {
+  resetSessionRouter()
+  let registeredCloseHandler = null
+  const reqStream = {
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: {
+      authorization: `Bearer ${TEST_TOKEN}`,
+      accept: 'text/event-stream'
+    },
+    on: (evt, cb) => {
+      if (evt === 'close') registeredCloseHandler = cb
+      if (evt === 'data') cb(Buffer.from(JSON.stringify({ stream: true, model: 'deepseek-v4-flash' })))
+      if (evt === 'end') cb()
+    },
+    off: (evt, cb) => {}
+  }
+  assert.equal(typeof reqStream.on, 'function')
 })
