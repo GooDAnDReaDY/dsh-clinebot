@@ -387,3 +387,45 @@ test('proxy: client disconnection cancels upstream SSE reader (#138)', async () 
   }
   assert.equal(typeof reqStream.on, 'function')
 })
+
+test('proxy: authorizes requests with account pool key or local proxy token (#150, GH #11)', async () => {
+  resetSessionRouter()
+  let modelsHandler = null
+  const mockCreds = {
+    resolve: async (ref) => ({ value: ref === 'CLINEBOT_API_KEY' ? 'real-account-key-xyz' : '' })
+  }
+  const mockCtx = {
+    effect: (fn) => fn(),
+    get: (name) => name === 'credentials' ? mockCreds : null,
+    credentials: mockCreds,
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/models') modelsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({
+      enabled: true,
+      baseUrl: 'https://api.cline.bot/api/v1',
+      apiKeyEnv: 'CLINEBOT_API_KEY',
+      accounts: []
+    })
+  })
+
+  // 1. Authorized via local proxy token
+  const resLocal = createMockRes()
+  await modelsHandler({ method: 'GET', socket: { remoteAddress: '127.0.0.1' }, headers: { authorization: `Bearer ${TEST_TOKEN}` } }, resLocal)
+  assert.equal(resLocal.status, 200)
+
+  // 2. Authorized via real account key in pool (when DSH sends CLINEBOT_API_KEY)
+  const resAccountKey = createMockRes()
+  await modelsHandler({ method: 'GET', socket: { remoteAddress: '127.0.0.1' }, headers: { authorization: 'Bearer real-account-key-xyz' } }, resAccountKey)
+  assert.equal(resAccountKey.status, 200)
+
+  // 3. Rejected when key does not match either
+  const resBad = createMockRes()
+  await modelsHandler({ method: 'GET', socket: { remoteAddress: '127.0.0.1' }, headers: { authorization: 'Bearer wrong-unauthorized-key' } }, resBad)
+  assert.equal(resBad.status, 401)
+})

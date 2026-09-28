@@ -49,6 +49,7 @@ test('failover: rotateToNextAccount switches between multiple configured account
   }
 
   const cfg = ({
+    proxyMode: false,
     apiKeyEnv: 'CLINEBOT_API_KEY',
     accounts: [
       { label: 'Work', apiKeyEnv: 'CLINEBOT_API_KEY_2' },
@@ -298,6 +299,7 @@ test('failover: upsertPiAiProvider registers active account apiKeyEnv instead of
 
   const { upsertPiAiProvider } = await import('../lib/provider-sync.js')
   const cfg = {
+    proxyMode: false,
     apiKeyEnv: 'CLINEBOT_API_KEY',
     accounts: [{ label: 'Team', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
     activeAccount: 'CLINEBOT_API_KEY_2',
@@ -325,6 +327,7 @@ test('failover: llm/stream waterfall intercepts 429 error and rotates active acc
       activeAccount: currentActive,
       dynamicModels: [],
       enabledModels: ['cline-pass/deepseek-v4-pro'],
+      proxyMode: false,
     }),
     replace: async (next) => {
       currentActive = next.activeAccount
@@ -413,3 +416,43 @@ test('failover: llm/stream waterfall intercepts 429 error and rotates active acc
   assert.equal(lastRot.to, 'CLINEBOT_API_KEY_2')
 })
 
+
+test('failover: upsertPiAiProvider registers LOCAL_PROXY_KEY_ENV when proxyMode is enabled (default) (#150, GH #11)', async () => {
+  const env = {
+    CLINEBOT_API_KEY: 'main-key',
+    CLINEBOT_API_KEY_2: 'second-key',
+  }
+  const mockCreds = {
+    resolve: async (r) => ({ value: env[typeof r === 'string' ? r : r?.name] || '' }),
+    set: async () => {},
+  }
+  const mutated = []
+  const mockSettings = {
+    mutate: async (ns, ops) => {
+      mutated.push({ ns, ops })
+    },
+  }
+  const ctx = {
+    get: (name) => {
+      if (name === 'credentials') return mockCreds
+      if (name === 'settings') return mockSettings
+      return null
+    },
+  }
+
+  const { upsertPiAiProvider } = await import('../lib/provider-sync.js')
+  const { LOCAL_PROXY_KEY_ENV, getLocalProxyToken } = await import('../lib/proxy-token.js')
+  const cfg = {
+    proxyMode: true,
+    apiKeyEnv: 'CLINEBOT_API_KEY',
+    accounts: [{ label: 'Team', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
+    activeAccount: 'CLINEBOT_API_KEY_2',
+  }
+
+  const providerObj = await upsertPiAiProvider(ctx, cfg)
+  assert.equal(mutated.length, 1)
+  assert.equal(mutated[0].ns, 'llm-pi-ai')
+  assert.equal(mutated[0].ops[0].value.apiKeyEnv, LOCAL_PROXY_KEY_ENV)
+  assert.equal(mutated[0].ops[0].value.apiKey, getLocalProxyToken())
+  assert.equal(providerObj.apiKeyEnv, LOCAL_PROXY_KEY_ENV)
+})
