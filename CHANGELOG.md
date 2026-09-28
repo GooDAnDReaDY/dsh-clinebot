@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.3] - 2026-09-28
+
+### Fixed
+- **Proxy Token Routing via DSH llm-pi-ai & Dual Bearer Auth (Issue #150, GitHub #11)**: In `@deepseek-ai/dsh-llm-pi-ai@0.1.7-rc.2`, the streaming runner (`streamWithSnapshot`) resolves request authorization strictly from `profile.apiKeyEnv` and completely ignores the literal `apiKey` field in the provider descriptor. When `proxyMode` is active, `upsertPiAiProvider` now correctly registers `apiKeyEnv: LOCAL_PROXY_KEY_ENV` (`CLINEBOT_LOCAL_PROXY_TOKEN`), while `lib/proxy-token.js` populates the credential store with the generated token value. In addition, `isAuthorizedProxyRequest` now accepts requests authenticated with either `CLINEBOT_LOCAL_PROXY_TOKEN` or any valid account key configured in the active account pool, ensuring uninterrupted communication across streaming, non-streaming, and diagnostic invocations without HTTP 401 Unauthorized rejections.
+
 ## [0.5.2] - 2026-09-28
 
 ### Security
