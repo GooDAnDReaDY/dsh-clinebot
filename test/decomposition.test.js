@@ -16,6 +16,7 @@ test('decomposition: all server modules are <= 600 lines', () => {
     'lib/http.js',
     'lib/index.js',
     'lib/models.js',
+    'lib/proxy-token.js',
     'lib/provider-sync.js',
     'lib/session-router.js',
     'lib/slash-command.js',

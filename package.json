@@ -39,7 +39,7 @@
   },
   "scripts": {
     "build:client": "node scripts/build-client.js",
-    "test": "node scripts/build-client.js && node --test test/*.test.js"
+    "test": "node scripts/build-client.js && node --import ./test/_setup.mjs --test test/*.test.js"
   },
   "engines": {
     "node": ">=20"

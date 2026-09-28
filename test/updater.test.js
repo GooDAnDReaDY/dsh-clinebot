@@ -58,3 +58,47 @@ test('updater: checkUpdateStatus detects status with manifestUrl', async () => {
   assert.equal(status.latestCheckFailed, true)
   assert.equal(status.updateAvailable, false)
 })
+
+import { isPidAlive, checkProfileLock } from '../lib/updater.js'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+
+test('updater: isPidAlive detects live and dead PIDs (#148)', () => {
+  assert.equal(isPidAlive(process.pid), true)
+  assert.equal(isPidAlive(99999999), false)
+  assert.equal(isPidAlive(-1), false)
+  assert.equal(isPidAlive(null), false)
+})
+
+test('updater: checkProfileLock detects active locks and cleans stale locks (#148)', () => {
+  const tmpProfile = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-profile-lock-'))
+  const lockFile = path.join(tmpProfile, 'package.json.lock')
+
+  try {
+    // 1. No lock
+    assert.deepEqual(checkProfileLock(tmpProfile), { locked: false })
+
+    // 2. Active lock with current PID
+    fs.writeFileSync(lockFile, String(process.pid), 'utf8')
+    const activeResult = checkProfileLock(tmpProfile)
+    assert.equal(activeResult.locked, true)
+    assert.equal(activeResult.pid, process.pid)
+    assert.equal(activeResult.alive, true)
+
+    // 3. Stale lock with dead PID
+    const deadPid = 99999999
+    fs.writeFileSync(lockFile, String(deadPid), 'utf8')
+    const staleResult = checkProfileLock(tmpProfile)
+    assert.equal(staleResult.locked, false)
+    assert.equal(staleResult.stalePid, deadPid)
+    assert.equal(fs.existsSync(lockFile), false, 'Stale lock file should be unlinked')
+  } finally {
+    fs.rmSync(tmpProfile, { recursive: true, force: true })
+  }
+})
+
+test('updater: does not pass --config.minimumReleaseAge=0 to plugin add (#148)', () => {
+  const updaterCode = fs.readFileSync(path.join(import.meta.dirname, '../lib/updater.js'), 'utf8')
+  assert.equal(updaterCode.includes('minimumReleaseAge=0'), false, 'minimumReleaseAge=0 must be removed')
+})
