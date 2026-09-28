@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-09-28
+
+### Fixed
+- **Host Process Crash on Stats Save (Issue #141, GitHub #9)**: Safely unwrap volatile Schemastery `{ get }` references, getter functions, and non-string inputs in `resolvePath`. Wrapped `saveStatsSync` in `try/catch` inside `queueSaveStats` timer callback to guarantee disk persistence failures never become uncaught exceptions terminating the DSH host process. Updated `lib/index.js` to pass `publicConfig(live()).statsPath`.
+- **Large Context / Multimodal Proxy Rejection (Issue #142, GitHub #10)**: Increased request body reading limit on `/dsh-clinebot/v1/chat/completions` from 256 KB to 64 MB, preventing HTTP 400 `"body too large"` errors on long conversational sessions and multimodal requests.
+- **Model Cache Path Resolution (Issue #143)**: Added safe volatile reference and getter unwrapping to `resolvePathWithHome` in `lib/provider-sync.js`, preventing `TypeError [ERR_INVALID_ARG_TYPE]` on disk cache operations.
+
 ## [0.5.0] - 2026-09-27
 
 ### Security
