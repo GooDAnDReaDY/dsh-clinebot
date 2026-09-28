@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-09-28
+
+### Security
+- **Proxy Endpoints Local Bearer Auth & CSRF Protection (Issue #145)**: Secured OpenAI-compatible proxy routes (`/dsh-clinebot/v1/chat/completions` and `/dsh-clinebot/v1/models`) by generating a unique local proxy token (`CLINEBOT_LOCAL_PROXY_TOKEN`) passed as `apiKey` to the DSH provider. Requests missing or with invalid Bearer tokens receive HTTP 401 Unauthorized. Incoming browser requests containing `Origin` or `Sec-Fetch-Site: cross-site|same-site` are rejected with HTTP 403 Forbidden to protect against LAN abuse and cross-site request forgery.
+
+### Added & Improved
+- **Test Suite Isolation Sandbox (Issue #146)**: Introduced `test/_setup.mjs` configuring a dedicated temporary filesystem sandbox for `HOME` and `DSH_HOME` during automated test runs. Updated `lib/stats-storage.js` and `lib/provider-sync.js` to respect `DSH_HOME`. Added protective test verifying real `~/.dsh` files are untouched.
+- **Dynamic Proxy User-Agent & Upstream Timeout Failover (Issue #147)**: User-Agent in proxy upstream requests now dynamically reflects the exact package version from `package.json`. Upstream completions use an abort timeout (`AbortSignal.any`); upon timing out, the request automatically rotates to the next available account in the pool, returning HTTP 504 Gateway Timeout if all accounts fail.
+- **Self-Updater Concurrency Lock & Argument Cleanup (Issue #148)**: Removed deprecated `--config.minimumReleaseAge=0` flag from `dsh plugin add` invocations. Added `package.json.lock` verification inspecting PID liveness: active installations return HTTP 409 Conflict with PID, while stale locks from terminated processes are cleaned up automatically.
+
 ## [0.5.1] - 2026-09-28
 
 ### Fixed
