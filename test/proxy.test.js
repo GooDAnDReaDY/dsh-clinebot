@@ -225,3 +225,50 @@ test('proxy: client disconnection cancels upstream SSE reader (#138)', async () 
   }
   assert.equal(typeof reqStream.on, 'function')
 })
+
+test('proxy: /v1/chat/completions accepts request bodies > 256KB without 400 body too large (#142, GH #10)', async () => {
+  resetSessionRouter()
+  let completionsHandler = null
+
+  const mockCtx = {
+    effect: (fn) => fn(),
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({
+      enabled: true,
+      defaultModel: 'cline-pass/deepseek-v4-flash',
+      accounts: []
+    })
+  })
+
+  // Create a payload larger than 256 KB (e.g. 512 KB of simulated conversation)
+  const largeContent = 'A'.repeat(512 * 1024)
+  const largePayload = JSON.stringify({
+    model: 'cline-pass/deepseek-v4-flash',
+    messages: [{ role: 'user', content: largeContent }]
+  })
+
+  const reqLarge = {
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: {},
+    on: (evt, cb) => {
+      if (evt === 'data') cb(Buffer.from(largePayload))
+      if (evt === 'end') cb()
+    }
+  }
+  const resLarge = createMockRes()
+  await completionsHandler(reqLarge, resLarge)
+
+  // Under 256 KB limit, this failed with status 400 and error 'body too large'.
+  // With 64MB limit, it successfully parses body and reaches key evaluation (status 503 no keys).
+  assert.notEqual(resLarge.status, 400)
+  assert.equal(resLarge.status, 503)
+  assert.equal(resLarge.json?.error?.code, 'no_keys_available')
+})

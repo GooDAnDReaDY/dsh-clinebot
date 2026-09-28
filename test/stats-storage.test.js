@@ -2,15 +2,17 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { tmpdir } from 'node:os'
+import { tmpdir, homedir } from 'node:os'
 import {
   recordUsage,
   loadStats,
   saveStatsSync,
   getStatsSummary,
   resetStats,
-  createEmptyStats
+  createEmptyStats,
+  resolvePath
 } from '../lib/stats-storage.js'
+import { resolvePathWithHome } from '../lib/provider-sync.js'
 
 const testStatsPath = path.join(tmpdir(), `clinebot-test-stats-${Date.now()}.json`)
 
@@ -80,4 +82,60 @@ test('stats-storage: handles corrupted file gracefully', () => {
 
   try { rmSync(corruptPath, { force: true }) } catch {}
   try { rmSync(testStatsPath, { force: true }) } catch {}
+})
+
+
+test('stats-storage: resolvePath unwraps volatile { get } references and functions (#141, GH #9)', () => {
+  const defaultPath = path.join(homedir(), '.dsh', 'clinebot-stats.json')
+
+  // 1. Plain string
+  assert.equal(resolvePath('~/.dsh/my-stats.json'), path.join(homedir(), '.dsh', 'my-stats.json'))
+
+  // 2. Volatile { get } object reference
+  const volatileRef = { get: () => '~/.dsh/ref-stats.json' }
+  assert.equal(resolvePath(volatileRef), path.join(homedir(), '.dsh', 'ref-stats.json'))
+
+  // 3. Getter function
+  const getterFn = () => '~/.dsh/fn-stats.json'
+  assert.equal(resolvePath(getterFn), path.join(homedir(), '.dsh', 'fn-stats.json'))
+
+  // 4. Nested getter
+  const nestedRef = { get: () => ({ get: () => '~/.dsh/nested-stats.json' }) }
+  assert.equal(resolvePath(nestedRef), path.join(homedir(), '.dsh', 'nested-stats.json'))
+
+  // 5. Non-string inputs fallback safely without throwing
+  assert.equal(resolvePath(null), defaultPath)
+  assert.equal(resolvePath(undefined), defaultPath)
+  assert.equal(resolvePath(12345), defaultPath)
+  assert.equal(resolvePath({}), defaultPath)
+  assert.equal(resolvePath(true), defaultPath)
+})
+
+test('stats-storage: recordUsage with volatile { get } statsPath persists without crashing (#141, GH #9)', () => {
+  const targetFile = path.join(tmpdir(), `volatile-stats-${Date.now()}.json`)
+  const volatileStatsPath = { get: () => targetFile }
+
+  assert.doesNotThrow(() => {
+    recordUsage({
+      model: 'cline-pass/deepseek-v4-flash',
+      accountId: 'acc-vol',
+      promptTokens: 50,
+      completionTokens: 50,
+      totalTokens: 100,
+      statsPath: volatileStatsPath
+    })
+    saveStatsSync(volatileStatsPath)
+  })
+
+  const loaded = loadStats(volatileStatsPath)
+  assert.ok(loaded.totals.requests >= 1)
+})
+
+test('provider-sync: resolvePathWithHome unwraps volatile references safely (#143)', () => {
+  const volatileCache = { get: () => '~/.dsh/models-cache.json' }
+  const resolved = resolvePathWithHome(volatileCache)
+  assert.equal(resolved, path.join(homedir(), '.dsh', 'models-cache.json'))
+
+  const nonString = resolvePathWithHome(123)
+  assert.equal(nonString, '')
 })
