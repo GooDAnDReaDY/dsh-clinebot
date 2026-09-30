@@ -504,3 +504,41 @@ test('cline-client: buildPiAiProvider preserves custom overridden contextWindow 
   assert.equal(qwen.contextWindow, 1000000)
   assert.equal(qwen.maxTokens, 8192)
 })
+
+test('cline-client: retryWithBackoff cancels response body on rejected HTTP 429/502/503/504 before retry (#167)', async () => {
+  let attempts = 0
+  let cancelledBodies = 0
+
+  const fn = async () => {
+    attempts++
+    if (attempts < 3) {
+      return {
+        status: 429,
+        headers: { get: () => null },
+        body: {
+          cancel: async () => {
+            cancelledBodies++
+          }
+        }
+      }
+    }
+    return {
+      status: 200,
+      body: {
+        cancel: async () => {
+          assert.fail('Success body must not be cancelled by retryWithBackoff')
+        }
+      }
+    }
+  }
+
+  const result = await retryWithBackoff(fn, {
+    maxRetries: 3,
+    initialDelayMs: 5,
+    maxDelayMs: 20
+  })
+
+  assert.equal(attempts, 3)
+  assert.equal(cancelledBodies, 2, 'Must cancel rejected response bodies exactly once before each retry')
+  assert.equal(result.status, 200, 'Success response remains accessible to caller')
+})

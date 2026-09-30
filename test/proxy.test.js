@@ -1059,3 +1059,103 @@ test('proxy: network unreachable/ECONNREFUSED returns 502 Bad Gateway and not fa
     globalThis.fetch = originalFetch
   }
 })
+
+test('proxy: upstream response body is cancelled on HTTP 429 before failover to next account (#167)', async () => {
+  resetSessionRouter()
+  resetStats()
+  let completionsHandler = null
+  const mockCreds = {
+    resolve: async () => ({ value: 'sk-test-key-167' })
+  }
+  const mockCtx = {
+    effect: (fn) => fn(),
+    get: (name) => (name === 'credentials' ? mockCreds : null),
+    credentials: mockCreds,
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  const currentConfig = {
+    enabled: true,
+    baseUrl: 'https://api.cline.bot/api/v1',
+    accounts: [
+      { id: 'acc-1', apiKeyEnv: 'CLINEBOT_API_KEY_1' },
+      { id: 'acc-2', apiKeyEnv: 'CLINEBOT_API_KEY_2' }
+    ],
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => currentConfig
+  })
+
+  const originalFetch = globalThis.fetch
+  let cancelledBodies = 0
+  let fetchAttempts = 0
+
+  globalThis.fetch = async (url, opts) => {
+    fetchAttempts++
+    if (fetchAttempts === 1) {
+      return {
+        status: 429,
+        headers: { get: () => null },
+        body: {
+          cancel: async () => {
+            cancelledBodies++
+          }
+        }
+      }
+    }
+    // Second attempt succeeds
+    return new Response('{"id":"chatcmpl-test","choices":[{"message":{"content":"ok"}}]}', {
+      status: 200,
+      headers: { 'content-type': 'application/json' }
+    })
+  }
+
+  const createReq = (bodyObj) => {
+    const req = new EventEmitter()
+    req.method = 'POST'
+    req.socket = { remoteAddress: '127.0.0.1' }
+    req.headers = {
+      authorization: 'Bearer ' + TEST_TOKEN,
+      'content-type': 'application/json'
+    }
+    req[Symbol.asyncIterator] = async function* () {
+      yield Buffer.from(JSON.stringify(bodyObj))
+    }
+    return req
+  }
+
+  const createMockRes = () => {
+    const res = new EventEmitter()
+    res.statusCode = 200
+    res.headers = {}
+    res.data = ''
+    res.setHeader = (k, v) => { res.headers[k.toLowerCase()] = v }
+    res.writeHead = (code, hdrs) => {
+      res.statusCode = code
+      if (hdrs) Object.assign(res.headers, hdrs)
+    }
+    res.write = (chunk) => { res.data += chunk.toString() }
+    res.end = (chunk) => {
+      if (chunk) res.data += chunk.toString()
+      res.emit('finish')
+    }
+    return res
+  }
+
+  try {
+    const res = createMockRes()
+    await completionsHandler(createReq({ stream: false, model: 'deepseek-v4-flash' }), res)
+
+    assert.equal(fetchAttempts, 2)
+    assert.equal(cancelledBodies, 1, 'First 429 response body must be cancelled before failover')
+    assert.equal(res.statusCode, 200)
+    assert.ok(res.data.includes('"ok"'))
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
