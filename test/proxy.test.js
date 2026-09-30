@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events'
 import { registerProxyRoutes, USER_AGENT } from '../lib/routes/proxy.js'
 import { buildPiAiProvider, usageCache, clearUsageCache } from '../lib/cline-client.js'
 import { resetSessionRouter, getSessionRouterStatus } from '../lib/session-router.js'
+import { resetStats, getStatsSummary } from '../lib/stats-storage.js'
 import { getLocalProxyToken, setLocalProxyToken } from '../lib/proxy-token.js'
 import { createRequire } from 'node:module'
 
@@ -742,6 +743,175 @@ test('proxy: pi-ai client forwards session affinity headers and sticky router pr
     for (const call of upstreamCalls) {
       assert.ok(call.auth.includes('sk-account-'), 'Upstream used real account secret')
     }
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('proxy: separate connect timeout from streaming idle watchdog and error accounting (#165)', async () => {
+  resetSessionRouter()
+  let completionsHandler = null
+  const mockCreds = {
+    resolve: async () => ({ value: 'sk-test-key-165' })
+  }
+  const mockCtx = {
+    effect: (fn) => fn(),
+    get: (name) => (name === 'credentials' ? mockCreds : null),
+    credentials: mockCreds,
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  let currentConfig = {
+    enabled: true,
+    baseUrl: 'https://api.cline.bot/api/v1',
+    accounts: [{ id: 'acc-1', apiKeyEnv: 'CLINEBOT_API_KEY' }],
+    timeoutMs: 80,
+    connectTimeoutMs: 80,
+    streamIdleTimeoutMs: 200
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => currentConfig
+  })
+
+  const originalFetch = globalThis.fetch
+
+  const createReq = (bodyObj) => {
+    const req = new EventEmitter()
+    req.method = 'POST'
+    req.socket = { remoteAddress: '127.0.0.1' }
+    req.headers = {
+      authorization: 'Bearer ' + TEST_TOKEN,
+      'content-type': 'application/json'
+    }
+    req[Symbol.asyncIterator] = async function* () {
+      yield Buffer.from(JSON.stringify(bodyObj))
+    }
+    return req
+  }
+
+  const createMockStreamRes = () => {
+    const res = new EventEmitter()
+    res.statusCode = 200
+    res.headers = {}
+    res.chunks = []
+    res.writableFinished = false
+    res.writableEnded = false
+    res.destroyed = false
+    res.setHeader = (k, v) => { res.headers[k.toLowerCase()] = v }
+    res.writeHead = (code, hdrs) => {
+      res.statusCode = code
+      if (hdrs) Object.assign(res.headers, hdrs)
+    }
+    res.write = (chunk) => {
+      if (!res.destroyed && !res.writableEnded) {
+        res.chunks.push(chunk.toString('utf8'))
+      }
+    }
+    res.end = (finalChunk) => {
+      if (finalChunk && !res.destroyed && !res.writableEnded) {
+        res.chunks.push(finalChunk.toString('utf8'))
+      }
+      res.writableFinished = true
+      res.writableEnded = true
+      res.emit('finish')
+      res.emit('close')
+    }
+    return res
+  }
+
+  try {
+    // --- 1. Healthy stream longer than connectTimeoutMs (80ms) succeeds ---
+    resetStats()
+    globalThis.fetch = async () => {
+      const sseStream = new ReadableStream({
+        async start(controller) {
+          for (let i = 1; i <= 4; i++) {
+            await new Promise((r) => setTimeout(r, 35))
+            controller.enqueue(new TextEncoder().encode(`data: {"id":"${i}","choices":[{"delta":{"content":"${i}"}}]}\\n\\n`))
+          }
+          controller.enqueue(new TextEncoder().encode('data: [DONE]\\n\\n'))
+          controller.close()
+        }
+      })
+      return new Response(sseStream, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' }
+      })
+    }
+
+    const res1 = createMockStreamRes()
+    await completionsHandler(createReq({ stream: true, model: 'deepseek-v4-flash' }), res1)
+
+    assert.equal(res1.statusCode, 200)
+    assert.equal(res1.chunks.length >= 4, true, 'All chunks delivered even though total stream > connectTimeoutMs')
+    const stats1 = getStatsSummary()
+    assert.equal(stats1.totals.successful, 1, 'Healthy long stream must be counted as successful')
+    assert.equal(stats1.totals.failed, 0, 'Healthy long stream must not have failed count')
+
+    // --- 2. Stalled stream triggers idle watchdog abort and records failure ---
+    resetStats()
+    currentConfig = {
+      ...currentConfig,
+      connectTimeoutMs: 300,
+      streamIdleTimeoutMs: 70
+    }
+
+    let upstreamCancelledReason = null
+    globalThis.fetch = async () => {
+      const sseStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"id":"1","choices":[{"delta":{"content":"start"}}]}\\n\\n'))
+          // Stalls indefinitely...
+        },
+        cancel(reason) {
+          upstreamCancelledReason = reason
+        }
+      })
+      return new Response(sseStream, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' }
+      })
+    }
+
+    const res2 = createMockStreamRes()
+    await completionsHandler(createReq({ stream: true, model: 'deepseek-v4-flash' }), res2)
+
+    assert.equal(upstreamCancelledReason, 'stream idle timeout', 'Watchdog must cancel reader with idle timeout')
+    const combinedChunks2 = res2.chunks.join('')
+    assert.ok(combinedChunks2.includes('stream_idle_timeout'), 'Client must receive idle timeout error payload')
+    const stats2 = getStatsSummary()
+    assert.equal(stats2.totals.failed, 1, 'Stalled idle stream must be recorded as failed')
+    assert.equal(stats2.totals.successful, 0, 'Stalled idle stream must not be recorded as successful')
+
+    // --- 3. Mid-stream error records failure instead of success ---
+    resetStats()
+    globalThis.fetch = async () => {
+      const sseStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"id":"1","choices":[{"delta":{"content":"first"}}]}\\n\\n'))
+          setTimeout(() => {
+            controller.error(new Error('Upstream socket reset by peer'))
+          }, 30)
+        }
+      })
+      return new Response(sseStream, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' }
+      })
+    }
+
+    const res3 = createMockStreamRes()
+    await completionsHandler(createReq({ stream: true, model: 'deepseek-v4-flash' }), res3)
+
+    const stats3 = getStatsSummary()
+    assert.equal(stats3.totals.failed, 1, 'Mid-stream error must be recorded as failed')
+    assert.equal(stats3.totals.successful, 0, 'Mid-stream error must not be recorded as successful')
+
   } finally {
     globalThis.fetch = originalFetch
   }
