@@ -7,7 +7,7 @@
 The plugin consists of two runtime boundaries conforming to DSH authoring standards:
 
 ### 2.1 Host Runtime (`lib/index.js`, `lib/cline-client.js`, `lib/models.js`, `lib/http.js`)
-* **Cordis Service Registration & Modern Settings Adapter**: Declares `inject = ['webServer', 'credentials']`, adapting to DSH 0.1.7+ where the legacy Cordis `settings` service was removed. Uses a lightweight direct `settingsApi` adapter (`get`, `replace`, `update`, `watch`) accessing `ctx?.get?.('settings')` defensively, and exports `configReader(config)` for DSH configuration introspection. Only user-editable fields are marked `.volatile()`, while `volatileConfig()` strips derived and non-volatile properties prior to DSH settings writes.
+* **Cordis Service Registration & Modern Settings Adapter**: Declares `inject = ['webServer', 'credentials']`, adapting to DSH 0.1.7+ where the legacy Cordis `settings` service was removed. Uses a lightweight direct `settingsApi` adapter (`get`, `replace`, `update`, `watch`) accessing `ctx?.get?.('settings')` defensively with an atomic persistence contract: writes are persisted prior to updating in-memory state, non-writable settings throw explicitly, and live config preserves Volatile boxes and getters. Only user-editable fields are marked `.volatile()`, while `volatileConfig()` strips derived and non-volatile properties prior to DSH settings writes.
 * **Safe Service Resolution**: Service lookups utilize defensive proxy resolution `(ctx?.get && ctx.get('credentials')) || ctx?.credentials` to prevent `undefined` properties on Cordis proxies.
 * **Credential Isolation**: The plugin NEVER stores plain API keys in its configuration. The setting `apiKeyEnv` holds the credential identifier (default: `CLINEBOT_API_KEY`), resolved via `ctx.get('credentials').resolve()` or `process.env`.
 * **State Synchronization & Auto-Registration**: Mutates the core `llm-pi-ai` settings space (`op: 'set', path: ['providers', 'clinebot']`) declaratively and automatically when enabled or key is saved.
@@ -131,7 +131,7 @@ graph LR
 | `/dsh-clinebot/usage` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Телеметрия лимитов и скользящего окна запросов активного аккаунта из SWR-кэша. |
 | `/dsh-clinebot/accounts` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Добавление нового аккаунта в пул с безопасным сохранением ключа в DSH Credentials. |
 | `/dsh-clinebot/accounts/active` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Переключение активного аккаунта, инвалидация кэшей квот и обновление провайдера. |
-| `/dsh-clinebot/accounts/delete` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Удаление аккаунта из пула и очистка связанного секрета из Credentials. |
+| `/dsh-clinebot/accounts/delete` | POST, DELETE | `isTrustedSettingsRequest` | Loopback / Same-Origin; allowlist env; pool check | Удаление аккаунта из пула с валидацией пространства имен и очисткой секрета из Credentials. |
 | `/dsh-clinebot/models/toggle` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Включение/выключение модели в DSH чате через массив `disabledModels`. |
 | `/dsh-clinebot/models/sync` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Принудительная синхронизация моделей активного тарифного плана ClinePass. |
 | `/dsh-clinebot/models/context` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Настройка размера контекста модели (ручной ввод, дефолт провайдера, оригинальный лимит). |
@@ -153,9 +153,10 @@ graph LR
 * **Sticky Session Least-Used Routing & Bounded Memory**: При старте новой сессии выбирает аккаунт из пула с максимальным остатком квоты (`remainingPercent`). Закрепляет аккаунт за сессией (`sessionId`). Для предотвращения утечек памяти при высокой нагрузке размер таблицы сессий ограничен константой `MAX_SESSIONS = 1000`, а устаревшие сессии вытесняются по TTL (`SESSION_TTL_MS = 24h`) и LRU-алгоритму (`pruneSessions`). При 429 или исчерпании квоты временно переводит ключ в кулдаун и переключает сессию на следующий доступный аккаунт. Реализовано автоматическое восстановление из кулдауна (`cooldownExpiresAt`).
 
 ### 12.2 Persistent JSON Analytics (`lib/stats-storage.js`)
-* Персистентное хранилище метрик в `~/.dsh/clinebot-stats.json`.
-* Атомарная запись (`.tmp` + rename) с дебаунсом (500 мс).
+* Персистентное хранилище метрик в `~/.dsh/clinebot-stats.json` с автоматической загрузкой при старте плагина (`apply()`).
+* Атомарная запись (`.tmp` + rename) с дебаунсом (500 мс) и синхронным `flushStats` при остановке/выгрузке плагина.
 * Агрегация по дням, месяцам, моделям и аккаунтам, фиксация 429 ошибок.
+* Автоматическое сохранение диагностической копии (`*.corrupt.<timestamp>`) при повреждении файла статистики.
 
 ### 12.3 Reasoning Defaults & Custom Models (`lib/models.js`, `lib/config.js`)
 * Дефолтный `reasoning_effort` (`low`, `medium`, `high`, `max`) для reasoning-моделей в конфигурации и UI.

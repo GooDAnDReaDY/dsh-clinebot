@@ -15,10 +15,11 @@ import { plainConfig } from '../lib/config.js'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 
-function createReq({ method = 'POST', body = null, remote = '127.0.0.1', untrusted = false } = {}) {
+function createReq({ method = 'POST', url = '/', body = null, remote = '127.0.0.1', untrusted = false } = {}) {
   const chunks = body ? [Buffer.from(typeof body === 'string' ? body : JSON.stringify(body))] : []
   const req = Readable.from(chunks)
   req.method = method
+  req.url = url
   if (untrusted) {
     req.headers = { host: 'internal-hub:3000', origin: 'http://evil-attacker.com' }
     req.socket = { remoteAddress: '203.0.113.10' }
@@ -47,13 +48,23 @@ function setupRouter({ settingsAvailable = true, activeKey = 'valid-key' } = {})
   let providerSynced = false
 
   const mockSettingsApi = {
-    replace: async (val) => { replacedConfig = val },
+    replace: async (val) => {
+      replacedConfig = val;
+      Object.assign(liveConfig, val);
+    },
     mutate: async () => {},
   }
 
+  let unsetCalledWith = null
+  let unsetShouldFail = false
   const mockCreds = {
     set: async () => true,
     resolve: async () => ({ value: activeKey }),
+    unset: async (ref) => {
+      if (unsetShouldFail) throw new Error("Mock credential unset failed");
+      unsetCalledWith = ref;
+      return true;
+    },
   }
 
   const ctx = {
@@ -109,6 +120,8 @@ function setupRouter({ settingsAvailable = true, activeKey = 'valid-key' } = {})
     },
     getReplacedConfig: () => replacedConfig,
     isProviderSynced: () => providerSynced,
+    getUnsetCalledWith: () => unsetCalledWith,
+    setUnsetShouldFail: (val) => { unsetShouldFail = val },
   }
 }
 
@@ -201,7 +214,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
 
   // 5. Successful write execution: /models/toggle
   {
-    const { getHandler, getReplacedConfig, isProviderSynced } = setupRouter()
+    const { getHandler, getReplacedConfig, isProviderSynced, setUnsetShouldFail, getUnsetCalledWith } = setupRouter()
     const handler = getHandler('/dsh-clinebot/models/toggle')
     const out = createRes()
     await handler(createReq({ method: 'POST', body: { disabledModels: ['cline-pass/kimi-k3'] } }), out.res)
@@ -269,7 +282,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
 
   // 7. Successful write execution: /accounts (POST) and /accounts/delete (POST)
   {
-    const { getHandler, getReplacedConfig, isProviderSynced } = setupRouter()
+    const { getHandler, getReplacedConfig, isProviderSynced, setUnsetShouldFail, getUnsetCalledWith } = setupRouter()
     const addHandler = getHandler('/dsh-clinebot/accounts')
     const outAdd = createRes()
     await addHandler(createReq({
@@ -283,20 +296,49 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     assert.ok(cfgAfterAdd.accounts.some((a) => a.apiKeyEnv === 'CLINEBOT_API_KEY_3'))
     assert.equal(isProviderSynced(), true)
 
-    // Cannot delete primary account
     const delHandler = getHandler('/dsh-clinebot/accounts/delete')
+
+    // Disallowed apiKeyEnv format (Issue #155)
+    const outDelBadFormat = createRes()
+    await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'OTHER_PROVIDER_API_KEY' } }), outDelBadFormat.res)
+    assert.equal(outDelBadFormat.read().status, 400)
+    assert.match(outDelBadFormat.read().body.error, /Disallowed apiKeyEnv/)
+
+    // Non-existent account in pool (Issue #155)
+    const outDelNotFound = createRes()
+    await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY_NONEXISTENT' } }), outDelNotFound.res)
+    assert.equal(outDelNotFound.read().status, 404)
+    assert.match(outDelNotFound.read().body.error, /not found in accounts pool/)
+
+    // Cannot delete primary account
     const outDelPrimary = createRes()
     await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY' } }), outDelPrimary.res)
     assert.equal(outDelPrimary.read().status, 400)
 
-    // Can delete secondary account
+    // Failure on deleteSecret when credentials unset fails (Issue #155)
+    setUnsetShouldFail(true)
+    const outDelFailSecret = createRes()
+    await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK', deleteSecret: true } }), outDelFailSecret.res)
+    assert.equal(outDelFailSecret.read().status, 500)
+    assert.match(outDelFailSecret.read().body.error, /Failed to delete secret/)
+    setUnsetShouldFail(false)
+
+    // Successful delete with deleteSecret: true unsets credential (Issue #155)
     const outDel = createRes()
-    await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } }), outDel.res)
+    await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK', deleteSecret: true } }), outDel.res)
     assert.equal(outDel.read().status, 200)
     assert.equal(outDel.read().body.ok, true)
     assert.equal(outDel.read().body.removed, 'CLINEBOT_API_KEY_WORK')
+    assert.ok(getUnsetCalledWith(), "credentials.unset must be called when deleteSecret is true")
     const cfgAfterDel = plainConfig(getReplacedConfig())
     assert.equal(cfgAfterDel.accounts.some((a) => a.apiKeyEnv === 'CLINEBOT_API_KEY_WORK'), false)
+
+    // DELETE /dsh-clinebot/accounts also succeeds via query param
+    const accountsHandler = getHandler('/dsh-clinebot/accounts')
+    const outDelViaDeleteMethod = createRes()
+    await accountsHandler(createReq({ method: 'DELETE', url: '/dsh-clinebot/accounts?apiKeyEnv=CLINEBOT_API_KEY_3' }), outDelViaDeleteMethod.res)
+    assert.equal(outDelViaDeleteMethod.read().status, 200)
+    assert.equal(outDelViaDeleteMethod.read().body.removed, 'CLINEBOT_API_KEY_3')
   }
 
   // 8. Successful write execution: /unregister and /register
