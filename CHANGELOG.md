@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.9] - 2026-10-01
+
+### Fixed
+- **Updater Timeout Exit & SIGKILL Escalation (Issue #172)**: Ensured `installExact` child process cleanup waits for the operating system process to fully terminate via `exit`/`close` events before releasing profile locks or rejecting update promises. On timeout, sends `SIGTERM`, waits for a grace period, and escalates to `SIGKILL` for stubborn subprocesses.
+- **Proxy Client Disconnection SSE Abort Fixture (Issue #173)**: Validated client disconnection handling against a real Node.js loopback HTTP fixture with client TCP stream destruction, asserting upstream `reader.cancel()` and fetch `signal.aborted` without relying exclusively on synthetic mocks.
+- **Dependency Manifest & Lockfile Synchronization (Issue #174)**: Regenerated `package-lock.json` via clean npm resolution for all 21 dependencies to ensure deterministic, clean `npm ci` builds across environments, while maintaining proper exclusion of the lockfile from package archives.
+- **UI Locale Key Completeness & Reasoning/Quota Strings (Issue #175)**: Resolved missing locale keys across `en` and `zh` dictionaries for structured quota countdowns/warnings, reasoning tags and effort selectors, capability badges, smoke test diagnostic outputs, and ErrorBoundary alerts. Added regression test asserting 100% dictionary completeness and symmetry for client `t()` calls.
+- **Update Check State Machine & Error Handling (Issue #176)**: Implemented explicit update state machine (`idle`, `checking`, `current`, `available`, `error`) in `UpdateBanner` and `settings-page.js`. Eliminated false "✓ Up to date" status indicators on failed network checks or when `latestCheckFailed: true`, and added retry action.
+- **Documentation & Design Contract Modernization (Issue #177)**: Synchronized `README.md`, `README.ru.md`, `README.zh.md`, and `docs/design/DESIGN.md` with active runtime contracts: documented dynamic subscription catalog, custom models, active configuration schema (`disabledModels`, `proxyMode`, `accounts`), corrected route prefixes (`/dsh-clinebot/*`), and documented all 4 registered UI seats and release testing workflows.
+
 ## [0.5.8] - 2026-09-30
 
 ### Fixed

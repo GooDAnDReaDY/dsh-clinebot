@@ -16,10 +16,13 @@ function createErrorBoundary() {
       }
       render() {
         if (this.state.hasError) {
+          const t = this.props && typeof this.props.t === 'function' ? this.props.t : null
+          const errorTitle = t ? t('ui.error_title') : '⚠️ ClineBot UI Error: '
+          const retryLabel = t ? t('ui.retry') : 'Retry'
           return React.createElement(
             'div',
             { className: 'cb-alert-err' },
-            React.createElement('strong', null, '⚠️ ClineBot UI Error: '),
+            React.createElement('strong', null, errorTitle),
             String(this.state.error?.message || this.state.error || 'Unknown rendering error'),
             React.createElement(
               'button',
@@ -29,7 +32,7 @@ function createErrorBoundary() {
                 style: { marginLeft: '12px', padding: '2px 8px', fontSize: '11px' },
                 onClick: () => this.setState({ hasError: false, error: null }),
               },
-              'Retry'
+              retryLabel
             )
           )
         }

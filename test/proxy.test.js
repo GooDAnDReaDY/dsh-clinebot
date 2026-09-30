@@ -1,4 +1,5 @@
 import test from 'node:test'
+import http from 'node:http'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { registerProxyRoutes, USER_AGENT } from '../lib/routes/proxy.js'
@@ -503,6 +504,104 @@ test('proxy: closing client response aborts upstream request and cleans up liste
     assert.equal(normReq.listenerCount('close'), 0, 'Request close listeners must be cleaned up')
   } finally {
     globalThis.fetch = originalFetch
+  }
+})
+
+
+test('proxy: real loopback HTTP fixture cancels upstream SSE reader when TCP connection is aborted by client (#173)', async () => {
+  resetSessionRouter()
+  let completionsHandler = null
+  const mockCreds = {
+    resolve: async () => ({ value: 'sk-test-key-173' })
+  }
+  const mockCtx = {
+    effect: (fn) => fn(),
+    get: (name) => (name === 'credentials' ? mockCreds : null),
+    credentials: mockCreds,
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({
+      enabled: true,
+      baseUrl: 'https://api.cline.bot/api/v1',
+      accounts: [{ id: 'acc-1', apiKeyEnv: 'CLINEBOT_API_KEY' }]
+    })
+  })
+
+  let upstreamCancelled = false
+  let upstreamFetchSignal = null
+
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (url, init) => {
+    upstreamFetchSignal = init.signal
+    const sseStream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"id":"1","choices":[{"delta":{"content":"chunk-1"}}]}\\n\\n'))
+      },
+      cancel(reason) {
+        upstreamCancelled = true
+      }
+    })
+    return new Response(sseStream, {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' }
+    })
+  }
+
+  const server = http.createServer((req, res) => {
+    completionsHandler(req, res).catch(() => {})
+  })
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address()
+
+  try {
+    await new Promise((resolve, reject) => {
+      const clientReq = http.request({
+        host: '127.0.0.1',
+        port,
+        path: '/dsh-clinebot/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer ' + TEST_TOKEN,
+          'content-type': 'application/json'
+        }
+      }, (res) => {
+        res.on('data', () => {
+          // Abort real client TCP socket upon first chunk
+          clientReq.destroy()
+        })
+      })
+
+      clientReq.on('error', () => {
+        // Socket destruction throws ECONNRESET on client side, expected
+      })
+
+      clientReq.write(JSON.stringify({ stream: true, model: 'deepseek-v4-flash' }))
+      clientReq.end()
+
+      const start = Date.now()
+      const interval = setInterval(() => {
+        if (upstreamCancelled && upstreamFetchSignal?.aborted) {
+          clearInterval(interval)
+          resolve()
+        } else if (Date.now() - start > 2000) {
+          clearInterval(interval)
+          reject(new Error('Timed out waiting for upstream cancellation on TCP abort'))
+        }
+      }, 20)
+    })
+
+    assert.equal(upstreamCancelled, true, 'Upstream stream reader must be cancelled on real TCP abort')
+    assert.equal(upstreamFetchSignal.aborted, true, 'Upstream fetch signal must be aborted on real TCP abort')
+  } finally {
+    globalThis.fetch = originalFetch
+    await new Promise((resolve) => server.close(resolve))
   }
 })
 

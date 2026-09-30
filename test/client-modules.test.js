@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import vm from "node:vm"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
@@ -633,4 +633,140 @@ test('client: stats section reads totals envelope and model totalTokens (#159)',
   assert.ok(fullText.includes((1234567).toLocaleString()), 'Should format totalTokens with locale string')
   assert.ok(fullText.includes('7'), 'Should format rateLimited429 errors')
   assert.ok(fullText.includes(`${(1234567).toLocaleString()} tok`), 'Should display model totalTokens in tok')
+})
+
+test('client: en and zh locale dictionaries are complete and cover all client t() calls', () => {
+  const clientDir = path.join(root, 'src', 'client')
+  const localesFile = path.join(clientDir, 'locales.js')
+
+  const codeStr = readFileSync(localesFile, 'utf8')
+  const sandbox = { module: { exports: {} } }
+  vm.createContext(sandbox)
+  vm.runInContext(codeStr + '\nmodule.exports = { en, zh };', sandbox)
+  const { en, zh } = sandbox.module.exports
+
+  assert.ok(en && typeof en === 'object', 'en locale must exist')
+  assert.ok(zh && typeof zh === 'object', 'zh locale must exist')
+
+  const enKeys = Object.keys(en)
+  const zhKeys = Object.keys(zh)
+
+  // 1. Check symmetry
+  const missingInZh = enKeys.filter((k) => !(k in zh))
+  const missingInEn = zhKeys.filter((k) => !(k in en))
+  assert.deepStrictEqual(missingInZh, [], 'All keys in en must exist in zh')
+  assert.deepStrictEqual(missingInEn, [], 'All keys in zh must exist in en')
+
+  // 2. Check all t('key') calls in client files exist in dictionary
+  const files = readdirSync(clientDir, { recursive: true })
+  const usedKeys = new Set()
+  for (const rel of files) {
+    if (!rel.endsWith('.js') || rel === 'locales.js') continue
+    const fileCode = readFileSync(path.join(clientDir, rel), 'utf8')
+    const matches = fileCode.matchAll(/(?<![a-zA-Z0-9_$])t\(\s*['"]([a-zA-Z0-9_.-]+)['"]/g)
+    for (const m of matches) {
+      usedKeys.add(m[1])
+    }
+  }
+
+  const missingFromDictEn = [...usedKeys].filter((k) => !(k in en))
+  const missingFromDictZh = [...usedKeys].filter((k) => !(k in zh))
+  assert.deepStrictEqual(missingFromDictEn, [], 'All used t() keys must exist in en')
+  assert.deepStrictEqual(missingFromDictZh, [], 'All used t() keys must exist in zh')
+
+  // 3. Structured quota warning keys and error boundary keys must exist
+  const expectedKeys = [
+    'quota.countdown',
+    'quota.warning_low',
+    'quota.window_monthly',
+    'quota.warning_5h',
+    'quota.warning_weekly',
+    'quota.warning_monthly',
+    'quota.exhausted_5h',
+    'ui.error_title',
+    'ui.retry',
+    'models.reasoning_tag',
+    'models.effort_low',
+    'models.effort_medium',
+    'models.effort_high',
+    'models.effort_max',
+    'models.caps_vision',
+    'models.caps_general',
+    'models.caps_coding',
+    'diag.smoke_result',
+    'diag.empty',
+  ]
+  for (const k of expectedKeys) {
+    assert.ok(k in en, `en must contain key ${k}`)
+    assert.ok(k in zh, `zh must contain key ${k}`)
+  }
+})
+
+test('client: UpdateBanner distinguishes idle, error, available, and current states (#176)', () => {
+  const bannerCode = readFileSync(path.join(root, 'src/client/components/update-banner.js'), 'utf8')
+
+  const React = {
+    Fragment: 'Fragment',
+    createElement: (tag, props, ...children) => {
+      const finalProps = Object.assign({}, props, { children: children.length === 1 ? children[0] : (children.length > 1 ? children : undefined) })
+      return { tag, props: finalProps, children }
+    }
+  }
+
+  const sandbox = { React, module: { exports: {} } }
+  vm.createContext(sandbox)
+  vm.runInContext(bannerCode + '\nmodule.exports = UpdateBanner;', sandbox)
+  const UpdateBanner = sandbox.module.exports
+
+  const t = (k, p) => (p ? `${k}:${JSON.stringify(p)}` : k)
+
+  function collectText(node) {
+    if (!node) return []
+    if (Array.isArray(node)) return node.flatMap(collectText)
+    if (typeof node === 'string' || typeof node === 'number') return [String(node)]
+    return collectText(node.children)
+  }
+
+  // 1. Idle state before check: must NOT show up to date
+  const idleVdom = UpdateBanner({
+    updateState: { status: 'idle', checking: false, currentVersion: '0.5.8' },
+    handleTriggerUpdate: () => {},
+    handleCheckUpdate: () => {},
+    t
+  })
+  const idleText = collectText(idleVdom).join(' ')
+  assert.ok(!idleText.includes('update.up_to_date'), 'idle state must not show up to date')
+
+  // 2. Failed check / error state: must NOT show up to date, must show error and retry
+  const errVdom = UpdateBanner({
+    updateState: { status: 'error', checking: false, latestCheckFailed: true, currentVersion: '0.5.8', error: 'Network failure' },
+    handleTriggerUpdate: () => {},
+    handleCheckUpdate: () => {},
+    t
+  })
+  const errText = collectText(errVdom).join(' ')
+  assert.ok(!errText.includes('update.up_to_date'), 'error state must not show up to date')
+  assert.ok(errText.includes('update.check_failed'), 'error state must show check_failed')
+  assert.ok(errText.includes('update.retry'), 'error state must show retry button')
+
+  // 3. Available update
+  const availVdom = UpdateBanner({
+    updateState: { status: 'available', updateAvailable: true, checking: false, currentVersion: '0.5.8', latestVersion: '0.5.9' },
+    handleTriggerUpdate: () => {},
+    handleCheckUpdate: () => {},
+    t
+  })
+  const availText = collectText(availVdom).join(' ')
+  assert.ok(availText.includes('update.available'), 'available state must show update.available')
+  assert.ok(availText.includes('update.btn'), 'available state must show update button')
+
+  // 4. Current / up to date state
+  const curVdom = UpdateBanner({
+    updateState: { status: 'current', lastCheckedAt: Date.now(), checking: false, currentVersion: '0.5.8', latestVersion: '0.5.8' },
+    handleTriggerUpdate: () => {},
+    handleCheckUpdate: () => {},
+    t
+  })
+  const curText = collectText(curVdom).join(' ')
+  assert.ok(curText.includes('update.up_to_date'), 'current state must show update.up_to_date')
 })

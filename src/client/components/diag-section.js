@@ -45,8 +45,11 @@ function DiagSection({ keyPresent, isRegistered, busy, smokeResult, handleSmoke,
       ? React.createElement(
           'div',
           { className: 'cb-preview' },
-          `✅ Latency: ${smokeResult.latencyMs} ms | Model: ${smokeResult.model}
-Response: ${smokeResult.preview || '(empty)'}`
+          t('diag.smoke_result', {
+            latency: smokeResult.latencyMs,
+            model: smokeResult.model,
+            preview: smokeResult.preview || t('diag.empty'),
+          })
         )
       : null
   )

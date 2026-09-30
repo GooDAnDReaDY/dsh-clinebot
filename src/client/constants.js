@@ -12,3 +12,16 @@ function readConfigForms(ctx) {
   if (!ctx || typeof ctx.get !== 'function') return undefined
   try { return ctx.get('configForms') || undefined } catch { return undefined }
 }
+
+function useConfigFormsSnapshot(ctx) {
+  const scope = React.useMemo(() => {
+    try { return readConfigForms(ctx)?.get?.(NS) || undefined } catch { return undefined }
+  }, [ctx])
+  const subscribe = React.useMemo(() => (cb) => {
+    try { return scope?.subscribe ? (scope.subscribe(cb) || (() => {})) : () => {} } catch { return () => {} }
+  }, [scope])
+  const getSnapshot = React.useCallback(() => {
+    try { return scope?.getSnapshot?.() || SNAPSHOT_READY } catch { return SNAPSHOT_READY }
+  }, [scope])
+  return React.useSyncExternalStore(subscribe, getSnapshot, () => SNAPSHOT_READY)?.status || 'loading'
+}

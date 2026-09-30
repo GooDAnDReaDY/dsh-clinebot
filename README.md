@@ -74,7 +74,7 @@ graph LR
     end
 
     subgraph PluginHost [dsh-clinebot Host Runtime]
-        HttpEndpoints["API: /api/plugins/dsh-clinebot/*"]
+        HttpEndpoints["API: /dsh-clinebot/*"]
         ClientCore["lib/cline-client.js"]
         ModelCatalog["lib/models.js (Curated + Dynamic Plan)"]
         SlashCmd["Command: /cline"]
@@ -108,7 +108,7 @@ graph LR
 ## ✨ Features & Module Breakdown
 
 * **`lib/models.js`**:
-  Manages the curated catalog (11 built-in models) with full reasoning effort mappings (`off: null`, `low`, `medium`, `high`, `max`), upstream 200k context limit declarations, and dynamic subscription plan model parsing (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
+  Manages the dynamic subscription catalog and fallback models with full reasoning effort mappings (`off: null`, `low`, `medium`, `high`, `max`), upstream 200k context limit declarations, user-defined custom models, and dynamic subscription plan model parsing (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **`lib/cline-client.js`**:
   * `fetchUsageLimits`: queries `GET /users/me/plan/usage-limits`, `GET /users/me/plan`, and `GET /users/me` with in-memory caching.
   * `sessionStats` / `recordSessionRequest`: in-memory telemetry recording requests count, tokens, latency, and timestamps.
@@ -163,29 +163,42 @@ dsh-clinebot:
   enabled: true
   baseUrl: https://api.cline.bot/api/v1
   apiKeyEnv: CLINEBOT_API_KEY
-  defaultModel: cline-pass/deepseek-v4-flash
-  timeoutMs: 15000
-  smokeTimeoutMs: 25000
-  enabledModels:
-    - cline-pass/deepseek-v4-flash
-    - cline-pass/deepseek-v4-pro
-    - cline-pass/kimi-k3
-    - cline-pass/qwen3.7-max
-  dynamicModels: []
+  defaultModel: your-default-model
+  proxyMode: true
+  disabledModels: []
+  customModels: []
+  modelReasoningDefaults:
+    your-reasoning-model: high
+  modelContextOverrides: []
+  statsPath: ~/.dsh/clinebot-stats.json
+  timeoutMs: 30000
+  smokeTimeoutMs: 60000
+  streamIdleTimeoutMs: 60000
+  accounts:
+    - label: Team Key
+      apiKeyEnv: CLINEBOT_API_KEY_2
 ```
 
 ### Configuration Parameters
 
 | Parameter | Type | Default | Description |
 |:---|:---|:---|:---|
-| `enabled` | `boolean` | `true` | Enable or disable the ClineBot provider bridge |
+| `enabled` | `boolean` | `true` | Enable or disable the ClineBot provider bridge in DSH |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI-compatible base URL |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Environment variable / credentials key name |
-| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Default selected model ID |
+| `defaultModel` | `string` | `"claude-3-7-sonnet"` | Default selected model ID for chat and smoke tests |
+| `disabledModels` | `array` | `[]` | List of model IDs hidden from the DSH chat picker (new subscription models are auto-enabled) |
+| `customModels` | `array` | `[]` | User-defined gateway models (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
+| `modelReasoningDefaults` | `object` | `{}` | Configured default reasoning effort per model (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | User-defined model context length and max token overrides |
-| `timeoutMs` | `number` | `15000` | HTTP request timeout in milliseconds |
-| `smokeTimeoutMs` | `number` | `25000` | Smoke test latency ping timeout |
-| `enabledModels` | `array` | `[...]` | List of models exposed in the DSH chat picker |
+| `proxyMode` | `boolean` | `true` | Enable local transparent loopback proxy for sticky sessions and automatic 429 failover |
+| `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Persistent on-disk path for token usage analytics |
+| `accounts` | `array` | `[]` | Additional accounts for multi-account failover and quota rotation (`[{ label, apiKeyEnv }]`) |
+| `activeAccount` | `string` | `""` | Manually pinned active account env name (empty for least-used auto routing) |
+| `timeoutMs` | `number` | `30000` | HTTP probe timeout in milliseconds |
+| `smokeTimeoutMs` | `number` | `60000` | Timeout for smoke test chat completions in milliseconds |
+| `streamIdleTimeoutMs` | `number` | `60000` | Idle timeout between SSE stream chunks in milliseconds |
+| `enabledModels` | `array` | *(deprecated)* | Read-only in public config; rejected on `PUT /config` in favor of `disabledModels` |
 | `dynamicModels` | `array` | `[]` | Dynamic models automatically synced from the official plan |
 
 ---

@@ -74,7 +74,7 @@ graph LR
     end
 
     subgraph PluginHost [Хост-часть dsh-clinebot]
-        HttpEndpoints["API: /api/plugins/dsh-clinebot/*"]
+        HttpEndpoints["API: /dsh-clinebot/*"]
         ClientCore["lib/cline-client.js"]
         ModelCatalog["lib/models.js (Встроенные + Динамические из плана)"]
         SlashCmd["Слэш-команда: /cline"]
@@ -107,7 +107,7 @@ graph LR
 
 ## ✨ Структура модулей и возможности
 
-* **`lib/models.js`**: каталог встроенных моделей ClinePass (11 моделей с полной поддержкой уровней размышлений `Off` / `Low` / `Medium` / `High` / `Max` и фиксацией лимита шлюза в 200k токенов) и парсер моделей подписки (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
+* **`lib/models.js`**: динамический каталог моделей подписки и встроенных шаблонов с поддержкой уровней рассуждения (`Off` / `Low` / `Medium` / `High` / `Max`), контекстных лимитов, пользовательских моделей (`customModels`) и парсинга тарифа (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **`lib/cline-client.js`**:
   * `fetchUsageLimits`: параллельный опрос `GET /users/me/plan/usage-limits`, `GET /users/me/plan` и `GET /users/me` с кэшированием в памяти.
   * `sessionStats` / `recordSessionRequest`: счетчики сессии (запросы, токены, задержка, время).
@@ -158,29 +158,42 @@ dsh-clinebot:
   enabled: true
   baseUrl: https://api.cline.bot/api/v1
   apiKeyEnv: CLINEBOT_API_KEY
-  defaultModel: cline-pass/deepseek-v4-flash
-  timeoutMs: 15000
-  smokeTimeoutMs: 25000
-  enabledModels:
-    - cline-pass/deepseek-v4-flash
-    - cline-pass/deepseek-v4-pro
-    - cline-pass/kimi-k3
-    - cline-pass/qwen3.7-max
-  dynamicModels: []
+  defaultModel: your-default-model
+  proxyMode: true
+  disabledModels: []
+  customModels: []
+  modelReasoningDefaults:
+    your-reasoning-model: high
+  modelContextOverrides: []
+  statsPath: ~/.dsh/clinebot-stats.json
+  timeoutMs: 30000
+  smokeTimeoutMs: 60000
+  streamIdleTimeoutMs: 60000
+  accounts:
+    - label: Team Key
+      apiKeyEnv: CLINEBOT_API_KEY_2
 ```
 
 ### Параметры конфигурации
 
 | Параметр | Тип | По умолчанию | Описание |
 |:---|:---|:---|:---|
-| `enabled` | `boolean` | `true` | Включение моста провайдера ClineBot |
+| `enabled` | `boolean` | `true` | Включение моста провайдера ClineBot в DSH |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | Базовый URL OpenAI-совместимого API ClinePass |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Имя переменной / ключа в хранилище credentials |
-| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Модель, выбираемая по умолчанию |
+| `defaultModel` | `string` | `"claude-3-7-sonnet"` | Модель, выбираемая по умолчанию для чата и smoke-тестов |
+| `disabledModels` | `array` | `[]` | Список отключённых моделей (новые модели подписки включаются автоматически) |
+| `customModels` | `array` | `[]` | Пользовательские модели шлюза (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
+| `modelReasoningDefaults` | `object` | `{}` | Значения thinking effort по умолчанию для моделей (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | Пользовательские переопределения размера контекста и лимита токенов |
-| `timeoutMs` | `number` | `15000` | Таймаут HTTP-запросов (мс) |
-| `smokeTimeoutMs` | `number` | `25000` | Таймаут тестового пинга (мс) |
-| `enabledModels` | `array` | `[...]` | Список моделей, активных в селекторе чата |
+| `proxyMode` | `boolean` | `true` | Включение локального прозрачного loopback-прокси с сессионным роутингом и failover |
+| `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Путь к файлу персистентной аналитики использования токенов |
+| `accounts` | `array` | `[]` | Дополнительные аккаунты для ротации квоты и failover (`[{ label, apiKeyEnv }]`) |
+| `activeAccount` | `string` | `""` | Принудительно закреплённый аккаунт (пусто для автоматического выбора least-used) |
+| `timeoutMs` | `number` | `30000` | Таймаут HTTP-запросов (мс) |
+| `smokeTimeoutMs` | `number` | `60000` | Таймаут тестового пинга инференса (мс) |
+| `streamIdleTimeoutMs` | `number` | `60000` | Таймаут ожидания между чанками SSE-потока (мс) |
+| `enabledModels` | `array` | *(устарело)* | Только для чтения в public config; отклоняется при `PUT /config` в пользу `disabledModels` |
 | `dynamicModels` | `array` | `[]` | Динамические модели, автоматически синхронизированные из тарифа |
 
 ---
