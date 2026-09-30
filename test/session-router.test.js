@@ -13,7 +13,8 @@ import {
   SESSION_TTL_MS,
   getSessionRouterStatus,
   matchesAccount,
-  isAccountBlocked
+  isAccountBlocked,
+  getAccountUsageMetric
 } from '../lib/session-router.js'
 
 test('session-router: selectLeastUsedAccount picks account with lowest percentUsed', () => {
@@ -218,4 +219,110 @@ test('session-router: manually pinned account fails over to least-used when in c
   // Must fail over to Default Account A
   assert.equal(s1.account.apiKeyEnv, 'CLINEBOT_API_KEY')
   assert.equal(s1.reason, 'pinned_in_cooldown_fallback')
+})
+
+import { resolveAccountPool, getAccountQuotaSnapshot } from '../lib/account-pool.js'
+import { usageCache, clearUsageCache } from '../lib/cline-client.js'
+
+test('session-router & account-pool: real resolveAccountPool with usageCache selects least-used account (\#162)', async () => {
+  clearUsageCache()
+  resetSessionRouter()
+
+  const keyA = 'key-alpha-12345678'
+  const keyB = 'key-bravo-87654321'
+
+  // Seed cache: A = 99% used, B = 1% used
+  usageCache.set(`cline:usage:${keyA.slice(-8)}`, {
+    timestamp: Date.now(),
+    data: {
+      windows: {
+        fiveHour: { percentUsed: 99, resetsAt: new Date(Date.now() + 3600000).toISOString() },
+        weekly: { percentUsed: 20 }
+      }
+    }
+  })
+
+  usageCache.set(`cline:usage:${keyB.slice(-8)}`, {
+    timestamp: Date.now(),
+    data: {
+      windows: {
+        fiveHour: { percentUsed: 1, resetsAt: new Date(Date.now() + 3600000).toISOString() },
+        weekly: { percentUsed: 1 }
+      }
+    }
+  })
+
+  const ctxMock = {
+    get: (svc) => {
+      if (svc === 'credentials') {
+        return {
+          resolve: async (ref) => {
+            const name = typeof ref === 'object' ? (ref._id || ref.id) : ref
+            if (name === 'CLINEBOT_API_KEY') return { value: keyA }
+            if (name === 'CLINEBOT_API_KEY_2') return { value: keyB }
+            return null
+          }
+        }
+      }
+      return null
+    }
+  }
+
+  const cfg = {
+    apiKeyEnv: 'CLINEBOT_API_KEY',
+    activeAccount: 'auto',
+    accounts: [
+      { id: 'account-2', apiKeyEnv: 'CLINEBOT_API_KEY_2', label: 'Account B' }
+    ]
+  }
+
+  const pool = await resolveAccountPool(ctxMock, cfg)
+  assert.equal(pool.length, 2)
+  assert.equal(pool[0].percentUsed, 99)
+  assert.equal(pool[1].percentUsed, 1)
+
+  // In auto mode, router must choose Account B (1% used) instead of Account A (99% used)
+  const result = resolveSessionAccount('session-test-quota', pool, 'auto')
+  assert.equal(result.account.apiKeyEnv, 'CLINEBOT_API_KEY_2')
+  assert.equal(result.account.percentUsed, 1)
+})
+
+test('session-router: getAccountUsageMetric distinguishes unknown quota from 0% (\#162)', () => {
+  assert.equal(getAccountUsageMetric({ percentUsed: 0 }), 0)
+  assert.equal(getAccountUsageMetric({ percentUsed: 80 }), 80)
+  assert.equal(getAccountUsageMetric({ percentUsed: null }), 50)
+  assert.equal(getAccountUsageMetric({ percentUsed: undefined }), 50)
+
+  // Account with verified 10% is preferred over unknown (50%)
+  const pool1 = [
+    { id: 'unk', percentUsed: null, present: true },
+    { id: 'known-low', percentUsed: 10, present: true }
+  ]
+  assert.equal(selectLeastUsedAccount(pool1).id, 'known-low')
+
+  // Unknown (50%) is preferred over verified 90%
+  const pool2 = [
+    { id: 'known-high', percentUsed: 90, present: true },
+    { id: 'unk', percentUsed: null, present: true }
+  ]
+  assert.equal(selectLeastUsedAccount(pool2).id, 'unk')
+})
+
+test('account-pool: getAccountQuotaSnapshot evaluates expired resetsAt as reset to 0% (\#162)', () => {
+  clearUsageCache()
+  const key = 'key-expired-99999999'
+  // resetsAt was 10 seconds ago
+  const expiredTime = new Date(Date.now() - 10000).toISOString()
+  usageCache.set(`cline:usage:${key.slice(-8)}`, {
+    timestamp: Date.now(),
+    data: {
+      windows: {
+        fiveHour: { percentUsed: 98, resetsAt: expiredTime }
+      }
+    }
+  })
+
+  const snap = getAccountQuotaSnapshot(key)
+  assert.equal(snap.fiveHour, 0)
+  assert.equal(snap.percentUsed, 0)
 })
