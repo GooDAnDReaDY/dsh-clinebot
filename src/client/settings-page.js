@@ -272,14 +272,15 @@ function SettingsPage(props) {
   }
 
   async function handleConfigPatch(patch) {
+    setDraft((d) => ({ ...(d || {}), ...(patch || {}) }))
     await performAction('patch-config', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/config`, {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
+        body: JSON.stringify({ config: patch }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`)
       await load()
     })
   }
