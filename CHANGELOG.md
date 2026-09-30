@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.7] - 2026-09-30
+
+### Fixed
+- **Active Account Pinning & Account Identity Unification (Issue #161)**: Resolved issue where proxy router ignored manually pinned active account and routed requests to secondary keys. Unified account identification across `id`, `apiKeyEnv`, and `label` in session routing, round-robin fallback, and cooldown tracking.
+- **Account Pool Quota Metadata Enrichment (Issue #162)**: Provided real-time quota window utilization metadata (`remainingPercent`, `percentUsed`, `resetsAt`) to least-used account routing strategy. Handled unknown/unprobed quotas safely to prevent routing bias towards exhausted accounts.
+- **Pi-AI Provider Session Affinity Header Propagation (Issue #163)**: Enabled `sendSessionAffinityHeaders: true` and `sessionAffinityFormat: 'openrouter'` in `@earendil-works/pi-ai` provider and model compatibility options. Expanded proxy session identification to extract session IDs from `x-session-id`, `x-dsh-session-id`, `session-id`, `x-session-affinity`, and client body parameters, preserving conversation affinity.
+- **Client SSE Disconnection Upstream Abort (Issue #164)**: Monitored client response `close` events during streaming. Aborts upstream fetch and cancels ReadableStream reader immediately when a client disconnects prematurely, avoiding resource waste and orphaned upstream requests. Guarded writes and cleaned up listeners reliably.
+- **Decoupled Connect Timeout & Streaming Idle Watchdog (Issue #165)**: Separated initial HTTP connect / header timeout (`connectTimeoutMs`, default 15s) from active streaming idle timeout (`streamIdleTimeoutMs`, default 30s). Prevented healthy long SSE streams from being cut off by monolithic timeouts. Added rearmable idle watchdog that signals client errors on stalls and accurately accounts failed streams with `isError: true` in token analytics instead of false successes.
+
 ## [0.5.6] - 2026-09-30
 
 ### Security
