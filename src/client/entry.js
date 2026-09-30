@@ -74,7 +74,7 @@ function apply(ctx) {
         locale: NS,
         inject: () => ({ ctx }),
       },
-      (props) => React.createElement(ErrorBoundary, null, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
     )
   )
 
@@ -91,7 +91,7 @@ function apply(ctx) {
           locale: NS,
           inject: () => ({ ctx }),
         },
-        (props) => React.createElement(ErrorBoundary, null, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+        (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
       )
     )
   }
@@ -104,7 +104,7 @@ function apply(ctx) {
         locale: NS,
         inject: () => ({ ctx }),
       },
-      (props) => React.createElement(ErrorBoundary, null, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
     )
   )
 }

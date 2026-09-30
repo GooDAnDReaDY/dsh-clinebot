@@ -48,7 +48,7 @@ function PluginCard(props) {
           { style: { marginTop: '16px' } },
           React.createElement(
             ErrorBoundary,
-            null,
+            { t },
             React.createElement(SettingsPage, { ...props, ctx: props && props.ctx })
           )
         )

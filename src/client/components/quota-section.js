@@ -16,7 +16,7 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, t }
           React.createElement(
             'div',
             { style: { flex: 1 } },
-            React.createElement('div', null, status.quotaWarning.message),
+            React.createElement('div', null, (status.quotaWarning.code && t(status.quotaWarning.code, status.quotaWarning.params)) || status.quotaWarning.message),
             status.quotaWarning.resetsAt
               ? React.createElement(
                   'div',

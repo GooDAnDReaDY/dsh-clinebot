@@ -390,19 +390,20 @@ function ModelsSection({
                   m.category === 'reasoning'
                 )
                 const category = m.category && m.category !== 'reasoning' ? m.category : (hasReasoning ? null : 'general')
+                const categoryLabel = category === 'general' ? t('models.caps_general') : (category === 'coding' ? t('models.caps_coding') : category)
                 const hasVision = Boolean(m.input?.includes('image') || m.input?.includes('vision'))
                 return React.createElement(
                   React.Fragment,
                   null,
-                  category ? React.createElement('span', { className: 'cb-badge' }, category) : null,
+                  category ? React.createElement('span', { className: 'cb-badge' }, categoryLabel) : null,
                   hasVision
-                    ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: category ? '4px' : '0' } }, 'Vision')
+                    ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: category ? '4px' : '0' } }, t('models.caps_vision'))
                     : null,
                   hasReasoning
                     ? React.createElement(
                         React.Fragment,
                         null,
-                        React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: (category || hasVision) ? '4px' : '0' }, title: t('models.reasoning_tooltip') }, '🧠 Reasoning'),
+                        React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: (category || hasVision) ? '4px' : '0' }, title: t('models.reasoning_tooltip') }, t('models.reasoning_tag')),
                         React.createElement(
                           'select',
                           {
@@ -417,10 +418,10 @@ function ModelsSection({
                             },
                           },
                           React.createElement('option', { value: '' }, t('models.effort_auto')),
-                          React.createElement('option', { value: 'low' }, 'Low'),
-                          React.createElement('option', { value: 'medium' }, 'Medium'),
-                          React.createElement('option', { value: 'high' }, 'High'),
-                          React.createElement('option', { value: 'max' }, 'Max')
+                          React.createElement('option', { value: 'low' }, t('models.effort_low')),
+                          React.createElement('option', { value: 'medium' }, t('models.effort_medium')),
+                          React.createElement('option', { value: 'high' }, t('models.effort_high')),
+                          React.createElement('option', { value: 'max' }, t('models.effort_max'))
                         )
                       )
                     : null
