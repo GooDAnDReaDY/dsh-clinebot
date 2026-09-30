@@ -146,8 +146,13 @@ test("host: settingsApi persists to SettingsForms via ctx.get(settings) when ava
 
 test("routes: /models/toggle and /accounts/active unwrap volatile live getters without throwing $.enabled expected boolean", async () => {
   const registeredRoutes = {}
+  const mockSettingsForms = {
+    describe: () => [{ ns: "dsh-clinebot", revision: "rev-1" }],
+    replace: async () => {},
+    update: async () => {},
+  }
   const mockCtx = {
-    get: () => null,
+    get: (name) => (name === "settings" ? mockSettingsForms : null),
     webServer: {
       register: (r) => {
         registeredRoutes[r.path] = r.handler
@@ -308,4 +313,177 @@ test("host: boot and reload survives functional getters and profile-shaped dynam
   assert.equal(parsed.ok, true)
   assert.equal(parsed.config.dynamicModels[0].id, "cline-pass/deepseek-v41-flash")
   assert.equal(parsed.config.dynamicModels[0].name, "DeepSeek V41 Flash")
+})
+
+test("host: settingsApi.replace rejects when settings service is unavailable or non-writable (#157)", async () => {
+  const registeredRoutes = {}
+  const mockCtxWithoutSettings = {
+    get: () => null,
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (fn) => fn(),
+  }
+
+  const initialConfig = { enabled: false, baseUrl: "https://api.cline.bot/api/v1" }
+  apply(mockCtxWithoutSettings, initialConfig)
+
+  const makeReq = (method, body = {}) => {
+    const req = Readable.from([Buffer.from(JSON.stringify(body))])
+    req.method = method
+    req.headers = { "sec-fetch-site": "same-origin" }
+    req.socket = { remoteAddress: "127.0.0.1" }
+    return req
+  }
+
+  let status = 0
+  let body = ""
+  const res = {
+    writeHead: (code) => { status = code },
+    end: (data) => { body = data },
+  }
+
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("PUT", {
+    config: { enabled: true }
+  }), res)
+
+  assert.equal(status, 400, "PUT /config must reject 400 when settings service is missing")
+  const parsed = JSON.parse(body || "{}")
+  assert.match(parsed.error, /unavailable or non-writable/i)
+
+  // Verify live() config did NOT mutate to true
+  let getStatus = 0
+  let getBody = ""
+  const getRes = {
+    writeHead: (code) => { getStatus = code },
+    end: (data) => { getBody = data },
+  }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes)
+  assert.equal(getStatus, 200)
+  assert.equal(JSON.parse(getBody).config.enabled, false, "live config must remain false after failed write")
+})
+
+test("host: settingsApi.replace fails atomically on revision conflict without mutating live config (#157)", async () => {
+  let replaceAttempted = false
+  const mockSettingsForms = {
+    describe: () => [{ ns: "dsh-clinebot", revision: "rev-conflict-1" }],
+    replace: async () => {
+      replaceAttempted = true
+      throw new Error("Revision conflict: document updated by another process")
+    },
+    update: async () => {},
+  }
+
+  const registeredRoutes = {}
+  const mockCtx = {
+    get: (name) => (name === "settings" ? mockSettingsForms : null),
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (fn) => fn(),
+  }
+
+  const initialConfig = { enabled: true, baseUrl: "https://api.cline.bot/api/v1" }
+  apply(mockCtx, initialConfig)
+
+  const makeReq = (method, body = {}) => {
+    const req = Readable.from([Buffer.from(JSON.stringify(body))])
+    req.method = method
+    req.headers = { "sec-fetch-site": "same-origin" }
+    req.socket = { remoteAddress: "127.0.0.1" }
+    return req
+  }
+
+  let status = 0
+  let body = ""
+  const res = {
+    writeHead: (code) => { status = code },
+    end: (data) => { body = data },
+  }
+
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("PUT", {
+    config: { enabled: false }
+  }), res)
+
+  assert.equal(replaceAttempted, true, "Persistence must be attempted")
+  assert.equal(status, 400, "PUT /config must fail with 400 on conflict")
+  assert.match(JSON.parse(body).error, /Revision conflict/)
+
+  // Live config must NOT be mutated to false
+  let getStatus = 0
+  let getBody = ""
+  const getRes = {
+    writeHead: (code) => { getStatus = code },
+    end: (data) => { getBody = data },
+  }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes)
+  assert.equal(getStatus, 200)
+  assert.equal(JSON.parse(getBody).config.enabled, true, "live config must remain true after failed persistence")
+})
+
+test("host: live config retains Volatile getters and reflects external updates after settings write (#157)", async () => {
+  let volatileFlag = true
+  const volatileConfigObj = {
+    get enabled() { return volatileFlag },
+    set enabled(v) { volatileFlag = v },
+    baseUrl: "https://api.cline.bot/api/v1",
+    timeoutMs: 15000,
+  }
+
+  let persistedPayload = null
+  const mockSettingsForms = {
+    describe: () => [{ ns: "dsh-clinebot", revision: "rev-ok" }],
+    replace: async (ns, payload) => {
+      persistedPayload = payload
+    },
+    update: async () => {},
+  }
+
+  const registeredRoutes = {}
+  const mockCtx = {
+    get: (name) => (name === "settings" ? mockSettingsForms : null),
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (fn) => fn(),
+  }
+
+  apply(mockCtx, volatileConfigObj)
+
+  const makeReq = (method, body = {}) => {
+    const req = Readable.from([Buffer.from(JSON.stringify(body))])
+    req.method = method
+    req.headers = { "sec-fetch-site": "same-origin" }
+    req.socket = { remoteAddress: "127.0.0.1" }
+    return req
+  }
+
+  // 1. Initial GET reflects volatileFlag = true
+  let getRes1 = { writeHead: () => {}, end: (d) => { getRes1.body = d } }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes1)
+  assert.equal(JSON.parse(getRes1.body).config.enabled, true)
+
+  // 2. Successful PUT /config updates a non-volatile setting (timeoutMs)
+  let putRes = { writeHead: () => {}, end: (d) => { putRes.body = d } }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("PUT", {
+    config: { timeoutMs: 20000 }
+  }), putRes)
+  assert.ok(persistedPayload)
+
+  // 3. External change to Volatile (simulating native DSH card toggle)
+  volatileFlag = false
+
+  // 4. Subsequent GET /config must immediately reflect external Volatile change to false
+  let getRes2 = { writeHead: () => {}, end: (d) => { getRes2.body = d } }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes2)
+  assert.equal(JSON.parse(getRes2.body).config.enabled, false, "live config must reflect external volatile change, not stale snapshot")
 })
