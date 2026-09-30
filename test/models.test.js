@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  isCatalogDifferent,
   CLINE_MODELS,
   PROVIDER_ID,
   DEFAULT_MODEL_ID,
@@ -20,7 +21,8 @@ import {
 import os from 'node:os'
 import path from 'node:path'
 import fs from 'node:fs'
-import { publicConfig } from '../lib/config.js'
+import {
+  publicConfig } from '../lib/config.js'
 
 test('models: catalog integrity', () => {
   assert.equal(PROVIDER_ID, 'clinebot')
@@ -318,4 +320,117 @@ test('models: obsolete model ID migration and normalization', async () => {
   assert.ok(ids.includes('cline-pass/qwen3.8-max'))
   assert.ok(ids.includes('cline-pass/glm-5.3'))
   assert.ok(!ids.includes('cline-pass/deepseek-v41-flash'))
+})
+
+
+test('models: isCatalogDifferent accurately detects deletions, additions, metadata changes (#168)', () => {
+  const modelA = { id: 'cline-pass/model-a', name: 'Model A', contextLength: 128000, maxTokens: 8192, category: 'general' }
+  const modelB = { id: 'cline-pass/model-b', name: 'Model B', contextLength: 200000, maxTokens: 8192, category: 'coding' }
+  const modelC = { id: 'cline-pass/model-c', name: 'Model C', contextLength: 64000, maxTokens: 4096, category: 'reasoning' }
+
+  // 1. Identical lists return false
+  assert.equal(isCatalogDifferent([modelA, modelB], [modelA, modelB]), false)
+
+  // 2. Removed model (B removed from plan) returns true
+  assert.equal(isCatalogDifferent([modelA, modelB], [modelA]), true, 'Removing a model must be detected')
+
+  // 3. Added model (C added to plan) returns true
+  assert.equal(isCatalogDifferent([modelA], [modelA, modelC]), true, 'Adding a model must be detected')
+
+  // 4. Metadata change (contextLength upgraded from 128k to 200k) returns true
+  const modelAUpgraded = { ...modelA, contextLength: 200000 }
+  assert.equal(isCatalogDifferent([modelA], [modelAUpgraded]), true, 'Metadata change must be detected')
+
+  // 5. Empty authoritative plan returns true if current has models
+  assert.equal(isCatalogDifferent([modelA], []), true, 'Empty authoritative plan must trigger update')
+
+  // 6. Both empty returns false
+  assert.equal(isCatalogDifferent([], []), false)
+})
+
+test('provider-sync: autoDiscoverPlanModels reconciles removed models and metadata updates (#168)', async () => {
+  const { autoDiscoverPlanModels } = await import('../lib/provider-sync.js')
+
+  let replacedConfig = null
+  let syncedConfig = null
+  const mockSettingsApi = {
+    replace: async (next) => {
+      replacedConfig = next
+    }
+  }
+
+  const modelFlash = { id: 'cline-pass/deepseek-v4-flash', name: 'DeepSeek V4 Flash', contextLength: 128000, maxTokens: 8192, category: 'general' }
+  const modelPro = { id: 'cline-pass/deepseek-v4-pro', name: 'DeepSeek V4 Pro', contextLength: 200000, maxTokens: 8192, category: 'coding' }
+
+  let currentConfig = {
+    enabled: true,
+    baseUrl: 'https://api.cline.bot/api/v1',
+    apiKeyEnv: 'TEST_KEY_ENV_168',
+    dynamicModels: [modelFlash, modelPro],
+    planSyncedAt: 1000,
+  }
+
+  process.env.TEST_KEY_ENV_168 = 'valid-test-key-168'
+
+  const mockCtx = {
+    credentials: {
+      resolve: async () => ({ value: 'valid-test-key-168' })
+    },
+    get: (n) => (n === 'credentials' ? mockCtx.credentials : null)
+  }
+
+  const originalFetch = globalThis.fetch
+  try {
+    // 1. Authoritative plan removes DeepSeek V4 Pro and retains only DeepSeek V4 Flash
+    globalThis.fetch = async (url) => {
+      if (url.includes('users/me/plan')) {
+        return new Response(JSON.stringify({
+          data: {
+            plan: {
+              name: 'Pro Plan',
+              includedModels: ['Includes DeepSeek V4 Flash']
+            }
+          }
+        }), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      return new Response(JSON.stringify({ data: { limits: [] } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      })
+    }
+
+    await autoDiscoverPlanModels(mockCtx, {
+      live: () => currentConfig,
+      getSettingsApi: () => mockSettingsApi,
+      syncProviderState: async (next) => { syncedConfig = next }
+    })
+
+    assert.ok(replacedConfig, 'Settings must be replaced on catalog reconciliation')
+    assert.equal(replacedConfig.dynamicModels.length, 1, 'Pro model must be removed from dynamicModels')
+    assert.equal(replacedConfig.dynamicModels[0].id, 'cline-pass/deepseek-v4-flash')
+    assert.ok(replacedConfig.planSyncedAt > 1000, 'planSyncedAt timestamp must be updated')
+
+    // 2. Upstream API failure does NOT overwrite catalog with empty or bump planSyncedAt
+    replacedConfig = null
+    currentConfig = {
+      ...currentConfig,
+      dynamicModels: [modelFlash],
+      planSyncedAt: 2000
+    }
+
+    globalThis.fetch = async () => {
+      return new Response('Internal Server Error', { status: 500 })
+    }
+
+    await autoDiscoverPlanModels(mockCtx, {
+      live: () => currentConfig,
+      getSettingsApi: () => mockSettingsApi,
+      syncProviderState: async () => {}
+    })
+
+    assert.equal(replacedConfig, null, 'Failed API request must not replace settings or advance planSyncedAt')
+  } finally {
+    globalThis.fetch = originalFetch
+    delete process.env.TEST_KEY_ENV_168
+  }
 })
