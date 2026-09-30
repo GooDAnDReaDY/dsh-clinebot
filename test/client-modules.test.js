@@ -701,3 +701,72 @@ test('client: en and zh locale dictionaries are complete and cover all client t(
     assert.ok(k in zh, `zh must contain key ${k}`)
   }
 })
+
+test('client: UpdateBanner distinguishes idle, error, available, and current states (#176)', () => {
+  const bannerCode = readFileSync(path.join(root, 'src/client/components/update-banner.js'), 'utf8')
+
+  const React = {
+    Fragment: 'Fragment',
+    createElement: (tag, props, ...children) => {
+      const finalProps = Object.assign({}, props, { children: children.length === 1 ? children[0] : (children.length > 1 ? children : undefined) })
+      return { tag, props: finalProps, children }
+    }
+  }
+
+  const sandbox = { React, module: { exports: {} } }
+  vm.createContext(sandbox)
+  vm.runInContext(bannerCode + '\nmodule.exports = UpdateBanner;', sandbox)
+  const UpdateBanner = sandbox.module.exports
+
+  const t = (k, p) => (p ? `${k}:${JSON.stringify(p)}` : k)
+
+  function collectText(node) {
+    if (!node) return []
+    if (Array.isArray(node)) return node.flatMap(collectText)
+    if (typeof node === 'string' || typeof node === 'number') return [String(node)]
+    return collectText(node.children)
+  }
+
+  // 1. Idle state before check: must NOT show up to date
+  const idleVdom = UpdateBanner({
+    updateState: { status: 'idle', checking: false, currentVersion: '0.5.8' },
+    handleTriggerUpdate: () => {},
+    handleCheckUpdate: () => {},
+    t
+  })
+  const idleText = collectText(idleVdom).join(' ')
+  assert.ok(!idleText.includes('update.up_to_date'), 'idle state must not show up to date')
+
+  // 2. Failed check / error state: must NOT show up to date, must show error and retry
+  const errVdom = UpdateBanner({
+    updateState: { status: 'error', checking: false, latestCheckFailed: true, currentVersion: '0.5.8', error: 'Network failure' },
+    handleTriggerUpdate: () => {},
+    handleCheckUpdate: () => {},
+    t
+  })
+  const errText = collectText(errVdom).join(' ')
+  assert.ok(!errText.includes('update.up_to_date'), 'error state must not show up to date')
+  assert.ok(errText.includes('update.check_failed'), 'error state must show check_failed')
+  assert.ok(errText.includes('update.retry'), 'error state must show retry button')
+
+  // 3. Available update
+  const availVdom = UpdateBanner({
+    updateState: { status: 'available', updateAvailable: true, checking: false, currentVersion: '0.5.8', latestVersion: '0.5.9' },
+    handleTriggerUpdate: () => {},
+    handleCheckUpdate: () => {},
+    t
+  })
+  const availText = collectText(availVdom).join(' ')
+  assert.ok(availText.includes('update.available'), 'available state must show update.available')
+  assert.ok(availText.includes('update.btn'), 'available state must show update button')
+
+  // 4. Current / up to date state
+  const curVdom = UpdateBanner({
+    updateState: { status: 'current', lastCheckedAt: Date.now(), checking: false, currentVersion: '0.5.8', latestVersion: '0.5.8' },
+    handleTriggerUpdate: () => {},
+    handleCheckUpdate: () => {},
+    t
+  })
+  const curText = collectText(curVdom).join(' ')
+  assert.ok(curText.includes('update.up_to_date'), 'current state must show update.up_to_date')
+})

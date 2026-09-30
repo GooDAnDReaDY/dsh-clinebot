@@ -1,16 +1,3 @@
-function useConfigFormsSnapshot(ctx) {
-  const scope = React.useMemo(() => {
-    try { return readConfigForms(ctx)?.get?.(NS) || undefined } catch { return undefined }
-  }, [ctx])
-  const subscribe = React.useMemo(() => (cb) => {
-    try { return scope?.subscribe ? (scope.subscribe(cb) || (() => {})) : () => {} } catch { return () => {} }
-  }, [scope])
-  const getSnapshot = React.useCallback(() => {
-    try { return scope?.getSnapshot?.() || SNAPSHOT_READY } catch { return SNAPSHOT_READY }
-  }, [scope])
-  return React.useSyncExternalStore(subscribe, getSnapshot, () => SNAPSHOT_READY)?.status || 'loading'
-}
-
 function SettingsPage(props) {
   const ctx = props?.ctx
   const t = props?.t || makeT(en, en)
@@ -24,8 +11,9 @@ function SettingsPage(props) {
   const [smokeResult, setSmokeResult] = React.useState(null)
 
   const [updateState, setUpdateState] = React.useState({
-    checking: false, updating: false, currentVersion: '', latestVersion: '',
-    updateAvailable: false, canAutoUpdate: true, error: '', notice: '',
+    status: 'idle', checking: false, updating: false, currentVersion: '', latestVersion: '',
+    updateAvailable: false, canAutoUpdate: true, latestCheckFailed: false, lastCheckedAt: null,
+    error: '', notice: '',
   })
 
   const [apiKeyInput, setApiKeyInput] = React.useState('')
@@ -52,23 +40,45 @@ function SettingsPage(props) {
   }, [load])
 
   const checkUpdate = React.useCallback(async () => {
-    setUpdateState((s) => ({ ...s, checking: true, error: '' }))
+    setUpdateState((s) => ({ ...s, checking: true, status: 'checking', error: '' }))
     try {
       const res = await fetch(`${ROUTE_PREFIX}/update`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json().catch(() => ({}))
+      if (data.latestCheckFailed) {
+        setUpdateState((s) => ({
+          ...s,
+          checking: false,
+          status: 'error',
+          latestCheckFailed: true,
+          currentVersion: data.currentVersion || s.currentVersion,
+          error: t('update.check_failed'),
+        }))
+        return
+      }
+      const isAvailable = Boolean(data.updateAvailable)
       setUpdateState((s) => ({
         ...s,
         checking: false,
+        status: isAvailable ? 'available' : 'current',
         currentVersion: data.currentVersion || s.currentVersion,
         latestVersion: data.latestVersion || '',
-        updateAvailable: !!data.updateAvailable,
+        updateAvailable: isAvailable,
+        latestCheckFailed: false,
+        lastCheckedAt: Date.now(),
         canAutoUpdate: data.canAutoUpdate !== false,
+        error: '',
       }))
-    } catch (_) {
-      setUpdateState((s) => ({ ...s, checking: false }))
+    } catch (err) {
+      setUpdateState((s) => ({
+        ...s,
+        checking: false,
+        status: 'error',
+        latestCheckFailed: true,
+        error: String(err?.message || err || t('update.check_failed')),
+      }))
     }
-  }, [])
+  }, [t])
 
   React.useEffect(() => { checkUpdate() }, [checkUpdate])
 
@@ -86,13 +96,20 @@ function SettingsPage(props) {
       setUpdateState((s) => ({
         ...s,
         updating: false,
+        status: 'current',
         updateAvailable: false,
         currentVersion: newVer,
+        lastCheckedAt: Date.now(),
         notice: t('update.done', { version: newVer }),
       }))
       setTimeout(() => checkUpdate(), 2000)
     } catch (err) {
-      setUpdateState((s) => ({ ...s, updating: false, error: t('update.failed', { error: String(err.message || err) }) }))
+      setUpdateState((s) => ({
+        ...s,
+        updating: false,
+        status: s.updateAvailable ? 'available' : 'error',
+        error: t('update.failed', { error: String(err?.message || err) }),
+      }))
     }
   }
 
@@ -114,8 +131,7 @@ function SettingsPage(props) {
     if (!keyVal) { setErr(t('key.empty_err')); return }
     await performAction('save-key', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/save-key`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: keyVal, apiKeyEnv: draft?.apiKeyEnv }),
       })
       const data = await res.json().catch(() => ({}))
@@ -139,8 +155,7 @@ function SettingsPage(props) {
   async function handleUpdateModelContext(payload) {
     await performAction('update-context', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/models/context`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => ({}))
@@ -209,8 +224,7 @@ function SettingsPage(props) {
       setVerifyStatus({ state: 'verifying', email: '', plan: '', error: '' })
       try {
         const res = await fetch(`${ROUTE_PREFIX}/key/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key: raw }),
         })
         const data = await res.json().catch(() => ({}))
@@ -235,8 +249,7 @@ function SettingsPage(props) {
   async function handlePinAccount(accountEnv) {
     await performAction('pin-account', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/accounts/active`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ account: accountEnv }),
       })
       const data = await res.json().catch(() => ({}))
@@ -248,8 +261,7 @@ function SettingsPage(props) {
   async function handleAddAccount({ label, apiKeyEnv, apiKey }) {
     await performAction('add-account', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/accounts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label, apiKeyEnv, apiKey }),
       })
       const data = await res.json().catch(() => ({}))
@@ -262,8 +274,7 @@ function SettingsPage(props) {
   async function handleDeleteAccount(accountEnv, deleteSecret = true) {
     await performAction('delete-account', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/accounts/delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKeyEnv: accountEnv, deleteSecret }),
       })
       const data = await res.json().catch(() => ({}))
@@ -276,8 +287,7 @@ function SettingsPage(props) {
     setDraft((d) => ({ ...(d || {}), ...(patch || {}) }))
     await performAction('patch-config', async () => {
       const res = await fetch(`${ROUTE_PREFIX}/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: patch }),
       })
       const data = await res.json().catch(() => ({}))
@@ -341,15 +351,10 @@ function SettingsPage(props) {
   function handleSetModelsFilter(type) {
     const all = status?.availableModels || []
     let allowed = new Set()
-    if (type === 'all') {
-      allowed = new Set(all.map((m) => m.id))
-    } else if (type === 'vision') {
-      allowed = new Set(all.filter((m) => m.input?.includes('image') || m.input?.includes('vision')).map((m) => m.id))
-    } else if (type === 'coding') {
-      allowed = new Set(all.filter((m) => m.category === 'coding').map((m) => m.id))
-    } else if (type === 'recommended') {
-      allowed = new Set(all.filter((m) => m.recommended).map((m) => m.id))
-    }
+    if (type === 'all') allowed = new Set(all.map((m) => m.id))
+    else if (type === 'vision') allowed = new Set(all.filter((m) => m.input?.includes('image') || m.input?.includes('vision')).map((m) => m.id))
+    else if (type === 'coding') allowed = new Set(all.filter((m) => m.category === 'coding').map((m) => m.id))
+    else if (type === 'recommended') allowed = new Set(all.filter((m) => m.recommended).map((m) => m.id))
 
     const curr = draft?.disabledModels || []
     const nextDisabled = all.map((m) => m.id).filter((id) => !allowed.has(id))
@@ -410,7 +415,7 @@ function SettingsPage(props) {
     ),
 
     // In-app Update Bar
-    React.createElement(UpdateBanner, { updateState, handleTriggerUpdate, t }),
+    React.createElement(UpdateBanner, { updateState, handleTriggerUpdate, handleCheckUpdate: checkUpdate, t }),
 
     // Settings host status warning
     snapshotStatus === 'unavailable'
