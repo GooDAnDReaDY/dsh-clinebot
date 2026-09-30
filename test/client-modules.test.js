@@ -510,3 +510,127 @@ test('client: no-undef check on lib/client.js passes with zero undeclared variab
   }
 })
 
+
+test('client: stats section reads totals envelope and model totalTokens (#159)', () => {
+  const record = loadClientRecord()
+  const mockData = {
+    config: { apiKeyEnv: 'CLINEBOT_API_KEY', enabledModels: ['test-model'], defaultModel: 'test-model' },
+    accounts: [{ id: 'default', label: 'Default', apiKeyEnv: 'CLINEBOT_API_KEY', present: true, source: 'credentials' }],
+    health: { ok: true, latencyMs: 35 },
+    key: { present: true, source: 'credentials' },
+    isRegistered: true,
+    availableModels: [{ id: 'test-model', name: 'Test Model', contextLength: 200000, category: 'coding', input: ['text'] }],
+    statsSummary: {
+      totals: {
+        requests: 42,
+        successful: 39,
+        failed: 3,
+        rateLimited429: 7,
+        totalTokens: 1234567,
+      },
+      byModel: {
+        'test-model': {
+          requests: 42,
+          totalTokens: 1234567,
+        }
+      }
+    },
+    sessionStats: { totalRequests: 10, successfulRequests: 10, totalTokensEst: 4500, lastLatencyMs: 35, lastRequestAt: Date.now() }
+  }
+
+  let hookIndex = 0
+  const states = [
+    true, // open
+    mockData, // status
+    mockData.config, // draft
+    '',
+    '',
+    '',
+    { latencyMs: 35, model: 'test', preview: 'hello' },
+    { checking: false, updating: false, currentVersion: '0.3.10', latestVersion: '0.3.11', updateAvailable: false, canAutoUpdate: true, error: '', notice: '' },
+    '',
+    false
+  ]
+
+  const ReactMock = {
+    useState: (initial) => {
+      const val = hookIndex < states.length ? states[hookIndex] : initial
+      hookIndex++
+      return [val, () => {}]
+    },
+    useEffect: (cb) => { cb() },
+    useCallback: (cb) => cb,
+    useMemo: (cb) => cb(),
+    useSyncExternalStore: (sub, getSnap) => getSnap(),
+    createElement: (tag, props, ...children) => {
+      const finalProps = Object.assign({}, props, { children: children.length === 1 ? children[0] : (children.length > 1 ? children : undefined) })
+      return { tag, props: finalProps, children }
+    },
+    Component: class Component {
+      constructor(props) { this.props = props; this.state = {} }
+    }
+  }
+  ReactMock.Component.prototype.isReactComponent = {}
+
+  const exports = record.factory((spec) => {
+    if (spec === 'react') return ReactMock
+    throw new Error('Unexpected: ' + spec)
+  })
+
+  let registered = {}
+  const ctx = {
+    effect: (fn) => fn(),
+    slots: {
+      inject: (name, cb) => (name === 'settings.plugin.item' ? cb() : null),
+      register: (opts, comp) => { registered[opts.name] = comp; return opts }
+    },
+    locale: { register: () => {}, bind: () => (k) => k },
+    get: () => ({
+      get: () => ({
+        subscribe: () => () => {},
+        getSnapshot: () => ({ status: 'ready', writable: true }),
+      }),
+    }),
+  }
+
+  exports.apply(ctx)
+  const pluginCardItem = registered['settings.plugin.item']
+  assert.equal(typeof pluginCardItem, 'function')
+
+  hookIndex = 0
+  const vdom = pluginCardItem({ ctx })
+
+  const collectedTexts = []
+  function collect(node) {
+    if (!node) return
+    if (Array.isArray(node)) {
+      node.forEach(collect)
+      return
+    }
+    if (typeof node === 'string' || typeof node === 'number') {
+      collectedTexts.push(String(node))
+      return
+    }
+    if (typeof node.tag === 'function') {
+      if (node.tag.prototype && node.tag.prototype.isReactComponent) {
+        collect(new node.tag(node.props).render())
+      } else {
+        collect(node.tag(node.props))
+      }
+    }
+    if (node.children) {
+      if (Array.isArray(node.children)) {
+        node.children.forEach(collect)
+      } else {
+        collect(node.children)
+      }
+    }
+  }
+
+  collect(vdom)
+  const fullText = collectedTexts.join(' ')
+  assert.ok(fullText.includes('42 (10 sess)'), 'Should format requests with total requests and session requests')
+  assert.ok(fullText.includes((1234567).toLocaleString()), 'Should format totalTokens with locale string')
+  assert.ok(fullText.includes('7'), 'Should format rateLimited429 errors')
+  assert.ok(fullText.includes(`${(1234567).toLocaleString()} tok`), 'Should display model totalTokens in tok')
+})

@@ -41,8 +41,9 @@ function SettingsPage(props) {
     ])
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
-    const statsData = statsRes && statsRes.ok ? await statsRes.json().catch(() => null) : null
-    setStatus({ ...data, statsSummary: statsData || data.statsSummary })
+    const rawStats = statsRes && statsRes.ok ? await statsRes.json().catch(() => null) : null
+    const statsObj = (rawStats && typeof rawStats === 'object' && rawStats.stats) ? rawStats.stats : (rawStats || data.statsSummary || {})
+    setStatus({ ...data, statsSummary: statsObj })
     setDraft(data.config || {})
   }, [])
 

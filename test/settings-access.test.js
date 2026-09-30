@@ -378,3 +378,14 @@ test('settings: handleConfigPatch uses PUT /config to persist customModels and r
   // Ensure customModels from previous step was preserved
   assert.equal(persistedConfig.customModels.length, 1)
 })
+
+test('provider-sync: buildStatus returns statsSummary matching persistent storage (#159)', async () => {
+  const { buildStatus } = await import('../lib/provider-sync.js')
+  const { getStatsSummary } = await import('../lib/stats-storage.js')
+  const ctx = {
+    get: () => null,
+  }
+  const status = await buildStatus(ctx, {})
+  assert.ok(status.statsSummary, 'buildStatus must include statsSummary')
+  assert.deepEqual(status.statsSummary, getStatsSummary())
+})
