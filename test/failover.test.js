@@ -423,8 +423,11 @@ test('failover: upsertPiAiProvider registers LOCAL_PROXY_KEY_ENV when proxyMode 
     CLINEBOT_API_KEY_2: 'second-key',
   }
   const mockCreds = {
-    resolve: async (r) => ({ value: env[typeof r === 'string' ? r : r?.name] || '' }),
-    set: async () => {},
+    resolve: async (r) => ({ value: env[typeof r === 'string' ? r : (r?.name || r?._id || r?.id)] || '' }),
+    set: async (ref, val) => {
+      const name = typeof ref === 'string' ? ref : (ref?.name || ref?._id || ref?.id)
+      env[name] = val
+    },
   }
   const mutated = []
   const mockSettings = {
@@ -453,6 +456,11 @@ test('failover: upsertPiAiProvider registers LOCAL_PROXY_KEY_ENV when proxyMode 
   assert.equal(mutated.length, 1)
   assert.equal(mutated[0].ns, 'llm-pi-ai')
   assert.equal(mutated[0].ops[0].value.apiKeyEnv, LOCAL_PROXY_KEY_ENV)
-  assert.equal(mutated[0].ops[0].value.apiKey, getLocalProxyToken())
+  assert.equal(mutated[0].ops[0].value.apiKey, undefined, 'Must not leak raw local proxy token into settings mutation (#171)')
+  assert.equal(providerObj.apiKey, undefined, 'Must not leak raw local proxy token in returned provider descriptor (#171)')
   assert.equal(providerObj.apiKeyEnv, LOCAL_PROXY_KEY_ENV)
+
+  // Verify proxy authentication resolves through credentials reference (#171)
+  const resolvedSecret = await mockCreds.resolve(mutated[0].ops[0].value.apiKeyEnv)
+  assert.equal(resolvedSecret.value, getLocalProxyToken(), 'Credentials service must resolve local proxy token via apiKeyEnv reference')
 })

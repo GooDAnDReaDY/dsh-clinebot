@@ -222,7 +222,7 @@ test('session-router: manually pinned account fails over to least-used when in c
 })
 
 import { resolveAccountPool, getAccountQuotaSnapshot } from '../lib/account-pool.js'
-import { usageCache, clearUsageCache } from '../lib/cline-client.js'
+import { usageCache, clearUsageCache, DEFAULT_BASE_URL, buildUsageCacheKey } from '../lib/cline-client.js'
 
 test('session-router & account-pool: real resolveAccountPool with usageCache selects least-used account (\#162)', async () => {
   clearUsageCache()
@@ -232,7 +232,7 @@ test('session-router & account-pool: real resolveAccountPool with usageCache sel
   const keyB = 'key-bravo-87654321'
 
   // Seed cache: A = 99% used, B = 1% used
-  usageCache.set(`cline:usage:${keyA.slice(-8)}`, {
+  usageCache.set(buildUsageCacheKey(DEFAULT_BASE_URL, keyA), {
     timestamp: Date.now(),
     data: {
       windows: {
@@ -242,7 +242,7 @@ test('session-router & account-pool: real resolveAccountPool with usageCache sel
     }
   })
 
-  usageCache.set(`cline:usage:${keyB.slice(-8)}`, {
+  usageCache.set(buildUsageCacheKey(DEFAULT_BASE_URL, keyB), {
     timestamp: Date.now(),
     data: {
       windows: {
@@ -313,7 +313,7 @@ test('account-pool: getAccountQuotaSnapshot evaluates expired resetsAt as reset 
   const key = 'key-expired-99999999'
   // resetsAt was 10 seconds ago
   const expiredTime = new Date(Date.now() - 10000).toISOString()
-  usageCache.set(`cline:usage:${key.slice(-8)}`, {
+  usageCache.set(buildUsageCacheKey(DEFAULT_BASE_URL, key), {
     timestamp: Date.now(),
     data: {
       windows: {

@@ -7,6 +7,11 @@ import { publicUsage } from '../lib/http.js'
 import { publicConfig, plainConfig } from '../lib/config.js'
 import { smokeChat } from '../lib/cline-client.js'
 import { Readable } from 'node:stream'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const root = fileURLToPath(new URL('../', import.meta.url))
 
 function capture(register, { credentials = { set: async () => true }, liveConfig = {} } = {}) {
   const handlers = []
@@ -302,3 +307,85 @@ test('publicConfig enables newly discovered dynamic models by default when disab
 })
 
 
+
+test('settings: handleConfigPatch uses PUT /config to persist customModels and reasoning defaults (#156)', async () => {
+  const clientSrc = readFileSync(path.join(root, 'src', 'client', 'settings-page.js'), 'utf8')
+  const clientBundle = readFileSync(path.join(root, 'lib', 'client.js'), 'utf8')
+
+  // 1. Static assertion: handleConfigPatch must use PUT, not POST
+  assert.ok(clientSrc.includes("method: 'PUT'"), 'settings-page.js handleConfigPatch must use PUT')
+  assert.ok(!clientSrc.includes("method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify(patch)"), 'Must not send POST /config')
+  assert.ok(clientBundle.includes("method: 'PUT'"), 'lib/client.js bundle must use PUT')
+
+  // 2. Integration: route accepts PUT /config with customModels and modelReasoningDefaults
+  let persistedConfig = null
+  let currentLiveConfig = {
+    enabled: true,
+    customModels: [],
+    modelReasoningDefaults: {}
+  }
+  const settingsApi = {
+    replace: async (val) => { persistedConfig = val; currentLiveConfig = val }
+  }
+  const handlers = []
+  const ctx = {
+    effect: (fn) => fn(),
+    webServer: { register: (r) => handlers.push(r) },
+  }
+  registerSettingsRoutes(ctx, {
+    live: () => currentLiveConfig,
+    getSettingsApi: () => settingsApi,
+    syncProviderState: async () => {},
+    triggerAutoDiscover: () => {},
+  })
+  const handler = handlers.find((r) => r.path === '/dsh-clinebot/config').handler
+
+  // Add custom model via PUT
+  const customModelsPatch = {
+    customModels: [{
+      id: 'custom-deepseek-coder',
+      name: 'Custom DeepSeek Coder',
+      contextLength: 128000,
+      maxTokens: 8192,
+      category: 'coding',
+      isCustom: true
+    }]
+  }
+  const req1 = Readable.from([Buffer.from(JSON.stringify({ config: customModelsPatch }))])
+  req1.method = 'PUT'
+  req1.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  req1.socket = { remoteAddress: '127.0.0.1' }
+  const out1 = respond()
+  await handler(req1, out1.res)
+  assert.equal(out1.read().status, 200)
+  assert.equal(persistedConfig.customModels.length, 1)
+  assert.equal(persistedConfig.customModels[0].id, 'custom-deepseek-coder')
+
+  // Update reasoning defaults via PUT
+  const reasoningPatch = {
+    modelReasoningDefaults: {
+      'custom-deepseek-coder': 'high'
+    }
+  }
+  const req2 = Readable.from([Buffer.from(JSON.stringify({ config: reasoningPatch }))])
+  req2.method = 'PUT'
+  req2.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+  req2.socket = { remoteAddress: '127.0.0.1' }
+  const out2 = respond()
+  await handler(req2, out2.res)
+  assert.equal(out2.read().status, 200)
+  assert.equal(persistedConfig.modelReasoningDefaults['custom-deepseek-coder'], 'high')
+  // Ensure customModels from previous step was preserved
+  assert.equal(persistedConfig.customModels.length, 1)
+})
+
+test('provider-sync: buildStatus returns statsSummary matching persistent storage (#159)', async () => {
+  const { buildStatus } = await import('../lib/provider-sync.js')
+  const { getStatsSummary } = await import('../lib/stats-storage.js')
+  const ctx = {
+    get: () => null,
+  }
+  const status = await buildStatus(ctx, {})
+  assert.ok(status.statsSummary, 'buildStatus must include statsSummary')
+  assert.deepEqual(status.statsSummary, getStatsSummary())
+})

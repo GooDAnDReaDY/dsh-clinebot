@@ -2,10 +2,19 @@ function StatsSection({ status, onResetStats, busy, t }) {
   const [confirmReset, setConfirmReset] = React.useState(false)
 
   const s = status?.statsSummary || {}
+  const totals = s.totals || {}
   const sess = status?.sessionStats || {}
 
+  const requests = typeof totals.requests === 'number' ? totals.requests : (typeof s.requests === 'number' ? s.requests : 0)
+  const totalTokens = typeof totals.totalTokens === 'number' ? totals.totalTokens : (typeof s.totalTokens === 'number' ? s.totalTokens : 0)
+  const errors429 = typeof totals.rateLimited429 === 'number' ? totals.rateLimited429 : (typeof s.errors429 === 'number' ? s.errors429 : (typeof totals.failed === 'number' ? totals.failed : 0))
+
   const topModels = Object.entries(s.byModel || {})
-    .sort((a, b) => (b[1].tokens || 0) - (a[1].tokens || 0))
+    .sort((a, b) => {
+      const bTokens = Number(b[1]?.totalTokens ?? b[1]?.tokens ?? 0)
+      const aTokens = Number(a[1]?.totalTokens ?? a[1]?.tokens ?? 0)
+      return bTokens - aTokens
+    })
     .slice(0, 5)
 
   return React.createElement(
@@ -67,19 +76,19 @@ function StatsSection({ status, onResetStats, busy, t }) {
       React.createElement(
         'div',
         { className: 'cb-stat-box' },
-        React.createElement('div', { className: 'cb-stat-val' }, `${s.requests || 0} (${sess.successfulRequests || 0} sess)`),
+        React.createElement('div', { className: 'cb-stat-val' }, `${requests} (${sess.successfulRequests || 0} sess)`),
         React.createElement('div', { className: 'cb-stat-lbl' }, t('stats.requests'))
       ),
       React.createElement(
         'div',
         { className: 'cb-stat-box' },
-        React.createElement('div', { className: 'cb-stat-val' }, `${Number(s.totalTokens || 0).toLocaleString()}`),
+        React.createElement('div', { className: 'cb-stat-val' }, `${Number(totalTokens).toLocaleString()}`),
         React.createElement('div', { className: 'cb-stat-lbl' }, t('stats.tokens'))
       ),
       React.createElement(
         'div',
         { className: 'cb-stat-box' },
-        React.createElement('div', { className: 'cb-stat-val' }, `${s.errors429 || 0}`),
+        React.createElement('div', { className: 'cb-stat-val' }, `${errors429}`),
         React.createElement('div', { className: 'cb-stat-lbl' }, t('stats.errors429'))
       ),
       React.createElement(
@@ -112,7 +121,7 @@ function StatsSection({ status, onResetStats, busy, t }) {
                   },
                 },
                 React.createElement('span', { style: { fontFamily: 'monospace' } }, modId),
-                React.createElement('span', null, `${data.requests || 0} reqs · ${Number(data.tokens || 0).toLocaleString()} tok`)
+                React.createElement('span', null, `${data.requests || 0} reqs · ${Number(data.totalTokens ?? data.tokens ?? 0).toLocaleString()} tok`)
               )
             )
           )

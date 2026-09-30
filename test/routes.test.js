@@ -496,3 +496,149 @@ test('commands: behavioral execution of /cline slash command and subcommands', a
   assert.ok(typeof handlerResult.text === 'string')
   assert.ok(handlerResult.text.includes('ClinePass Models'))
 })
+
+test('commands & routes: custom models are preserved in slash command test/models and context routes (#170)', async () => {
+  const originalFetch = globalThis.fetch
+  try {
+    let smokeChatModel = null
+    globalThis.fetch = async (url, init) => {
+      if (url.includes('/chat/completions')) {
+        const body = JSON.parse(init.body || '{}')
+        smokeChatModel = body.model
+        return new Response(JSON.stringify({
+          choices: [{ message: { content: 'pong' } }]
+        }), { status: 200, headers: { 'content-type': 'application/json' } })
+      }
+      return new Response('Not Found', { status: 404 })
+    }
+
+    const customModels = [
+      {
+        id: 'custom/specialized-coder',
+        name: 'Specialized Coder',
+        contextLength: 64000,
+        maxTokens: 4096,
+      }
+    ]
+
+    let currentConfig = {
+      apiKeyEnv: 'CLINEBOT_API_KEY',
+      baseUrl: 'https://api.cline.bot/api/v1',
+      defaultModel: 'cline-pass/deepseek-v4-flash',
+      customModels,
+      dynamicModels: [],
+      modelContextOverrides: [],
+      disabledModels: [],
+    }
+
+    let registeredCmd = null
+    const registeredRoutes = []
+    const mockCommands = {
+      register: (cmd) => { registeredCmd = cmd },
+    }
+    const ctx = {
+      commands: mockCommands,
+      inject: (deps, fn) => fn({ commands: mockCommands }),
+      webServer: {
+        port: 3080,
+        register: (route) => { registeredRoutes.push(route) },
+      },
+      effect: (fn) => fn(),
+      credentials: {
+        resolve: async () => ({ value: 'test-cline-key-123' })
+      },
+      get: (name) => {
+        if (name === 'credentials') {
+          return {
+            resolve: async () => ({ value: 'test-cline-key-123' })
+          }
+        }
+        return null
+      }
+    }
+
+    let savedConfig = null
+    const settingsApi = {
+      replace: async (next) => {
+        savedConfig = next
+        currentConfig = next
+        return { ok: true }
+      }
+    }
+
+    registerSlashCommand(ctx, {
+      live: () => currentConfig,
+      getSettingsApi: () => settingsApi,
+      syncProviderState: async () => {},
+    })
+
+    registerModelsRoutes(ctx, {
+      live: () => currentConfig,
+      getSettingsApi: () => settingsApi,
+      syncProviderState: async () => {},
+    })
+
+    // 1. /cline test with custom model succeeds without 'not recognized' error
+    const testCustomOutput = await registeredCmd.execute('test custom/specialized-coder')
+    assert.equal(testCustomOutput.includes('not recognized'), false, 'Custom model must be recognized')
+    assert.equal(smokeChatModel, 'custom/specialized-coder', 'Smoke test must be invoked with custom model ID')
+
+    // 2. /cline test with unknown model is rejected
+    const testUnknownOutput = await registeredCmd.execute('test non-existent-model')
+    assert.ok(testUnknownOutput.includes('is not recognized'), 'Unknown model must be rejected')
+
+    // 3. /cline models lists custom model
+    const modelsOutput = await registeredCmd.execute('models')
+    assert.ok(modelsOutput.includes('Specialized Coder'), 'Custom model must be listed in /cline models')
+
+    // 4. POST /dsh-clinebot/models/context with mode=all-original preserves custom model
+    const contextHandler = registeredRoutes.find((r) => r.path === '/dsh-clinebot/models/context')?.handler
+    assert.ok(contextHandler, 'Context handler must be registered')
+
+    const createMockReqRes = (body) => {
+      let statusCode = 200
+      let responseData = null
+      const req = {
+        method: 'POST',
+        headers: { host: '127.0.0.1:3080' },
+        socket: { remoteAddress: '127.0.0.1' },
+        on: (event, handler) => {
+          if (event === 'data') handler(Buffer.from(JSON.stringify(body)))
+          if (event === 'end') handler()
+          return req
+        }
+      }
+      const res = {
+        writeHead: (code) => { statusCode = code },
+        setHeader: () => {},
+        end: (data) => {
+          if (data) {
+            try { responseData = JSON.parse(data) } catch { responseData = data }
+          }
+        }
+      }
+      return { req, res, getStatus: () => statusCode, getData: () => responseData }
+    }
+
+    const { req: req1, res: res1, getData: getData1 } = createMockReqRes({ mode: 'all-original' })
+    await contextHandler(req1, res1)
+    const data1 = getData1()
+    assert.ok(data1.ok)
+    const customInUpdated = data1.models.find((m) => m.id === 'custom/specialized-coder')
+    assert.ok(customInUpdated, 'Custom model must be included in updated models')
+
+    // 5. POST /dsh-clinebot/models/toggle with enabledModels preserves custom model
+    const toggleHandler = registeredRoutes.find((r) => r.path === '/dsh-clinebot/models/toggle')?.handler
+    assert.ok(toggleHandler, 'Toggle handler must be registered')
+
+    const { req: req2, res: res2, getData: getData2 } = createMockReqRes({ enabledModels: ['custom/specialized-coder'] })
+    await toggleHandler(req2, res2)
+    const data2 = getData2()
+    assert.ok(data2.ok)
+    assert.deepEqual(data2.enabledModels, ['custom/specialized-coder'])
+    assert.ok(data2.disabledModels.includes('cline-pass/deepseek-v4-flash'), 'Non-enabled curated models must be disabled')
+    assert.equal(data2.disabledModels.includes('custom/specialized-coder'), false, 'Enabled custom model must not be disabled')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})

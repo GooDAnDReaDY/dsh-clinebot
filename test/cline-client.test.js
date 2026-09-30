@@ -8,6 +8,7 @@ import {
   fetchUsageLimits,
   saveCredentialKey,
   clearUsageCache,
+  buildUsageCacheKey,
   clearProbeCache,
   probeHealth,
   retryWithBackoff,
@@ -417,7 +418,7 @@ test('cline-client: smokeChat accurate token telemetry extraction', async () => 
 })
 
 test('cline-client: SWR isRevalidating flag resets on background fetch error (Issue #50)', async () => {
-  const cacheKey = 'cline:usage:testkey1'
+  const cacheKey = buildUsageCacheKey('https://api.cline.bot/api/v1', 'valid-testkey1')
   usageCache.set(cacheKey, {
     data: { ok: true, plan: 'ClinePass', windows: {} },
     expiresAt: Date.now() - 1000, // expired
@@ -503,4 +504,107 @@ test('cline-client: buildPiAiProvider preserves custom overridden contextWindow 
   assert.ok(qwen)
   assert.equal(qwen.contextWindow, 1000000)
   assert.equal(qwen.maxTokens, 8192)
+})
+
+test('cline-client: retryWithBackoff cancels response body on rejected HTTP 429/502/503/504 before retry (#167)', async () => {
+  let attempts = 0
+  let cancelledBodies = 0
+
+  const fn = async () => {
+    attempts++
+    if (attempts < 3) {
+      return {
+        status: 429,
+        headers: { get: () => null },
+        body: {
+          cancel: async () => {
+            cancelledBodies++
+          }
+        }
+      }
+    }
+    return {
+      status: 200,
+      body: {
+        cancel: async () => {
+          assert.fail('Success body must not be cancelled by retryWithBackoff')
+        }
+      }
+    }
+  }
+
+  const result = await retryWithBackoff(fn, {
+    maxRetries: 3,
+    initialDelayMs: 5,
+    maxDelayMs: 20
+  })
+
+  assert.equal(attempts, 3)
+  assert.equal(cancelledBodies, 2, 'Must cancel rejected response bodies exactly once before each retry')
+  assert.equal(result.status, 200, 'Success response remains accessible to caller')
+})
+
+
+test('cline-client: buildUsageCacheKey prevents collisions with same suffix or different baseUrls (#169)', () => {
+  const base1 = 'https://api.cline.bot/api/v1'
+  const base2 = 'https://custom.endpoint.internal/v1'
+
+  const key1 = 'sk-user-alpha-SAMETAIL'
+  const key2 = 'sk-user-beta-SAMETAIL'
+
+  // 1. Different keys with same suffix produce distinct cache keys
+  const cacheKey1 = buildUsageCacheKey(base1, key1)
+  const cacheKey2 = buildUsageCacheKey(base1, key2)
+  assert.notEqual(cacheKey1, cacheKey2, 'Keys with same suffix must produce distinct cache keys')
+  assert.ok(!cacheKey1.includes('SAMETAIL'), 'Cache key must be opaque and not leak key suffix')
+  assert.ok(!cacheKey2.includes('SAMETAIL'))
+
+  // 2. Same key on different baseUrls produces distinct cache keys
+  const cacheKey1Base2 = buildUsageCacheKey(base2, key1)
+  assert.notEqual(cacheKey1, cacheKey1Base2, 'Same key on different baseUrls must produce distinct cache keys')
+
+  // 3. Normalizes trailing slashes and whitespace
+  const normKey = buildUsageCacheKey('https://api.cline.bot/api/v1/', '  sk-user-alpha-SAMETAIL  ')
+  assert.equal(cacheKey1, normKey, 'Cache key must normalize base URL and whitespace')
+})
+
+test('cline-client: fetchUsageLimits isolates accounts with same suffix and supports targeted invalidation (#169)', async () => {
+  clearUsageCache()
+  const base = 'https://api.cline.bot/api/v1'
+  const keyA = 'sk-alpha-SAMETAIL'
+  const keyB = 'sk-beta-SAMETAIL'
+
+  let fetchCalls = []
+  const mockFetch = async (url, opts) => {
+    const auth = opts?.headers?.Authorization || ''
+    fetchCalls.push({ url, auth })
+    const isAlpha = auth.includes('sk-alpha-SAMETAIL')
+    return new Response(JSON.stringify({
+      data: {
+        limits: [
+          { type: '5-hour', percentUsed: isAlpha ? 10 : 80 }
+        ]
+      }
+    }), { status: 200, headers: { 'content-type': 'application/json' } })
+  }
+
+  // 1. Fetch Key A (3 endpoints called: limits, me, plan)
+  const resA = await fetchUsageLimits(base, keyA, { fetchImpl: mockFetch })
+  assert.equal(resA.windows.fiveHour.percentUsed, 10)
+  assert.equal(fetchCalls.length, 3)
+
+  // 2. Fetch Key B (must not return Key A cached quota despite same suffix!)
+  const resB = await fetchUsageLimits(base, keyB, { fetchImpl: mockFetch })
+  assert.equal(resB.windows.fiveHour.percentUsed, 80, 'Key B must have its own independent quota')
+  assert.equal(fetchCalls.length, 6, 'Key B must trigger a separate network fetch, not hit Key A cache')
+
+  // 3. Targeted cache invalidation for Key A
+  clearUsageCache(base, keyA)
+  // Fetching Key A again must trigger fetch (calls 7, 8, 9)
+  await fetchUsageLimits(base, keyA, { fetchImpl: mockFetch })
+  assert.equal(fetchCalls.length, 9)
+
+  // Key B must STILL be cached (no new fetch calls)
+  await fetchUsageLimits(base, keyB, { fetchImpl: mockFetch })
+  assert.equal(fetchCalls.length, 9, 'Key B cache must remain valid after Key A invalidation')
 })
