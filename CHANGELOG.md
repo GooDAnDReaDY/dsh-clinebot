@@ -5,6 +5,19 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.8] - 2026-09-30
+
+### Fixed
+- **Settings PUT Method & Form Error Recovery (Issue #156)**: Fixed `handleConfigPatch` in settings UI client to use `PUT /config` conforming to API routes and preserve unsaved form drafts on server errors.
+- **Client Telemetry Wire Envelope Normalization (Issue #159)**: Fixed `statsSummary` in status payload to align with persistent storage format and accurately display model token consumption and totals.
+- **Deduplication of Proxy & LLM Stream Telemetry (Issue #160)**: Avoided double-counting tokens and latency when requests pass through loopback proxy into `llm/stream`.
+- **Proxy Error Mapping & 429 Header Preservation (Issue #166)**: Differentiated network unreachable/ECONNREFUSED errors as HTTP 502 Bad Gateway instead of false 429, and preserved upstream `Retry-After` headers.
+- **Fetch Response Body Disposal Before Retry (Issue #167)**: Explicitly cancelled upstream HTTP response bodies before triggering retry or account failover on rate-limited or error attempts.
+- **Dynamic Models Catalog Synchronization (Issue #168)**: Pruned deleted upstream models and reconciled metadata diffs on subscription plan updates using `isCatalogDifferent`.
+- **Collision-Free Opaque Usage Cache Key (Issue #169)**: Replaced 8-character key suffix with SHA-256 hash of `baseUrl` and full API key to prevent cross-account cache collisions and protect key secrecy.
+- **Custom Models Resolution Across Routes & Slash Commands (Issue #170)**: Forwarded user-defined custom models through catalog lookup, validation, `/cline test`, `/cline models`, and context configuration routes.
+- **Local Proxy Bearer Token Redaction in Provider Settings (Issue #171)**: Omitted plaintext local proxy token from pi-ai provider descriptor and settings mutation payload, resolving authentication strictly through credential references.
+
 ## [0.5.7] - 2026-09-30
 
 ### Fixed
