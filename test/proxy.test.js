@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { registerProxyRoutes, USER_AGENT } from '../lib/routes/proxy.js'
-import { buildPiAiProvider, usageCache, clearUsageCache } from '../lib/cline-client.js'
+import { buildPiAiProvider, usageCache, clearUsageCache, buildUsageCacheKey } from '../lib/cline-client.js'
 import { resetSessionRouter, getSessionRouterStatus } from '../lib/session-router.js'
 import { resetStats, getStatsSummary } from '../lib/stats-storage.js'
 import { getLocalProxyToken, setLocalProxyToken } from '../lib/proxy-token.js'
@@ -574,7 +574,7 @@ test('proxy: pi-ai client forwards session affinity headers and sticky router pr
 
   clearUsageCache()
   const setQuota = (key, pct) => {
-    usageCache.set('cline:usage:' + key.slice(-8), {
+    usageCache.set(buildUsageCacheKey('https://api.cline.bot/api/v1', key), {
       expiresAt: Date.now() + 60000,
       data: { windows: { fiveHour: { percentUsed: pct } } }
     })
