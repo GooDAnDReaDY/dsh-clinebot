@@ -74,7 +74,7 @@ graph LR
     end
 
     subgraph PluginHost [dsh-clinebot 宿主运行环境]
-        HttpEndpoints["API 路由: /api/plugins/dsh-clinebot/*"]
+        HttpEndpoints["API 路由: /dsh-clinebot/*"]
         ClientCore["lib/cline-client.js"]
         ModelCatalog["lib/models.js (内置精选 + 动态订阅解析)"]
         SlashCmd["斜杠指令: /cline"]
@@ -107,7 +107,7 @@ graph LR
 
 ## ✨ 核心模块与功能
 
-* **`lib/models.js`**：管理 11 款官方精选内置模型（提供完整的 `Off` / `Low` / `Medium` / `High` / `Max` 思考强度映射、上游 200k 上下文容量标注）以及套餐模型动态解析器（`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`）。
+* **`lib/models.js`**：管理动态订阅模型目录与内置精选模板（提供完整的 `Off` / `Low` / `Medium` / `High` / `Max` 思考强度映射、上游 200k 上下文容量标注、自定义模型支持）以及套餐模型动态解析器（`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`）。
 * **`lib/cline-client.js`**：
   * `fetchUsageLimits`：高效并发轮询 `GET /users/me/plan/usage-limits`、`GET /users/me/plan` 与 `GET /users/me` 并进行内存缓存。
   * `sessionStats` / `recordSessionRequest`：内存级会话度量记录器（请求次数、Token 估算、延迟、时间戳）。
@@ -160,29 +160,42 @@ dsh-clinebot:
   enabled: true
   baseUrl: https://api.cline.bot/api/v1
   apiKeyEnv: CLINEBOT_API_KEY
-  defaultModel: cline-pass/deepseek-v4-flash
-  timeoutMs: 15000
-  smokeTimeoutMs: 25000
-  enabledModels:
-    - cline-pass/deepseek-v4-flash
-    - cline-pass/deepseek-v4-pro
-    - cline-pass/kimi-k3
-    - cline-pass/qwen3.7-max
-  dynamicModels: []
+  defaultModel: your-default-model
+  proxyMode: true
+  disabledModels: []
+  customModels: []
+  modelReasoningDefaults:
+    your-reasoning-model: high
+  modelContextOverrides: []
+  statsPath: ~/.dsh/clinebot-stats.json
+  timeoutMs: 30000
+  smokeTimeoutMs: 60000
+  streamIdleTimeoutMs: 60000
+  accounts:
+    - label: Team Key
+      apiKeyEnv: CLINEBOT_API_KEY_2
 ```
 
 ### 配置参数说明
 
 | 参数项 | 类型 | 默认值 | 说明 |
 |:---|:---|:---|:---|
-| `enabled` | `boolean` | `true` | 是否启用 ClineBot 桥接插件 |
+| `enabled` | `boolean` | `true` | 是否在 DSH 中启用 ClineBot 桥接插件 |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI 兼容接口地址 |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | 凭据管理系统中的密钥名称 |
-| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | 默认选中的模型 ID |
+| `defaultModel` | `string` | `"claude-3-7-sonnet"` | 默认选中的模型 ID（用于对话及探活） |
+| `disabledModels` | `array` | `[]` | 在选择器中隐藏的模型 ID 列表（新订阅模型默认自动启用） |
+| `customModels` | `array` | `[]` | 用户自定义网关模型 (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
+| `modelReasoningDefaults` | `object` | `{}` | 各模型默认思考强度配置 (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | 用户自定义模型上下文窗口与最大 Token 数量覆盖 |
-| `timeoutMs` | `number` | `15000` | HTTP 请求超时时间（毫秒） |
-| `smokeTimeoutMs` | `number` | `25000` | 探活测试超时时间（毫秒） |
-| `enabledModels` | `array` | `[...]` | 允许在聊天下拉框中显示的可用模型列表 |
+| `proxyMode` | `boolean` | `true` | 启用透明本地环回代理以支持会话粘性路由与 429 自动故障转移 |
+| `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | 本地持久化 Token 用量统计文件路径 |
+| `accounts` | `array` | `[]` | 额外轮转账号池 (`[{ label, apiKeyEnv }]`) |
+| `activeAccount` | `string` | `""` | 手动指定的主账号（为空时自动按最低配额消耗优先路由） |
+| `timeoutMs` | `number` | `30000` | HTTP 请求探测超时时间（毫秒） |
+| `smokeTimeoutMs` | `number` | `60000` | 探活测试超时时间（毫秒） |
+| `streamIdleTimeoutMs` | `number` | `60000` | SSE 流式输出块间空闲超时时间（毫秒） |
+| `enabledModels` | `array` | *(已废弃)* | 仅在 public config 中只读提供，`PUT /config` 时禁止写入并请使用 `disabledModels` |
 | `dynamicModels` | `array` | `[]` | 从官方套餐中自动同步的动态模型列表 |
 
 ---
