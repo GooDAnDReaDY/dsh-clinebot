@@ -74,7 +74,11 @@ test('cline-client: buildPiAiProvider with custom models and reasoningEfforts sc
   assert.equal(provider.api, 'openai-completions')
   assert.equal(provider.baseURL, 'https://api.cline.bot/api/v1')
   assert.equal(provider.apiKeyEnv, 'MY_KEY')
-  assert.deepEqual(provider.compat, { supportsReasoningEffort: true })
+  assert.deepEqual(provider.compat, {
+    supportsReasoningEffort: true,
+    sendSessionAffinityHeaders: true,
+    sessionAffinityFormat: 'openrouter',
+  })
   assert.equal(provider.models.length, 4)
   assert.equal(provider.models[0].id, 'cline-pass/deepseek-v4-moe')
   assert.equal(provider.models[0].provider, PROVIDER_ID)
@@ -85,18 +89,32 @@ test('cline-client: buildPiAiProvider with custom models and reasoningEfforts sc
     medium: 'medium',
     high: 'high',
   })
-  assert.deepEqual(provider.models[0].compat, { supportsReasoningEffort: true })
+  assert.deepEqual(provider.models[0].compat, {
+    sendSessionAffinityHeaders: true,
+    sessionAffinityFormat: 'openrouter',
+    supportsReasoningEffort: true,
+  })
   assert.equal(provider.models[1].reasoningEfforts, false)
-  assert.equal(provider.models[1].compat, undefined)
+  assert.deepEqual(provider.models[1].compat, {
+    sendSessionAffinityHeaders: true,
+    sessionAffinityFormat: 'openrouter',
+  })
   assert.deepEqual(provider.models[2].reasoningEfforts, {
     off: null,
     low: 'Low Effort',
     max: 'Maximum Effort',
   })
-  assert.deepEqual(provider.models[2].compat, { supportsReasoningEffort: true })
+  assert.deepEqual(provider.models[2].compat, {
+    sendSessionAffinityHeaders: true,
+    sessionAffinityFormat: 'openrouter',
+    supportsReasoningEffort: true,
+  })
   // Model without reasoningEfforts defined defaults to false
   assert.equal(provider.models[3].reasoningEfforts, false)
-  assert.equal(provider.models[3].compat, undefined)
+  assert.deepEqual(provider.models[3].compat, {
+    sendSessionAffinityHeaders: true,
+    sessionAffinityFormat: 'openrouter',
+  })
 })
 
 test('cline-client: fetchUsageLimits parsing and caching', async () => {

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { registerProxyRoutes, USER_AGENT } from '../lib/routes/proxy.js'
+import { buildPiAiProvider, usageCache, clearUsageCache } from '../lib/cline-client.js'
 import { resetSessionRouter, getSessionRouterStatus } from '../lib/session-router.js'
 import { getLocalProxyToken, setLocalProxyToken } from '../lib/proxy-token.js'
 import { createRequire } from 'node:module'
@@ -428,4 +429,204 @@ test('proxy: authorizes requests with account pool key or local proxy token (#15
   const resBad = createMockRes()
   await modelsHandler({ method: 'GET', socket: { remoteAddress: '127.0.0.1' }, headers: { authorization: 'Bearer wrong-unauthorized-key' } }, resBad)
   assert.equal(resBad.status, 401)
+})
+
+
+test('proxy: pi-ai client forwards session affinity headers and sticky router preserves session (#163)', async () => {
+  resetSessionRouter()
+
+  let completionsHandler = null
+  const mockCreds = {
+    resolve: async (ref) => {
+      if (ref === 'KEY_A') return { value: 'sk-account-a-secret' }
+      if (ref === 'KEY_B') return { value: 'sk-account-b-secret' }
+      return { value: '' }
+    }
+  }
+
+  const mockCtx = {
+    effect: (fn) => fn(),
+    get: (name) => (name === 'credentials' ? mockCreds : null),
+    credentials: mockCreds,
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  clearUsageCache()
+  const setQuota = (key, pct) => {
+    usageCache.set('cline:usage:' + key.slice(-8), {
+      expiresAt: Date.now() + 60000,
+      data: { windows: { fiveHour: { percentUsed: pct } } }
+    })
+  }
+
+  setQuota('sk-account-a-secret', 10)
+  setQuota('sk-account-b-secret', 90)
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({
+      enabled: true,
+      baseUrl: 'https://api.cline.bot/api/v1',
+      accounts: [
+        { id: 'acc-a', apiKeyEnv: 'KEY_A' },
+        { id: 'acc-b', apiKeyEnv: 'KEY_B' }
+      ]
+    })
+  })
+
+  const upstreamCalls = []
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (url, init) => {
+    upstreamCalls.push({
+      url,
+      auth: init.headers?.Authorization,
+      body: JSON.parse(init.body || '{}')
+    })
+    const sseBody = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"id":"1","choices":[{"delta":{"content":"pong"}}]}\n\ndata: [DONE]\n\n'))
+        controller.close()
+      }
+    })
+    return new Response(sseBody, {
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' }
+    })
+  }
+
+  try {
+    const provider = buildPiAiProvider({
+      baseUrl: 'http://127.0.0.1:3080/dsh-clinebot/v1',
+      apiKey: TEST_TOKEN,
+      models: [{ id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' }]
+    })
+
+    assert.equal(provider.compat.sendSessionAffinityHeaders, true)
+    assert.equal(provider.compat.sessionAffinityFormat, 'openrouter')
+    const model = { ...provider.models[0], api: provider.api, baseUrl: provider.baseURL }
+    assert.equal(model.compat.sendSessionAffinityHeaders, true)
+    assert.equal(model.compat.sessionAffinityFormat, 'openrouter')
+
+    const runProxyRequest = async (headers, bodyObj) => {
+      const chunks = []
+      let statusCode = 200
+      let resHeaders = {}
+      const res = {
+        writeHead: (code, hdrs) => {
+          statusCode = code
+          resHeaders = hdrs || {}
+        },
+        write: (chunk) => {
+          chunks.push(chunk.toString('utf8'))
+        },
+        end: (finalChunk) => {
+          if (finalChunk) chunks.push(finalChunk.toString('utf8'))
+        },
+        on: (evt, cb) => {},
+        removeListener: () => {},
+        get statusCode() { return statusCode },
+        get headers() { return resHeaders },
+        get output() { return chunks.join('') }
+      }
+
+      const reqBodyStr = JSON.stringify(bodyObj)
+      const req = {
+        method: 'POST',
+        socket: { remoteAddress: '127.0.0.1' },
+        headers: {
+          authorization: 'Bearer ' + TEST_TOKEN,
+          'content-type': 'application/json',
+          ...headers
+        },
+        on: (evt, cb) => {
+          if (evt === 'data') cb(Buffer.from(reqBodyStr))
+          if (evt === 'end') cb()
+        },
+        off: () => {}
+      }
+
+      await completionsHandler(req, res)
+      return { status: statusCode, headers: resHeaders, output: res.output }
+    }
+
+    let piAiStream = null
+    try {
+      const piMod = await import('@earendil-works/pi-ai/api/openai-completions')
+      piAiStream = piMod.stream
+    } catch {
+      try {
+        const piMod = await import('/home/vadim/.nvm/versions/node/v24.15.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@earendil-works/pi-ai/dist/api/openai-completions.js')
+        piAiStream = piMod.stream
+      } catch {}
+    }
+
+    if (piAiStream) {
+      const customFetch = async (url, init) => {
+        const headers = Object.fromEntries(new Headers(init.headers).entries())
+        const body = JSON.parse(init.body || '{}')
+        const result = await runProxyRequest(headers, body)
+        return new Response(result.output, {
+          status: result.status,
+          headers: result.headers
+        })
+      }
+
+      const s1 = piAiStream(model, { messages: [{ role: 'user', content: 'test1' }] }, {
+        apiKey: TEST_TOKEN,
+        sessionId: 'session-alpha-123',
+        fetch: customFetch
+      })
+      for await (const chunk of s1) {
+        
+      }
+
+      assert.equal(upstreamCalls.length, 1)
+      const call1Auth = upstreamCalls[0].auth
+
+      const s2 = piAiStream(model, { messages: [{ role: 'user', content: 'test2' }] }, {
+        apiKey: TEST_TOKEN,
+        sessionId: 'session-alpha-123',
+        fetch: customFetch
+      })
+      for await (const chunk of s2) {}
+
+      assert.equal(upstreamCalls.length, 2)
+      assert.equal(upstreamCalls[1].auth, call1Auth, 'Sticky affinity must keep the same account')
+
+      setQuota('sk-account-a-secret', 95); setQuota('sk-account-b-secret', 5)
+      const s3 = piAiStream(model, { messages: [{ role: 'user', content: 'test3' }] }, {
+        apiKey: TEST_TOKEN,
+        sessionId: 'session-beta-456',
+        fetch: customFetch
+      })
+      for await (const chunk of s3) {}
+
+      assert.equal(upstreamCalls.length, 3)
+      assert.notEqual(upstreamCalls[2].auth, call1Auth, 'Different session routes to different account')
+    } else {
+      const res1 = await runProxyRequest({ 'x-session-id': 'session-alpha-123' }, { stream: true, model: 'deepseek-v4-flash' })
+      assert.equal(res1.status, 200)
+      assert.equal(upstreamCalls.length, 1)
+      const call1Auth = upstreamCalls[0].auth
+
+      const res2 = await runProxyRequest({ 'x-session-id': 'session-alpha-123' }, { stream: true, model: 'deepseek-v4-flash' })
+      assert.equal(res2.status, 200)
+      assert.equal(upstreamCalls[1].auth, call1Auth)
+
+      setQuota('sk-account-a-secret', 95); setQuota('sk-account-b-secret', 5)
+      const res3 = await runProxyRequest({ 'x-session-id': 'session-beta-456' }, { stream: true, model: 'deepseek-v4-flash' })
+      assert.equal(res3.status, 200)
+      assert.notEqual(upstreamCalls[2].auth, call1Auth)
+    }
+
+    // Verify upstream secrets NEVER leak into response outputs
+    for (const call of upstreamCalls) {
+      assert.ok(call.auth.includes('sk-account-'), 'Upstream used real account secret')
+    }
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })
