@@ -6,6 +6,8 @@ import {
   PROVIDER_ID,
   DEFAULT_MODEL_ID,
   isSupportedModel,
+  findModel,
+  getDefaultModelIds,
   getAllModels,
   getActiveModelIds,
   parsePlanIncludedModels,
@@ -433,4 +435,46 @@ test('provider-sync: autoDiscoverPlanModels reconciles removed models and metada
     globalThis.fetch = originalFetch
     delete process.env.TEST_KEY_ENV_168
   }
+})
+
+test('models: findModel and isSupportedModel resolve custom models (#170)', () => {
+  const customModels = [
+    {
+      id: 'custom-internal-llm',
+      name: 'Custom Internal LLM',
+      contextLength: 64000,
+      maxTokens: 4096,
+      category: 'coding',
+      isReasoning: true,
+    },
+    {
+      id: 'custom-vision-agent',
+      name: 'Custom Vision Agent',
+      contextLength: 128000,
+      input: ['text', 'vision'],
+    },
+  ]
+
+  // 1. isSupportedModel
+  assert.equal(isSupportedModel('custom-internal-llm', [], [], customModels), true)
+  assert.equal(isSupportedModel('custom-vision-agent', [], [], customModels), true)
+  assert.equal(isSupportedModel('unknown-nonexistent-model', [], [], customModels), false)
+
+  // 2. findModel
+  const m1 = findModel('custom-internal-llm', [], [], customModels)
+  assert.ok(m1)
+  assert.equal(m1.name, 'Custom Internal LLM')
+  assert.equal(m1.contextLength, 64000)
+  assert.equal(m1.maxTokens, 4096)
+  assert.equal(m1.isCustom, true)
+  assert.deepEqual(m1.reasoningEfforts, ['low', 'medium', 'high', 'max'])
+
+  // 3. isVisionModel
+  assert.equal(isVisionModel('custom-vision-agent', [], [], customModels), true)
+  assert.equal(isVisionModel('custom-internal-llm', [], [], customModels), false)
+
+  // 4. getDefaultModelIds
+  const ids = getDefaultModelIds([], [], customModels)
+  assert.ok(ids.includes('custom-internal-llm'))
+  assert.ok(ids.includes('custom-vision-agent'))
 })
