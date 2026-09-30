@@ -59,7 +59,8 @@ test('updater: checkUpdateStatus detects status with manifestUrl', async () => {
   assert.equal(status.updateAvailable, false)
 })
 
-import { isPidAlive, checkProfileLock } from '../lib/updater.js'
+import { isPidAlive, checkProfileLock, cleanStaleLock, installExact } from '../lib/updater.js'
+import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -101,4 +102,124 @@ test('updater: checkProfileLock detects active locks and cleans stale locks (#14
 test('updater: does not pass --config.minimumReleaseAge=0 to plugin add (#148)', () => {
   const updaterCode = fs.readFileSync(path.join(import.meta.dirname, '../lib/updater.js'), 'utf8')
   assert.equal(updaterCode.includes('minimumReleaseAge=0'), false, 'minimumReleaseAge=0 must be removed')
+})
+
+
+function createMockChild() {
+  const child = new EventEmitter()
+  child.stdout = new EventEmitter()
+  child.stderr = new EventEmitter()
+  child.signals = []
+  child.killed = false
+  child.exitCode = null
+  child.signalCode = null
+  child.kill = (sig) => {
+    child.signals.push(sig)
+    child.killed = true
+  }
+  return child
+}
+
+test('updater: installExact throws if cliEntry is undefined', async () => {
+  await assert.rejects(
+    () => installExact({ cliEntry: undefined }, 'pkg@1.0.0'),
+    /Automatic update is unavailable/
+  )
+})
+
+test('updater: installExact resolves when process exits with code 0', async () => {
+  const child = createMockChild()
+  const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: '/tmp/test' }
+  const promise = installExact(target, 'pkg@1.0.0', {
+    spawn: () => child,
+    timeoutMs: 1000,
+  })
+  child.emit('exit', 0, null)
+  await promise
+  assert.equal(child.signals.length, 0)
+})
+
+test('updater: installExact rejects when process exits with non-zero code', async () => {
+  const child = createMockChild()
+  const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: '/tmp/test' }
+  const promise = installExact(target, 'pkg@1.0.0', {
+    spawn: () => child,
+    timeoutMs: 1000,
+  })
+  child.stderr.emit('data', 'Installation failed: network error')
+  child.emit('exit', 1, null)
+  await assert.rejects(promise, /Installation failed: network error/)
+})
+
+test('updater: installExact timeout sends SIGTERM and waits for exit before rejecting (#172)', async () => {
+  const child = createMockChild()
+  const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: '/tmp/test' }
+  const promise = installExact(target, 'pkg@1.0.0', {
+    timeoutMs: 20,
+    sigtermGraceMs: 50,
+    spawn: () => child,
+  })
+  await new Promise((r) => setTimeout(r, 30))
+  assert.deepEqual(child.signals, ['SIGTERM'])
+
+  let settled = false
+  promise.catch(() => { settled = true })
+  assert.equal(settled, false, 'Promise must not reject before child exits')
+
+  child.exitCode = 0
+  child.signalCode = 'SIGTERM'
+  child.emit('exit', 0, 'SIGTERM')
+  await assert.rejects(promise, /Update timed out\./)
+  assert.equal(child.signals.includes('SIGKILL'), false, 'SIGKILL must not be sent if child exited on SIGTERM')
+})
+
+test('updater: installExact stubborn child ignoring SIGTERM gets escalated to SIGKILL (#172)', async () => {
+  const child = createMockChild()
+  const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: '/tmp/test' }
+  const promise = installExact(target, 'pkg@1.0.0', {
+    timeoutMs: 20,
+    sigtermGraceMs: 40,
+    sigkillGraceMs: 50,
+    spawn: () => child,
+  })
+  await new Promise((r) => setTimeout(r, 30))
+  assert.deepEqual(child.signals, ['SIGTERM'])
+
+  await new Promise((r) => setTimeout(r, 45))
+  assert.deepEqual(child.signals, ['SIGTERM', 'SIGKILL'], 'Must escalate to SIGKILL when child ignores SIGTERM')
+
+  let settled = false
+  promise.catch(() => { settled = true })
+  assert.equal(settled, false, 'Promise must not reject before child exits')
+
+  child.exitCode = null
+  child.signalCode = 'SIGKILL'
+  child.emit('exit', null, 'SIGKILL')
+  await assert.rejects(promise, /Update timed out\./)
+})
+
+test('updater: installExact holds profile lock until child process exits (#172)', async () => {
+  const tmpProfile = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-lock-test-'))
+  const lockFile = path.join(tmpProfile, 'package.json.lock')
+  const deadPid = 99999999
+  fs.writeFileSync(lockFile, String(deadPid), 'utf8')
+
+  try {
+    const child = createMockChild()
+    const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: tmpProfile }
+    const promise = installExact(target, 'pkg@1.0.0', {
+      timeoutMs: 20,
+      sigtermGraceMs: 50,
+      spawn: () => child,
+    })
+    await new Promise((r) => setTimeout(r, 30))
+    assert.equal(fs.existsSync(lockFile), true, 'Lock must be held while child has not exited')
+
+    child.exitCode = 0
+    child.emit('exit', 0, 'SIGTERM')
+    await assert.rejects(promise, /Update timed out\./)
+    assert.equal(fs.existsSync(lockFile), false, 'Lock must be cleaned after child exits')
+  } finally {
+    fs.rmSync(tmpProfile, { recursive: true, force: true })
+  }
 })
