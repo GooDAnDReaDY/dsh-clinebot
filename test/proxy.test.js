@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
 import { registerProxyRoutes, USER_AGENT } from '../lib/routes/proxy.js'
 import { buildPiAiProvider, usageCache, clearUsageCache } from '../lib/cline-client.js'
 import { resetSessionRouter, getSessionRouterStatus } from '../lib/session-router.js'
@@ -369,24 +370,139 @@ test('proxy: User-Agent dynamically reflects package version (#147)', () => {
   assert.equal(USER_AGENT, `@goodandready/dsh-clinebot/${pkg.version}`)
 })
 
-test('proxy: client disconnection cancels upstream SSE reader (#138)', async () => {
+test('proxy: closing client response aborts upstream request and cleans up listeners (#164)', async () => {
   resetSessionRouter()
-  let registeredCloseHandler = null
-  const reqStream = {
-    method: 'POST',
-    socket: { remoteAddress: '127.0.0.1' },
-    headers: {
-      authorization: `Bearer ${TEST_TOKEN}`,
-      accept: 'text/event-stream'
-    },
-    on: (evt, cb) => {
-      if (evt === 'close') registeredCloseHandler = cb
-      if (evt === 'data') cb(Buffer.from(JSON.stringify({ stream: true, model: 'deepseek-v4-flash' })))
-      if (evt === 'end') cb()
-    },
-    off: (evt, cb) => {}
+  let completionsHandler = null
+  const mockCreds = {
+    resolve: async () => ({ value: 'sk-test-key-164' })
   }
-  assert.equal(typeof reqStream.on, 'function')
+  const mockCtx = {
+    effect: (fn) => fn(),
+    get: (name) => (name === 'credentials' ? mockCreds : null),
+    credentials: mockCreds,
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  registerProxyRoutes(mockCtx, {
+    live: () => ({
+      enabled: true,
+      baseUrl: 'https://api.cline.bot/api/v1',
+      accounts: [{ id: 'acc-1', apiKeyEnv: 'CLINEBOT_API_KEY' }]
+    })
+  })
+
+  const originalFetch = globalThis.fetch
+
+  const createReq = (bodyObj) => {
+    const req = new EventEmitter()
+    req.method = 'POST'
+    req.socket = { remoteAddress: '127.0.0.1' }
+    req.headers = {
+      authorization: 'Bearer ' + TEST_TOKEN,
+      'content-type': 'application/json'
+    }
+    req[Symbol.asyncIterator] = async function* () {
+      yield Buffer.from(JSON.stringify(bodyObj))
+    }
+    return req
+  }
+
+  // 1. Client disconnects mid-stream -> upstream stream reader is cancelled
+  try {
+    let upstreamCancelled = false
+    let upstreamCancelReason = null
+    let upstreamFetchSignal = null
+
+    globalThis.fetch = async (url, init) => {
+      upstreamFetchSignal = init.signal
+      const sseStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"id":"1","choices":[{"delta":{"content":"first"}}]}\n\n'))
+        },
+        cancel(reason) {
+          upstreamCancelled = true
+          upstreamCancelReason = reason
+        }
+      })
+      return new Response(sseStream, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' }
+      })
+    }
+
+    const emitterRes = new EventEmitter()
+    emitterRes.statusCode = 200
+    emitterRes.writableFinished = false
+    emitterRes.writableEnded = false
+    emitterRes.destroyed = false
+    emitterRes.setHeader = () => {}
+    emitterRes.writeHead = () => {}
+    emitterRes.write = () => {
+      emitterRes.destroyed = true
+      emitterRes.emit('close')
+    }
+    emitterRes.end = () => {
+      emitterRes.writableFinished = true
+      emitterRes.writableEnded = true
+      emitterRes.emit('finish')
+    }
+
+    const emitterReq = createReq({ stream: true, model: 'deepseek-v4-flash' })
+    await completionsHandler(emitterReq, emitterRes)
+
+    assert.equal(upstreamCancelled, true, 'Upstream stream must be cancelled when client disconnects')
+    assert.equal(upstreamFetchSignal.aborted, true, 'Upstream fetch signal must be aborted')
+    assert.equal(emitterRes.listenerCount('close'), 0, 'Response close listeners must be cleaned up')
+    assert.equal(emitterReq.listenerCount('close'), 0, 'Request close listeners must be cleaned up')
+
+    // 2. Normal EOF -> upstream stream is NOT cancelled, finishes normally
+    let eofStreamCancelled = false
+    globalThis.fetch = async (url, init) => {
+      const sseStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('data: {"id":"2","choices":[{"delta":{"content":"done"}}]}\n\n'))
+          controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n'))
+          controller.close()
+        },
+        cancel() {
+          eofStreamCancelled = true
+        }
+      })
+      return new Response(sseStream, {
+        status: 200,
+        headers: { 'content-type': 'text/event-stream' }
+      })
+    }
+
+    const normRes = new EventEmitter()
+    normRes.statusCode = 200
+    normRes.writableFinished = false
+    normRes.writableEnded = false
+    normRes.destroyed = false
+    normRes.setHeader = () => {}
+    normRes.writeHead = () => {}
+    normRes.write = () => {}
+    normRes.end = () => {
+      normRes.writableFinished = true
+      normRes.writableEnded = true
+      normRes.emit('finish')
+      normRes.emit('close')
+    }
+
+    const normReq = createReq({ stream: true, model: 'deepseek-v4-flash' })
+    await completionsHandler(normReq, normRes)
+
+    assert.equal(eofStreamCancelled, false, 'Normal stream EOF must not be cancelled')
+    assert.equal(normRes.writableFinished, true, 'Normal response must finish')
+    assert.equal(normRes.listenerCount('close'), 0, 'Response close listeners must be cleaned up')
+    assert.equal(normReq.listenerCount('close'), 0, 'Request close listeners must be cleaned up')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })
 
 test('proxy: authorizes requests with account pool key or local proxy token (#150, GH #11)', async () => {
@@ -487,7 +603,7 @@ test('proxy: pi-ai client forwards session affinity headers and sticky router pr
     })
     const sseBody = new ReadableStream({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode('data: {"id":"1","choices":[{"delta":{"content":"pong"}}]}\n\ndata: [DONE]\n\n'))
+        controller.enqueue(new TextEncoder().encode('data: {"id":"1","choices":[{"delta":{"content":"pong"}}]\n\ndata: [DONE]\n\n'))
         controller.close()
       }
     })
