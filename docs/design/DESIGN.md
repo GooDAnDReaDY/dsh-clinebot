@@ -16,7 +16,12 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 ### 2.2 Client Runtime (`lib/client.js`)
 * Self-registering module via `window.__ModuleLoader__.load({ id: '@goodandready/dsh-clinebot', factory })`.
 * Injects `['slots', 'locale', 'configForms']`. User settings fields are volatile so the host publishes the `dsh-clinebot` namespace; otherwise the page stays on "host namespace is not ready". Nested fields inside those arrays stay plain, and the plugin copies each host volatile reference to a plain value before cloning it. `package.json` `dsh.client.inject` names `@deepseek-ai/dsh-client-ui-slots`, `@deepseek-ai/dsh-client-locale`, and `@deepseek-ai/dsh-client-ui-settings` so those services exist.
-* Slots strictly and exclusively into `settings.plugin.item` (`key: NS`, `locale: NS`). Standalone top-level `settings.section` registration is omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
+* **Four Registered UI Seats (`src/client/entry.js`)**:
+  1. `plugins.item` (`id: NS, order: 60, label: () => 'clinebot', locale: NS`): Renders inside the DSH Plugins catalog list. Handles `view: 'summary'` (compact one-liner with subtitle) and `view: 'page'` (full embedded settings card).
+  2. `plugins.row.config` (`key: '@goodandready/dsh-clinebot#dsh-clinebot'`): Row configuration seat for current DSH core versions keyed by `<package>#<row-id>`.
+  3. `plugins.row.config` (`key: 'dsh-clinebot#dsh-clinebot'`): Row configuration seat for short bundle name fallback. Both keys are registered safely; the unused key remains inert.
+  4. `settings.plugin.item` (`key: NS, locale: NS`): Standard DSH plugin settings seat for direct plugin configuration display.
+  Standalone top-level `settings.section` registration is intentionally omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
 * Opens the namespace with `configForms.get('dsh-clinebot')`. The form exposes `getSnapshot`, `subscribe`, and `set`.
 * Registers localized `en` and `zh` dictionaries with duplicate-safe guards (`ctx.locale.register()`), while Russian translation is modularly supplied by `dsh-russian-lang`.
 * The settings card reads `ctx.get('configForms').get('dsh-clinebot')`. It does not call `settingsScope`, `lanSettings`, or `bind`. When `configForms` is not yet available, or when running over non-loopback connections (`persistence === 'memory'`), `getSnapshot` returns the frozen fallback constant `SNAPSHOT_READY`, preventing infinite re-render loops in `useSyncExternalStore` (React error #185) and allowing the page to render via its authenticated HTTP REST endpoints without being blocked behind an "unavailable" banner.
@@ -32,9 +37,9 @@ graph LR
     end
 
     subgraph Host [DSH Node.js Runtime]
-        API["HTTP API: /api/plugins/dsh-clinebot/*"]
+        API["HTTP API: /dsh-clinebot/*"]
         ClientHelper["lib/cline-client.js"]
-        Catalog["lib/models.js (Static 11 Models)"]
+        Catalog["lib/models.js (Dynamic Subscription Catalog)"]
         CredService[DSH Credentials Service]
         PiAiSettings["DSH Settings: llm-pi-ai"]
     end
@@ -184,3 +189,33 @@ graph LR
 * Исключено из npm: `src/` (исходники UI), `test/` (тесты), `scripts/` (скрипты сборки и релиза), `docs/` (архитектурный контракт `docs/design/DESIGN.md` отслеживается только в репозитории).
 * Исключено из Git: `.worktrees/`, `.planning/`, `docs/plans/`, `.dsh-test/`, `node_modules/`, `*.tgz`, `.env*`, `credentials*`, служебные дампы.
 * Дата последней проверки состава пакета: **2026-09-27**.
+
+## 14. Testing, Preflight & Release Workflow
+
+### 14.1 Development & Test Execution
+* Все работы выполняются только на MiniAI (`192.168.1.111`) в изолированных worktrees: `/mnt/external/Project/DEV/dhsplugins/dsh-clinebot/.worktrees/<branch>`.
+* Запуск набора тестов: `npm test` (тесты выполняются с изолированным HOME через `--import ./test/_setup.mjs`).
+* Статический и контрактный preflight: `bash ~/.dsh/skills/dsh-plugin-preflight/scripts/preflight.sh .` (обязательное требование: `FAIL=0`).
+* Проверка лимитов декомпозиции (`test/decomposition.test.js`):
+  - Серверные модули: `<= 600` строк.
+  - Клиентские модули в `src/client/`: `<= 500` строк.
+  - Собранный бандл `lib/client.js`: `<= 262144` байт (`256 KiB`).
+
+### 14.2 Release Gates & Acceptance Environments
+1. **Commit & PR**: Conventional Commits с привязкой задач `Refs: #<issue>`. PR в Gitea с полным описанием проблемы, причин, изменений и доказательств проверок.
+2. **Изолированный Test Server (MiniPC `192.168.1.123`)**:
+   - Сборка неизменяемого `.tgz` кандидата: `npm pack --dry-run --json` (проверка исключения служебных файлов).
+   - Передача в `/tmp` MiniPC и установка через `dsh-test-plugin install /tmp/<pkg>.tgz`.
+   - Полный цикл проверок: status, Web UI, logs `dsh-test-web.service`, smoke-тесты.
+   - Обязательный cleanup тестового контура после завершения проверок.
+3. **Предрелизная Production-приёмка**:
+   - Временная установка того же проверенного `.tgz` в production DSH profile.
+   - Выполнение health/smoke/e2e проверок в реальном контуре.
+4. **Авторизация релиза**:
+   - Запрос явного подтверждения владельца: "Публикуем релиз? / да - релиз - прод".
+   - Только после подтверждения: публикация в публичный npm (`@goodandready/dsh-clinebot`) и GitHub Release с развёрнутыми заметками на EN, ZH, RU.
+5. **Финальная фиксация в Production**:
+   - Замена временного `.tgz` кандидата точной опубликованной версией из npm registry (`dsh plugin add @goodandready/dsh-clinebot@<version>`).
+   - Повторная верификация запуска и логирования.
+6. **Обновление витрины**:
+   - Актуализация карточки плагина на [goodandready.app](https://goodandready.app/) (версия, описание, ссылки) и деплой сайта.
