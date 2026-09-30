@@ -131,7 +131,7 @@ graph LR
 | `/dsh-clinebot/usage` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Телеметрия лимитов и скользящего окна запросов активного аккаунта из SWR-кэша. |
 | `/dsh-clinebot/accounts` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Добавление нового аккаунта в пул с безопасным сохранением ключа в DSH Credentials. |
 | `/dsh-clinebot/accounts/active` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Переключение активного аккаунта, инвалидация кэшей квот и обновление провайдера. |
-| `/dsh-clinebot/accounts/delete` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Удаление аккаунта из пула и очистка связанного секрета из Credentials. |
+| `/dsh-clinebot/accounts/delete` | POST, DELETE | `isTrustedSettingsRequest` | Loopback / Same-Origin; allowlist env; pool check | Удаление аккаунта из пула с валидацией пространства имен и очисткой секрета из Credentials. |
 | `/dsh-clinebot/models/toggle` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Включение/выключение модели в DSH чате через массив `disabledModels`. |
 | `/dsh-clinebot/models/sync` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Принудительная синхронизация моделей активного тарифного плана ClinePass. |
 | `/dsh-clinebot/models/context` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Настройка размера контекста модели (ручной ввод, дефолт провайдера, оригинальный лимит). |
