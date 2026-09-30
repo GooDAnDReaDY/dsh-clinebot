@@ -1,14 +1,23 @@
 # Changelog
 
-## 0.5.4
-
-### Fixed
-- **Peer gate on DSH 0.2.0-rc.1** (#58): DSH skips a profile bundle whose `peerDependencies` exclude the running version, so this plugin was absent from the profile with no error in the UI. Every `@deepseek-ai/dsh-*` peer now names both the 0.1.7-rc.2 and 0.2.0-rc.1 lines, because semver does not admit a prerelease of the next minor into a range that does not name it.
-
 All notable changes to `@goodandready/dsh-clinebot` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.5.6] - 2026-09-30
+
+### Security
+- **Credential Deletion Scope Enforcement (Issue #155)**: Restricted credential deletion on `DELETE /dsh-clinebot/accounts` and `POST /dsh-clinebot/accounts/delete` strictly to configured secondary accounts matching `^CLINEBOT_API_KEY(_[A-Z0-9]+)?$`. Prohibited deletion of the primary account. Unconfigured or invalid keys receive HTTP 400/404 without calling credentials store. Credential deletion errors return HTTP 500.
+
+### Fixed
+- **Atomic Settings Persistence & Volatile Lifecycle (Issue #157)**: Re-architected `settingsApi.replace` and `settingsApi.update` to persist changes via DSH `SettingsForms` *before* mutating live state. If settings service is unavailable or non-writable, explicit errors are thrown. Mutating in-memory configuration now preserves dynamic Volatile references and getters across updates without severance.
+- **Cold Start Persistent Stats Loading & Flush on Dispose (Issue #158)**: Connected `loadStats(statsPath)` to plugin startup lifecycle in `apply()`, preventing cold starts from overwriting historical token metrics with empty counters. Added `flushStats()` effect hook on plugin disposal and automatic corrupted file preservation (`*.corrupt.<timestamp>`) for diagnostics.
+
+## [0.5.5] - 2026-09-30
+
+### Fixed
+- **Volatile Boxes Unwrapping in Config Validation (Issue #153)**: Corrected deep unwrapping of Schemastery Volatile boxes and getters when passing dynamic configuration objects through `Config()` validation, preventing schema validation failures.
 
 ## [0.5.3] - 2026-09-28
 
