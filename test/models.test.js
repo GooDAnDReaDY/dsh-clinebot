@@ -215,6 +215,42 @@ test('models: saveModelsDiskCache and loadModelsDiskCache', async () => {
     // Non-existent path returns null
     const empty = await loadModelsDiskCache(path.join(tmpDir, 'nonexistent.json'))
     assert.equal(empty, null)
+
+    // Isolation by account and endpoint (#168)
+    const accAFile = path.join(tmpDir, 'cache-acc-a.json')
+    await saveModelsDiskCache(accAFile, testModels, Date.now(), {
+      endpoint: 'https://endpoint-a.example/v1',
+      accountRef: 'CLINEBOT_API_KEY_A',
+    })
+
+    // Same endpoint and account loads successfully
+    const match = await loadModelsDiskCache(accAFile, {
+      endpoint: 'https://endpoint-a.example/v1',
+      accountRef: 'CLINEBOT_API_KEY_A',
+    })
+    assert.ok(match)
+    assert.equal(match.length, 1)
+
+    // Mismatched account returns null
+    const diffAcc = await loadModelsDiskCache(accAFile, {
+      endpoint: 'https://endpoint-a.example/v1',
+      accountRef: 'CLINEBOT_API_KEY_B',
+    })
+    assert.equal(diffAcc, null)
+
+    // Mismatched endpoint returns null
+    const diffEndpoint = await loadModelsDiskCache(accAFile, {
+      endpoint: 'https://endpoint-b.example/v1',
+      accountRef: 'CLINEBOT_API_KEY_A',
+    })
+    assert.equal(diffEndpoint, null)
+
+    // Legacy unkeyed cache is rejected when account identity is expected
+    const legacyReject = await loadModelsDiskCache(cacheFile, {
+      endpoint: 'https://endpoint-a.example/v1',
+      accountRef: 'CLINEBOT_API_KEY_A',
+    })
+    assert.equal(legacyReject, null)
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   }
