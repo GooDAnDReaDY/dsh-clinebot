@@ -102,6 +102,18 @@ test('session-router: releaseSession removes session mapping', () => {
   assert.equal(res.reason, 'new_session_assigned')
 })
 
+test('session-router: manually pinned account branch enforces MAX_SESSIONS capacity bound (#183)', () => {
+  resetSessionRouter()
+  const pool = [{ id: 'default', apiKeyEnv: 'CLINEBOT_API_KEY', present: true, isPinned: true }]
+  for (let i = 0; i < MAX_SESSIONS + 25; i++) {
+    resolveSessionAccount(`pinned-session-${i}`, pool, 'CLINEBOT_API_KEY')
+  }
+  const status = getSessionRouterStatus()
+  assert.ok(status.activeSessionsCount <= MAX_SESSIONS)
+  assert.equal(status.activeSessionsCount, MAX_SESSIONS)
+  resetSessionRouter()
+})
+
 test('session-router: LRU bounds and capacity eviction', () => {
   resetSessionRouter()
   const pool = [{ id: 'acc1', percentUsed: 10, present: true }]
