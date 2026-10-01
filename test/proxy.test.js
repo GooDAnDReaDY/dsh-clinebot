@@ -722,7 +722,12 @@ test('proxy: pi-ai client forwards session affinity headers and sticky router pr
 
     assert.equal(provider.compat.supportsReasoningEffort, true)
     assert.equal(provider.compat.sendSessionAffinityHeaders, undefined)
-    const model = { ...provider.models[0], api: provider.api, baseUrl: provider.baseURL }
+    const model = {
+      ...provider.models[0],
+      api: provider.api,
+      baseUrl: provider.baseURL,
+      compat: { ...provider.compat, ...(provider.models[0].compat || {}) },
+    }
     assert.equal(model.compat?.sendSessionAffinityHeaders, undefined)
 
     const runProxyRequest = async (headers, bodyObj) => {
@@ -792,6 +797,7 @@ test('proxy: pi-ai client forwards session affinity headers and sticky router pr
       const s1 = piAiStream(model, { messages: [{ role: 'user', content: 'test1' }] }, {
         apiKey: TEST_TOKEN,
         sessionId: 'session-alpha-123',
+        cacheRetention: provider.cacheRetention || 'long',
         fetch: customFetch
       })
       for await (const chunk of s1) {
@@ -801,40 +807,52 @@ test('proxy: pi-ai client forwards session affinity headers and sticky router pr
       assert.equal(upstreamCalls.length, 1)
       const call1Auth = upstreamCalls[0].auth
 
+      // Shift quotas so that the other account becomes least-used
+      setQuota('sk-account-a-secret', 95); setQuota('sk-account-b-secret', 5)
+
       const s2 = piAiStream(model, { messages: [{ role: 'user', content: 'test2' }] }, {
         apiKey: TEST_TOKEN,
         sessionId: 'session-alpha-123',
+        cacheRetention: provider.cacheRetention || 'long',
         fetch: customFetch
       })
       for await (const chunk of s2) {}
 
       assert.equal(upstreamCalls.length, 2)
-      assert.equal(upstreamCalls[1].auth, call1Auth, 'Sticky affinity must keep the same account')
+      assert.equal(upstreamCalls[1].auth, call1Auth, 'Sticky affinity must keep the same account even when quota changes')
 
-      setQuota('sk-account-a-secret', 95); setQuota('sk-account-b-secret', 5)
       const s3 = piAiStream(model, { messages: [{ role: 'user', content: 'test3' }] }, {
         apiKey: TEST_TOKEN,
         sessionId: 'session-beta-456',
+        cacheRetention: provider.cacheRetention || 'long',
         fetch: customFetch
       })
       for await (const chunk of s3) {}
 
       assert.equal(upstreamCalls.length, 3)
       assert.notEqual(upstreamCalls[2].auth, call1Auth, 'Different session routes to different account')
+      assert.equal(upstreamCalls[0].body?.session_id, 'session-alpha-123')
+      assert.equal(upstreamCalls[1].body?.session_id, 'session-alpha-123')
+      assert.equal(upstreamCalls[2].body?.session_id, 'session-beta-456')
     } else {
       const res1 = await runProxyRequest({ 'x-session-id': 'session-alpha-123' }, { stream: true, model: 'deepseek-v4-flash' })
       assert.equal(res1.status, 200)
       assert.equal(upstreamCalls.length, 1)
       const call1Auth = upstreamCalls[0].auth
 
+      // Shift quotas so that the other account becomes least-used
+      setQuota('sk-account-a-secret', 95); setQuota('sk-account-b-secret', 5)
+
       const res2 = await runProxyRequest({ 'x-session-id': 'session-alpha-123' }, { stream: true, model: 'deepseek-v4-flash' })
       assert.equal(res2.status, 200)
-      assert.equal(upstreamCalls[1].auth, call1Auth)
+      assert.equal(upstreamCalls[1].auth, call1Auth, 'Sticky affinity must keep the same account even when quota changes')
 
-      setQuota('sk-account-a-secret', 95); setQuota('sk-account-b-secret', 5)
       const res3 = await runProxyRequest({ 'x-session-id': 'session-beta-456' }, { stream: true, model: 'deepseek-v4-flash' })
       assert.equal(res3.status, 200)
       assert.notEqual(upstreamCalls[2].auth, call1Auth)
+      assert.equal(upstreamCalls[0].body?.session_id, 'session-alpha-123')
+      assert.equal(upstreamCalls[1].body?.session_id, 'session-alpha-123')
+      assert.equal(upstreamCalls[2].body?.session_id, 'session-beta-456')
     }
 
     // Verify upstream secrets NEVER leak into response outputs

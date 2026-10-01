@@ -5,6 +5,17 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.11] - 2026-10-01
+
+### Fixed
+- **Dynamic Stats Storage Switching & Counter Preservation (Issue #158)**: Flushes and synchronizes in-memory metrics before switching file storage targets when `statsPath` is updated dynamically, avoiding overwriting accumulated statistics when paths change.
+- **Session Affinity Native Transport Bridge via Prompt Cache Key (Issue #163)**: Bridge native DSH `llm-pi-ai` requests to ClineBot sticky sessions by enabling `cacheRetention: 'long'` in the provider contract, and extracting session identifiers from `prompt_cache_key` on the proxy route, maintaining consistent account affinity across turns.
+- **Catalog Lifecycle & Cache Identity Isolation (Issue #168)**: Isolated disk model cache records by specific account and endpoint scopes, clearing dynamic model cache and sync timestamps on active account switch, and reporting `planSynced: false` when offline cached plans cannot be actively verified against the provider.
+- **Updater Process Group Escalation on Parent Exit (Issue #172)**: Ensured process group supervision continues after parent SIGTERM exit in `updater.js`, checking `isProcessGroupAlive(child.pid)` and escalating to SIGKILL across the detached process group (`-child.pid`) to eliminate lingering background processes.
+- **Transactional Account Delete Surgical Rollback & Retry (Issues #184, #187)**: Replaced full-config rollback with surgical restoration of removed accounts into fresh live configuration on secret deletion failure, preserving concurrent settings updates. Exposed partial deletion state (`partial: true`) and allowed safe retry of credential cleanup without HTTP 404 errors.
+- **DESIGN Contract Alignment with Native Runtime Contracts (Issue #177)**: Synchronized `docs/design/DESIGN.md` with active implementation: documented native DSH transport bridge, dynamic catalog lifecycle, updater process group cleanup, and dynamic stats storage switching.
+- **Regression & Hardening Test Coverage (Issue #173)**: Added regression tests for dynamic stats switching, shifting quota session stickiness, process group lifecycle escalation on parent SIGTERM, and transactional partial account deletion and retry.
+
 ## [0.5.10] - 2026-10-01
 
 ### Fixed

@@ -8,6 +8,7 @@ import vm from 'node:vm'
 
 import { registerSettingsRoutes } from '../lib/routes/settings.js'
 import { registerAccountsRoutes } from '../lib/routes/accounts.js'
+import { Config } from '../lib/config.js'
 import { registerModelsRoutes } from '../lib/routes/models.js'
 import { registerAuthRoutes } from '../lib/routes/auth.js'
 import { registerSlashCommand } from '../lib/slash-command.js'
@@ -652,4 +653,73 @@ test('commands & routes: custom models are preserved in slash command test/model
   } finally {
     globalThis.fetch = originalFetch
   }
+})
+
+
+test('routes: accounts/delete returns honest partial state and allows secret retry (#184, #187)', async () => {
+  const routes = []
+  let cfg = Config({
+    enabled: false,
+    timeoutMs: 15000,
+    accounts: [{ apiKeyEnv: 'CLINEBOT_API_KEY_2', label: 'Owned' }],
+  })
+
+  const mockCtx = {
+    get: (name) => {
+      if (name === 'credentials') {
+        return {
+          resolve: async () => ({ value: 'test-secret' }),
+          unset: async () => {
+            throw new Error('Credential store temporarily unavailable')
+          },
+        }
+      }
+      return null
+    },
+    logger: { warn() {} },
+    webServer: { register: (r) => { routes.push(r); return () => {} } },
+    effect: (fn) => fn(),
+  }
+
+  const mockApi = {
+    replace: async (next) => { cfg = next },
+  }
+
+  registerAccountsRoutes(mockCtx, {
+    live: () => cfg,
+    getSettingsApi: () => mockApi,
+    syncProviderState: async () => {},
+  })
+
+  const deleteHandler = routes.find((r) => r.path === '/dsh-clinebot/accounts/delete')?.handler
+  assert.ok(deleteHandler, 'delete handler must exist')
+
+  function createReq(body) {
+    const r = Readable.from([Buffer.from(JSON.stringify(body))])
+    r.method = 'POST'
+    r.socket = { remoteAddress: '127.0.0.1' }
+    r.headers = { 'sec-fetch-site': 'same-origin' }
+    return r
+  }
+  function createRes() {
+    let status = 0
+    let body = null
+    return {
+      writeHead: (s) => { status = s },
+      end: (data) => { body = JSON.parse(data) },
+      getStatus: () => status,
+      getBody: () => body,
+    }
+  }
+
+  // 1. Initial attempt fails credentials unset, returns 500 with partial state
+  const res1 = createRes()
+  await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_2', deleteSecret: true }), res1)
+  assert.equal(res1.getStatus(), 500)
+  assert.equal(res1.getBody().ok, false)
+
+  // 2. Retry of secret deletion for account already removed from pool returns 500 (since credential store still fails) rather than 404
+  const res2 = createRes()
+  await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_2', deleteSecret: true }), res2)
+  assert.equal(res2.getStatus(), 500, 'Retry must not return 404 when secret cleanup is pending')
 })
