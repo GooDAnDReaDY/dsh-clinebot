@@ -720,11 +720,10 @@ test('proxy: pi-ai client forwards session affinity headers and sticky router pr
       models: [{ id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash' }]
     })
 
-    assert.equal(provider.compat.sendSessionAffinityHeaders, true)
-    assert.equal(provider.compat.sessionAffinityFormat, 'openrouter')
+    assert.equal(provider.compat.supportsReasoningEffort, true)
+    assert.equal(provider.compat.sendSessionAffinityHeaders, undefined)
     const model = { ...provider.models[0], api: provider.api, baseUrl: provider.baseURL }
-    assert.equal(model.compat.sendSessionAffinityHeaders, true)
-    assert.equal(model.compat.sessionAffinityFormat, 'openrouter')
+    assert.equal(model.compat?.sendSessionAffinityHeaders, undefined)
 
     const runProxyRequest = async (headers, bodyObj) => {
       const chunks = []
