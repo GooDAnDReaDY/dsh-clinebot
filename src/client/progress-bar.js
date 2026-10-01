@@ -84,7 +84,7 @@ function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, t }) {
           },
         },
         t('quota.used', { pct }),
-        resetCountdown ? ` · ${t('quota.countdown', { time: resetCountdown })}` : (resetClock ? ` · ${t('quota.reset_at', { time: resetClock })}` : '')
+        resetCountdown ? ` · ${resetCountdown === 'resetting' ? (t('quota.resetting') || '正在重置') : t('quota.countdown', { time: resetCountdown })}` : (resetClock ? ` · ${t('quota.reset_at', { time: resetClock })}` : '')
       )
     ),
     React.createElement(
