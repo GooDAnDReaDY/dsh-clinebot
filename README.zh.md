@@ -153,7 +153,9 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 
 ---
 
-## ⚙️ 配置项参考 (`settings.yaml`)
+## ⚙️ 配置项参考 (DSH 设置与 Web UI)
+
+在现代 DeepSeek Harness (0.1.7+) 中，各项配置通过 Web UI 或 `PUT /dsh-clinebot/config` 原生管理，密钥安全存储于 DSH Credentials 凭据中心 (`~/.dsh/.credentials.yaml`)。
 
 ```yaml
 dsh-clinebot:
@@ -183,7 +185,7 @@ dsh-clinebot:
 | `enabled` | `boolean` | `true` | 是否在 DSH 中启用 ClineBot 桥接插件 |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI 兼容接口地址 |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | 凭据管理系统中的密钥名称 |
-| `defaultModel` | `string` | `"claude-3-7-sonnet"` | 默认选中的模型 ID（用于对话及探活） |
+| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | 默认选中的模型 ID（用于对话及探活） |
 | `disabledModels` | `array` | `[]` | 在选择器中隐藏的模型 ID 列表（新订阅模型默认自动启用） |
 | `customModels` | `array` | `[]` | 用户自定义网关模型 (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | 各模型默认思考强度配置 (`low`, `medium`, `high`, `max`) |
@@ -192,9 +194,9 @@ dsh-clinebot:
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | 本地持久化 Token 用量统计文件路径 |
 | `accounts` | `array` | `[]` | 额外轮转账号池 (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | 手动指定的主账号（为空时自动按最低配额消耗优先路由） |
-| `timeoutMs` | `number` | `30000` | HTTP 请求探测超时时间（毫秒） |
-| `smokeTimeoutMs` | `number` | `60000` | 探活测试超时时间（毫秒） |
-| `streamIdleTimeoutMs` | `number` | `60000` | SSE 流式输出块间空闲超时时间（毫秒） |
+| `timeoutMs` | `number` | `15000` | HTTP 请求探测超时时间（毫秒） |
+| `smokeTimeoutMs` | `number` | `25000` | 探活测试超时时间（毫秒） |
+| `streamIdleTimeoutMs` | `number` | `30000` | SSE 流式输出块间空闲超时时间（毫秒） |
 | `enabledModels` | `array` | *(已废弃)* | 仅在 public config 中只读提供，`PUT /config` 时禁止写入并请使用 `disabledModels` |
 | `dynamicModels` | `array` | `[]` | 从官方套餐中自动同步的动态模型列表 |
 
@@ -202,17 +204,29 @@ dsh-clinebot:
 
 ## 🌐 HTTP API 接口说明
 
-所有接口注册于 `/dsh-clinebot/*` 路径，并受到严格的跨站防护保护（仅允许同源或环回请求）：
+所有接口挂载于 `/dsh-clinebot/*` 路径，并受到跨站请求防护（仅放行同源或环回请求）。管理接口限制请求体上限 256 KiB；环回推理代理接口支持最高 64 MiB 有效载荷 (`MAX_PROXY_BODY_BYTES`)：
 
+### 管理与控制接口（上限 256 KiB）
 * `GET /dsh-clinebot/status` — 服务运行状态，包括健康探活、当前凭据名称、配额限制及会话统计。
-* `GET /dsh-clinebot/config` — 诊断接口，安全获取脱敏后的公共配置。
-* `PUT /dsh-clinebot/config` — 更新配置项。仅接受模式中的已知字段（未知字段或已废弃的 `enabledModels` 返回 `400 Bad Request`）。
-* `POST /dsh-clinebot/key/verify` — 向 `api.cline.bot` 发送探活请求实时验证密钥，返回绑定邮箱及套餐名称。
-* `POST /dsh-clinebot/save-key` — 将 API 密钥安全存储到 DSH credentials 服务。
-* `POST /dsh-clinebot/models/sync` — 同步 ClinePass 官方套餐内包含的全部动态模型。
-* `POST /dsh-clinebot/models/toggle` — 通过 `disabledModels` 批量切换模型可用性。
-* `POST /dsh-clinebot/accounts/active` — 从多账号池中指定当前主账号。
+* `GET /dsh-clinebot/config` — 诊断接口，安全获取脱敏后的公共配置（不含敏感密钥）。
+* `PUT /dsh-clinebot/config` — 更新配置项（严格校验模式，已废弃的 `enabledModels` 被拦截）。
+* `POST /dsh-clinebot/key/verify` — 实时验证 API 密钥有效性，返回绑定邮箱及套餐名称。
+* `POST /dsh-clinebot/save-key` — 将 API 密钥安全写入 DSH 凭据服务。
+* `POST /dsh-clinebot/models/sync` — 手动同步官方套餐动态模型列表。
+* `POST /dsh-clinebot/models/toggle` — 批量切换模型可用性（更新 `disabledModels` 并保留 Volatile 引用）。
+* `POST /dsh-clinebot/models/custom` / `DELETE /dsh-clinebot/models/custom` — 自定义模型增删。
+* `POST /dsh-clinebot/models/context` / `DELETE /dsh-clinebot/models/context` — 上下文窗口与最大 Token 覆盖。
+* `POST /dsh-clinebot/accounts` — 添加多账号备用凭据。
+* `POST /dsh-clinebot/accounts/delete` — 删除账号（具备原子化凭据保护）。
+* `POST /dsh-clinebot/accounts/active` — 指定活动账号（为空时自动启用最低用量优先路由）。
+* `POST /dsh-clinebot/stats/reset` — 重置会话与 Token 消耗统计。
 * `POST /dsh-clinebot/smoke` — 发起快速探测并返回实时延迟。
+* `GET /dsh-clinebot/update/status` — 查询插件版本更新状态。
+* `POST /dsh-clinebot/update/apply` — 应用版本更新（支持进程树完全清理与锁文件保护）。
+
+### OpenAI 兼容环回代理接口（上限 64 MiB）
+* `POST /dsh-clinebot/v1/chat/completions` — 本地透明代理，支持 SSE 流式与完整响应、会话粘性路由、最低用量负载均衡、响应体超时防护 (`streamIdleTimeoutMs`) 以及 429 自动故障转移。
+* `GET /dsh-clinebot/v1/models` — 符合 OpenAI API 规范的模型列表。
 
 ---
 
