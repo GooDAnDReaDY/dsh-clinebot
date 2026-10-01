@@ -1257,3 +1257,102 @@ test('proxy: upstream response body is cancelled on HTTP 429 before failover to 
     globalThis.fetch = originalFetch
   }
 })
+
+
+test('proxy: non-stream response body read deadline and fail-closed error handling (#185)', async () => {
+  resetSessionRouter()
+  resetStats()
+  let completionsHandler = null
+  const mockCreds = { resolve: async () => ({ value: 'sk-test-key-185' }) }
+  const mockCtx = {
+    effect: (fn) => fn(),
+    get: (name) => (name === 'credentials' ? mockCreds : null),
+    credentials: mockCreds,
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  const currentConfig = {
+    enabled: true,
+    baseUrl: 'https://api.cline.bot/api/v1',
+    accounts: [{ id: 'acc-1', apiKeyEnv: 'CLINEBOT_API_KEY' }],
+    timeoutMs: 60,
+    connectTimeoutMs: 60,
+    streamIdleTimeoutMs: 60
+  }
+
+  registerProxyRoutes(mockCtx, { live: () => currentConfig })
+  const originalFetch = globalThis.fetch
+
+  const createReq = (bodyObj) => {
+    const req = new EventEmitter()
+    req.method = 'POST'
+    req.socket = { remoteAddress: '127.0.0.1' }
+    req.headers = {
+      authorization: 'Bearer ' + TEST_TOKEN,
+      'content-type': 'application/json'
+    }
+    req[Symbol.asyncIterator] = async function* () {
+      yield Buffer.from(JSON.stringify(bodyObj))
+    }
+    return req
+  }
+
+  const createMockRes = () => {
+    const res = new EventEmitter()
+    res.statusCode = 200
+    res.headers = {}
+    res.data = ''
+    res.setHeader = (k, v) => { res.headers[k.toLowerCase()] = v }
+    res.writeHead = (code, hdrs) => {
+      res.statusCode = code
+      if (hdrs) Object.assign(res.headers, hdrs)
+    }
+    res.write = (chunk) => { res.data += chunk.toString() }
+    res.end = (chunk) => {
+      if (chunk) res.data += chunk.toString()
+      res.emit('finish')
+    }
+    return res
+  }
+
+  try {
+    // 1. Stalling non-stream body times out and returns 504
+    let fetchSignal = null
+    globalThis.fetch = async (url, opts) => {
+      fetchSignal = opts.signal
+      return new Response(new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode('{"choices":'))
+        }
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+
+    const res1 = createMockRes()
+    await completionsHandler(createReq({ stream: false, model: 'deepseek-v4-flash' }), res1)
+
+    assert.equal(res1.statusCode, 504)
+    assert.equal(fetchSignal?.aborted, true, 'fetch signal must be aborted on body timeout')
+    assert.ok(res1.data.includes('body_read_timeout'))
+
+    // 2. Errored body returns 502 Bad Gateway
+    globalThis.fetch = async () => {
+      return new Response(new ReadableStream({
+        start(c) {
+          c.error(new Error('premature socket close'))
+        }
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+
+    const res2 = createMockRes()
+    await completionsHandler(createReq({ stream: false, model: 'deepseek-v4-flash' }), res2)
+
+    assert.equal(res2.statusCode, 502)
+    assert.ok(res2.data.includes('body_read_error'))
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
