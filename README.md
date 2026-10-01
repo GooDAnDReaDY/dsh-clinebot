@@ -154,9 +154,9 @@ From any DSH chat session, type `/cline` to inspect quota, warning alerts, and s
 
 ---
 
-## ⚙️ Configuration Reference (`settings.yaml`)
+## ⚙️ Configuration Reference (DSH Settings & Web UI)
 
-Configure options in `settings.yaml` or directly inside the Web UI:
+In modern DeepSeek Harness (0.1.7+), settings are managed natively via the DSH Web UI Settings card or `PUT /dsh-clinebot/config`, with API keys persisted securely in DSH Credentials storage (`~/.dsh/.credentials.yaml`).
 
 ```yaml
 dsh-clinebot:
@@ -186,7 +186,7 @@ dsh-clinebot:
 | `enabled` | `boolean` | `true` | Enable or disable the ClineBot provider bridge in DSH |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI-compatible base URL |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Environment variable / credentials key name |
-| `defaultModel` | `string` | `"claude-3-7-sonnet"` | Default selected model ID for chat and smoke tests |
+| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Default selected model ID for chat and smoke tests |
 | `disabledModels` | `array` | `[]` | List of model IDs hidden from the DSH chat picker (new subscription models are auto-enabled) |
 | `customModels` | `array` | `[]` | User-defined gateway models (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | Configured default reasoning effort per model (`low`, `medium`, `high`, `max`) |
@@ -195,9 +195,9 @@ dsh-clinebot:
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Persistent on-disk path for token usage analytics |
 | `accounts` | `array` | `[]` | Additional accounts for multi-account failover and quota rotation (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | Manually pinned active account env name (empty for least-used auto routing) |
-| `timeoutMs` | `number` | `30000` | HTTP probe timeout in milliseconds |
-| `smokeTimeoutMs` | `number` | `60000` | Timeout for smoke test chat completions in milliseconds |
-| `streamIdleTimeoutMs` | `number` | `60000` | Idle timeout between SSE stream chunks in milliseconds |
+| `timeoutMs` | `number` | `15000` | HTTP probe timeout in milliseconds |
+| `smokeTimeoutMs` | `number` | `25000` | Timeout for smoke test chat completions in milliseconds |
+| `streamIdleTimeoutMs` | `number` | `30000` | Idle timeout between SSE stream chunks in milliseconds |
 | `enabledModels` | `array` | *(deprecated)* | Read-only in public config; rejected on `PUT /config` in favor of `disabledModels` |
 | `dynamicModels` | `array` | `[]` | Dynamic models automatically synced from the official plan |
 
@@ -205,17 +205,29 @@ dsh-clinebot:
 
 ## 🌐 HTTP API Endpoints
 
-All endpoints are registered under `/dsh-clinebot/*` and protected against untrusted cross-site origins (same-origin and loopback allowed):
+All endpoints are registered under `/dsh-clinebot/*` and protected against untrusted cross-site origins (same-origin and loopback allowed). Control endpoints enforce a 256 KiB request payload limit; the loopback proxy endpoint supports up to 64 MiB payloads (`MAX_PROXY_BODY_BYTES`):
 
+### Management & Control Endpoints (Max 256 KiB)
 * `GET /dsh-clinebot/status` — Live status report including provider health, active credential, quota, and session metrics.
 * `GET /dsh-clinebot/config` — Diagnostic endpoint returning public configuration without secret keys.
 * `PUT /dsh-clinebot/config` — Update configuration fields. Accepts only known schema properties (unknown fields or deprecated `enabledModels` return `400 Bad Request`).
 * `POST /dsh-clinebot/key/verify` — Validates a candidate API key against `api.cline.bot` and returns account email and plan name.
 * `POST /dsh-clinebot/save-key` — Saves a key into DSH credentials service under a valid `CLINEBOT_API_KEY*` name.
 * `POST /dsh-clinebot/models/sync` — Synchronizes models with your active subscription plan.
-* `POST /dsh-clinebot/models/toggle` — Toggles models via `disabledModels`.
-* `POST /dsh-clinebot/accounts/active` — Pins an active account from the account pool.
+* `POST /dsh-clinebot/models/toggle` — Toggles models via `disabledModels` (atomic Volatile preservation).
+* `POST /dsh-clinebot/models/custom` / `DELETE /dsh-clinebot/models/custom` — Manage custom user-defined models.
+* `POST /dsh-clinebot/models/context` / `DELETE /dsh-clinebot/models/context` — Manage model context length overrides.
+* `POST /dsh-clinebot/accounts` — Add account to the multi-account pool.
+* `POST /dsh-clinebot/accounts/delete` — Delete account from the pool with atomic credential preservation.
+* `POST /dsh-clinebot/accounts/active` — Switch or pin active account (or empty for auto least-used routing).
+* `POST /dsh-clinebot/stats/reset` — Reset session request and token statistics.
 * `POST /dsh-clinebot/smoke` — Runs a live latency test ping.
+* `GET /dsh-clinebot/update/status` — Query available GitHub releases and plugin updates.
+* `POST /dsh-clinebot/update/apply` — Apply version upgrade with process-group cleanup and lockfile sync.
+
+### OpenAI-Compatible Loopback Proxy (Max 64 MiB)
+* `POST /dsh-clinebot/v1/chat/completions` — Transparent local proxy supporting streaming SSE and non-streaming responses, Bearer token authentication, sticky session affinity with least-used quota allocation, body read watchdog (`streamIdleTimeoutMs`), and automatic 429 failover.
+* `GET /dsh-clinebot/v1/models` — OpenAI-compatible catalog listing all active plan and custom models.
 
 ---
 

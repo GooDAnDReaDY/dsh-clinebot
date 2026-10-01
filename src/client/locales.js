@@ -54,6 +54,7 @@ const en = {
       'quota.reset_at': 'Reset: {time}',
       'quota.window_monthly': '📅 Monthly Window',
       'quota.countdown': 'Resets in {time}',
+      'quota.resetting': 'Resetting…',
       'quota.warning_low': 'Quota is below 10%. Requests may be throttled soon.',
       'quota.exhausted_5h': '5-hour rolling limit is almost exhausted ({percentUsed}%). New requests may be rejected until quota reset.',
       'quota.warning_5h': 'Low quota warning: {percentUsed}% of 5-hour limit consumed (<10% remaining).',
@@ -202,6 +203,7 @@ const en = {
       'quota.reset_at': '重置时间：{time}',
       'quota.window_monthly': '📅 每月滚动窗口',
       'quota.countdown': '{time}后重置',
+      'quota.resetting': '正在重置',
       'quota.warning_low': '额度低于 10%，请求可能很快会受到限制。',
       'quota.exhausted_5h': '5 小时滚动限额已接近耗尽（已用 {percentUsed}%）。在额度重置前新请求可能会被拒绝。',
       'quota.warning_5h': '低额度警告：5 小时限额已消耗 {percentUsed}%（剩余不足 10%）。',
@@ -296,6 +298,9 @@ const en = {
 
     function makeT(dict, fallback) {
       return function t(key, vars) {
+        if (key === 'quota.countdown' && vars?.time === 'resetting') {
+          return (dict && dict['quota.resetting']) || (fallback && fallback['quota.resetting']) || '正在重置'
+        }
         let val = (dict && dict[key]) || (fallback && fallback[key]) || key
         if (vars && typeof val === 'string') {
           for (const k of Object.keys(vars)) {

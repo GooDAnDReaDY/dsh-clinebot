@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream'
+import { readFileSync } from 'node:fs'
 import fs from 'node:fs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -244,4 +246,46 @@ test('provider-sync: resolvePathWithHome unwraps volatile references safely (#14
 
   const nonString = resolvePathWithHome(123)
   assert.equal(nonString, '')
+})
+
+test('stats-storage: unrelated config write preserves in-memory pending usage (#158)', async () => {
+  const file = path.join(tmpdir(), `pending-stats-test-${Date.now()}.json`)
+  const disk = createEmptyStats()
+  disk.totals.requests = 50
+  disk.totals.successful = 50
+  writeFileSync(file, JSON.stringify(disk), 'utf8')
+
+  const routes = {}
+  const mockSettings = {
+    describe: () => [{ ns: 'dsh-clinebot', revision: 1 }],
+    replace: async () => {},
+    update: async () => {},
+  }
+  const mockCtx = {
+    get: (n) => (n === 'settings' ? mockSettings : null),
+    logger: { warn() {} },
+    webServer: { register: (r) => { routes[r.path] = r.handler; return () => {} } },
+    effect: (fn) => fn(),
+  }
+
+  const { apply } = await import('../lib/index.js')
+  apply(mockCtx, { enabled: false, statsPath: file })
+
+  recordUsage({ model: 'synthetic', totalTokens: 15, statsPath: file })
+  assert.equal(getStatsSummary().totals.requests, 51)
+
+  const req = Readable.from([Buffer.from(JSON.stringify({ defaultModel: 'cline-pass/glm-5.2' }))])
+  req.method = 'PUT'
+  req.headers = { 'sec-fetch-site': 'same-origin' }
+  req.socket = { remoteAddress: '127.0.0.1' }
+
+  let putStatus = 0
+  const res = { writeHead: (c) => { putStatus = c }, end: () => {} }
+  await routes['/dsh-clinebot/config'](req, res)
+  assert.equal(putStatus, 200)
+
+  assert.equal(getStatsSummary().totals.requests, 51, 'in-memory stats must not be wiped by unrelated config save')
+  flushStats(file)
+  const afterDisk = JSON.parse(readFileSync(file, 'utf8'))
+  assert.equal(afterDisk.totals.requests, 51, 'flushed disk stats must contain the pending usage')
 })

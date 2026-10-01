@@ -5,6 +5,22 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.10] - 2026-10-01
+
+### Fixed
+- **Native Cosmokit Volatile Box & Proxy Target Preservation (Issues #157, #173)**: Preserved native Cosmokit `{ get }` volatile references without scalar overwrites during config mutations, and ensured extensible proxy targets for frozen configurations to prevent `TypeError: 'ownKeys' on proxy` invariants.
+- **In-Memory Stats Retention Across Config Updates (Issue #158)**: Retained unwritten in-memory metrics across unrelated configuration saves (`PUT /config`) without reloading from disk or dropping unpersisted counters. Flushes pending metrics before switching storage paths when `statsPath` changes.
+- **Account Pool Least-Used Routing on Empty Active Account (Issue #162)**: Allowed automatic least-used quota routing when `activeAccount` is set to an empty string or `"auto"`, preventing unintended pinning of the primary default account.
+- **Native DSH Provider Compatibility Flag Normalization (Issue #163)**: Removed obsolete session affinity compatibility flags (`sendSessionAffinityHeaders`, `sessionAffinityFormat`) rejected by native DSH `llm-pi-ai`, restoring clean catalog registration and model resolution.
+- **Disk Models Cache Isolation by Account & Endpoint (Issue #168)**: Keyed on-disk models cache (`saveModelsDiskCache`/`loadModelsDiskCache`) to specific account and endpoint identities, preventing cross-account model pollution and false `planSynced: true` indications in offline mode.
+- **Process Group Termination & Zombie Prevention in Updater (Issue #172)**: Spanned updater processes with `detached: true` on POSIX, transmitting `SIGTERM` and `SIGKILL` across the entire process group (`-child.pid`) on timeout to guarantee complete termination of spawned child/grandchild processes and prompt lock release.
+- **Session Router Bounded Memory Capacity on Manual Pin (Issue #183)**: Enforced strict capacity bounds (`MAX_SESSIONS = 1000`) on manual pin branches in `resolveSessionAccount`, ensuring LRU eviction and preventing unbounded memory growth.
+- **Transactional Account Deletion & Secret Preservation (Issue #184)**: Persisted configuration updates prior to unsetting credentials in `handleDeleteAccount`, preventing irrevocable API key loss if settings persistence fails, and rolling back settings on credential deletion failures.
+- **Non-Stream Proxy Response Body Deadline & Fail-Closed Error Handling (Issue #185)**: Wrapped non-streaming proxy response body reading in a `Promise.race` deadline bounded by `streamIdleTimeoutMs`, aborting upstream requests and returning HTTP 504 Gateway Timeout or 502 Bad Gateway with error metrics on stalls or socket drops instead of false HTTP 200 `{}`.
+- **Localized Quota Countdown & Duplicate Chinese Reset Label Elimination (Issue #175)**: Added localized `quota.resetting` keys in `zh` ("正在重置") and `en` ("Resetting…") and handled resetting countdown states cleanly in `makeT` and `ProgressBar`, eliminating awkward "resetting后重置" strings.
+- **Documentation & DESIGN Contract Alignment (Issue #177)**: Removed obsolete `settings.yaml` references across all documentation, updated runtime defaults (`cline-pass/deepseek-v4-flash`, timeouts 15s/25s/30s), documented 256 KiB control vs 64 MiB proxy body limits, and documented auto-routing policies.
+- **Native DSH Adapter Integration Test Coverage (Issue #173)**: Added regression and integration tests verifying native DSH `llm-pi-ai` provider registration without `catalogError` and validating reactive volatile schema behavior.
+
 ## [0.5.9] - 2026-10-01
 
 ### Fixed

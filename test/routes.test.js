@@ -46,9 +46,11 @@ function setupRouter({ settingsAvailable = true, activeKey = 'valid-key' } = {})
   const routes = []
   let replacedConfig = null
   let providerSynced = false
+  let replaceShouldFail = false
 
   const mockSettingsApi = {
     replace: async (val) => {
+      if (replaceShouldFail) throw new Error("Mock settings replace failed");
       replacedConfig = val;
       Object.assign(liveConfig, val);
     },
@@ -122,6 +124,7 @@ function setupRouter({ settingsAvailable = true, activeKey = 'valid-key' } = {})
     isProviderSynced: () => providerSynced,
     getUnsetCalledWith: () => unsetCalledWith,
     setUnsetShouldFail: (val) => { unsetShouldFail = val },
+    setReplaceShouldFail: (val) => { replaceShouldFail = val },
   }
 }
 
@@ -214,7 +217,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
 
   // 5. Successful write execution: /models/toggle
   {
-    const { getHandler, getReplacedConfig, isProviderSynced, setUnsetShouldFail, getUnsetCalledWith } = setupRouter()
+    const { getHandler, getReplacedConfig, isProviderSynced, setUnsetShouldFail, setReplaceShouldFail, getUnsetCalledWith } = setupRouter()
     const handler = getHandler('/dsh-clinebot/models/toggle')
     const out = createRes()
     await handler(createReq({ method: 'POST', body: { disabledModels: ['cline-pass/kimi-k3'] } }), out.res)
@@ -282,7 +285,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
 
   // 7. Successful write execution: /accounts (POST) and /accounts/delete (POST)
   {
-    const { getHandler, getReplacedConfig, isProviderSynced, setUnsetShouldFail, getUnsetCalledWith } = setupRouter()
+    const { getHandler, getReplacedConfig, isProviderSynced, setUnsetShouldFail, setReplaceShouldFail, getUnsetCalledWith } = setupRouter()
     const addHandler = getHandler('/dsh-clinebot/accounts')
     const outAdd = createRes()
     await addHandler(createReq({
@@ -314,6 +317,14 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     const outDelPrimary = createRes()
     await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY' } }), outDelPrimary.res)
     assert.equal(outDelPrimary.read().status, 400)
+
+    // Failure on settings replace does not unset credentials (#184)
+    setReplaceShouldFail(true)
+    const outDelFailSettings = createRes()
+    await delHandler(createReq({ method: 'POST', body: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK', deleteSecret: true } }), outDelFailSettings.res)
+    assert.equal(outDelFailSettings.read().status, 500)
+    assert.equal(getUnsetCalledWith(), null, "credentials.unset must NOT be called if settings replace fails (#184)")
+    setReplaceShouldFail(false)
 
     // Failure on deleteSecret when credentials unset fails (Issue #155)
     setUnsetShouldFail(true)
