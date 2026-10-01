@@ -431,7 +431,6 @@ test("host: live config retains Volatile getters and reflects external updates a
   let volatileFlag = true
   const volatileConfigObj = {
     get enabled() { return volatileFlag },
-    set enabled(v) { volatileFlag = v },
     baseUrl: "https://api.cline.bot/api/v1",
     timeoutMs: 15000,
   }
@@ -486,4 +485,62 @@ test("host: live config retains Volatile getters and reflects external updates a
   let getRes2 = { writeHead: () => {}, end: (d) => { getRes2.body = d } }
   await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes2)
   assert.equal(JSON.parse(getRes2.body).config.enabled, false, "live config must reflect external volatile change, not stale snapshot")
+})
+
+test("host: live config retains native cosmokit volatile references without setter (#157, #173)", async () => {
+  let flag = true
+  const volatileRef = { get: () => flag }
+  const cfg = {
+    enabled: volatileRef,
+    baseUrl: "https://api.cline.bot/api/v1",
+    timeoutMs: 15000,
+  }
+
+  let persistedPayload = null
+  const mockSettingsForms = {
+    describe: () => [{ ns: "dsh-clinebot", revision: "rev-ok" }],
+    replace: async (ns, payload) => {
+      persistedPayload = payload
+    },
+    update: async () => {},
+  }
+
+  const registeredRoutes = {}
+  const mockCtx = {
+    get: (name) => (name === "settings" ? mockSettingsForms : null),
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (fn) => fn(),
+  }
+
+  apply(mockCtx, cfg)
+
+  const makeReq = (method, body = {}) => {
+    const req = Readable.from([Buffer.from(JSON.stringify(body))])
+    req.method = method
+    req.headers = { "sec-fetch-site": "same-origin" }
+    req.socket = { remoteAddress: "127.0.0.1" }
+    return req
+  }
+
+  let getRes1 = { writeHead: () => {}, end: (d) => { getRes1.body = d } }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes1)
+  assert.equal(JSON.parse(getRes1.body).config.enabled, true)
+
+  let putRes = { writeHead: () => {}, end: (d) => { putRes.body = d } }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("PUT", {
+    config: { enabled: true }
+  }), putRes)
+  assert.ok(persistedPayload)
+  assert.equal(cfg.enabled, volatileRef, "native volatile reference must remain intact on config object")
+
+  flag = false
+
+  let getRes2 = { writeHead: () => {}, end: (d) => { getRes2.body = d } }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes2)
+  assert.equal(JSON.parse(getRes2.body).config.enabled, false, "live config must reflect updated volatile getter")
 })
