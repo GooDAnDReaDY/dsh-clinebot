@@ -151,7 +151,9 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 
 ---
 
-## ⚙️ Таблица конфигурации (`settings.yaml`)
+## ⚙️ Конфигурация (Настройки DSH и Web UI)
+
+В современном DeepSeek Harness (0.1.7+) настройки управляются через карточку в Web UI или `PUT /dsh-clinebot/config`, а секретные ключи безопасно хранятся в DSH Credentials (`~/.dsh/.credentials.yaml`).
 
 ```yaml
 dsh-clinebot:
@@ -181,7 +183,7 @@ dsh-clinebot:
 | `enabled` | `boolean` | `true` | Включение моста провайдера ClineBot в DSH |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | Базовый URL OpenAI-совместимого API ClinePass |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Имя переменной / ключа в хранилище credentials |
-| `defaultModel` | `string` | `"claude-3-7-sonnet"` | Модель, выбираемая по умолчанию для чата и smoke-тестов |
+| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Модель, выбираемая по умолчанию для чата и smoke-тестов |
 | `disabledModels` | `array` | `[]` | Список отключённых моделей (новые модели подписки включаются автоматически) |
 | `customModels` | `array` | `[]` | Пользовательские модели шлюза (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | Значения thinking effort по умолчанию для моделей (`low`, `medium`, `high`, `max`) |
@@ -190,9 +192,9 @@ dsh-clinebot:
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Путь к файлу персистентной аналитики использования токенов |
 | `accounts` | `array` | `[]` | Дополнительные аккаунты для ротации квоты и failover (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | Принудительно закреплённый аккаунт (пусто для автоматического выбора least-used) |
-| `timeoutMs` | `number` | `30000` | Таймаут HTTP-запросов (мс) |
-| `smokeTimeoutMs` | `number` | `60000` | Таймаут тестового пинга инференса (мс) |
-| `streamIdleTimeoutMs` | `number` | `60000` | Таймаут ожидания между чанками SSE-потока (мс) |
+| `timeoutMs` | `number` | `15000` | Таймаут HTTP-запросов (мс) |
+| `smokeTimeoutMs` | `number` | `25000` | Таймаут тестового пинга инференса (мс) |
+| `streamIdleTimeoutMs` | `number` | `30000` | Таймаут ожидания между чанками SSE-потока (мс) |
 | `enabledModels` | `array` | *(устарело)* | Только для чтения в public config; отклоняется при `PUT /config` в пользу `disabledModels` |
 | `dynamicModels` | `array` | `[]` | Динамические модели, автоматически синхронизированные из тарифа |
 
@@ -200,17 +202,29 @@ dsh-clinebot:
 
 ## 🌐 Маршруты HTTP API
 
-Все маршруты регистрируются с префиксом `/dsh-clinebot/*` и защищены от несанкционированных межсайтовых запросов (разрешены same-origin и loopback):
+Все маршруты регистрируются с префиксом `/dsh-clinebot/*` и защищены от межсайтовых запросов (разрешены same-origin и loopback). Управляющие эндпоинты ограничены лимитом 256 КиБ; прокси-эндпоинт поддерживает до 64 МиБ полезной нагрузки (`MAX_PROXY_BODY_BYTES`):
 
+### Управляющие эндпоинты (макс. 256 КиБ)
 * `GET /dsh-clinebot/status` — Текущее состояние провайдера, активный аккаунт, квоты и статистика сессий.
 * `GET /dsh-clinebot/config` — Диагностический маршрут, возвращающий открытую конфигурацию (без секретов).
-* `PUT /dsh-clinebot/config` — Обновление параметров конфигурации. Принимает только известные поля схемы (неизвестные поля и устаревшее `enabledModels` возвращают `400 Bad Request`).
-* `POST /dsh-clinebot/key/verify` — Проверка API-ключа на сервере `api.cline.bot` с возвратом email и названия тарифа.
-* `POST /dsh-clinebot/save-key` — Сохранение ключа в сервис credentials DSH под именем шаблона `CLINEBOT_API_KEY*`.
+* `PUT /dsh-clinebot/config` — Обновление параметров конфигурации (устаревший `enabledModels` блокируется).
+* `POST /dsh-clinebot/key/verify` — Проверка API-ключа на сервере `api.cline.bot` с возвратом email и тарифа.
+* `POST /dsh-clinebot/save-key` — Сохранение ключа в сервис credentials DSH под именем `CLINEBOT_API_KEY*`.
 * `POST /dsh-clinebot/models/sync` — Синхронизация списка моделей с официальным тарифом ClinePass.
-* `POST /dsh-clinebot/models/toggle` — Включение и отключение моделей через `disabledModels`.
-* `POST /dsh-clinebot/accounts/active` — Назначение активного аккаунта из пула.
+* `POST /dsh-clinebot/models/toggle` — Включение и отключение моделей через `disabledModels` с сохранением Volatile-ссылок.
+* `POST /dsh-clinebot/models/custom` / `DELETE /dsh-clinebot/models/custom` — Управление пользовательскими моделями.
+* `POST /dsh-clinebot/models/context` / `DELETE /dsh-clinebot/models/context` — Переопределение контекстного окна моделей.
+* `POST /dsh-clinebot/accounts` — Добавление аккаунта в пул ротации.
+* `POST /dsh-clinebot/accounts/delete` — Удаление аккаунта с атомарной защитой секретного ключа.
+* `POST /dsh-clinebot/accounts/active` — Назначение активного аккаунта из пула (или пусто для auto least-used).
+* `POST /dsh-clinebot/stats/reset` — Сброс счётчиков запросов и токенов.
 * `POST /dsh-clinebot/smoke` — Выполнение тестового пинга задержки.
+* `GET /dsh-clinebot/update/status` — Проверка наличия обновлений плагина.
+* `POST /dsh-clinebot/update/apply` — Обновление плагина с корректным завершением групп процессов и блокировками профиля.
+
+### OpenAI-совместимый loopback-прокси (макс. 64 МиБ)
+* `POST /dsh-clinebot/v1/chat/completions` — Прозрачный локальный прокси с поддержкой SSE и нестриминговых ответов, Bearer-аутентификацией, сессионной липкостью и least-used распределением квот, контролем дедлайнов (`streamIdleTimeoutMs`) и автоматическим 429 failover.
+* `GET /dsh-clinebot/v1/models` — Каталог моделей в стандарте OpenAI API.
 
 ---
 

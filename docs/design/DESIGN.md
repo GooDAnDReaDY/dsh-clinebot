@@ -63,12 +63,12 @@ graph LR
   * Host connectivity: `Host online (<ms>)` (green) / `Host unreachable` (red).
   * Credential presence: `Key ✓ (credentials|env)` (green) / `Key missing` (amber).
   * Registration status: `DSH Registered` (green) / `Not Registered` (amber).
-* **Model Picker**: Interactive checklist of all 11 official models with multi-select and vision capability indicators.
+* **Dynamic Model Picker**: Dynamic checklist synchronized with active ClinePass subscription plan (`GET /api/v1/users/me/plan`), supporting `disabledModels` filtering, custom gateway models (`customModels`), vision indicators, and granular reasoning effort selectors.
 * **Non-destructive actions**: Unregister cleanly removes the provider entry from DSH without touching other providers or configurations.
 
 ## 4. Security & Isolation
 * Same-origin check: mutating routes and the read routes `/status`, `/config`, `/usage`, and `/auth/status` call `isTrustedSettingsRequest`. `/usage` and the status payload return quota fields the card draws (plan, email, window percents) and omit the raw provider body.
-* Body size limits: Request payloads are strictly capped at 256 KB.
+* Body size limits: Management and settings request payloads (`/dsh-clinebot/*`) are strictly capped at 256 KiB (`MAX_CONTROL_BODY_BYTES`). The loopback inference proxy (`/dsh-clinebot/v1/chat/completions`) accepts payloads up to 64 MiB (`MAX_PROXY_BODY_BYTES = 64 * 1024 * 1024`).
 * Sensitive credential data is never returned across the HTTP API (only `{ present: boolean, source: string, envName: string }`).
 
 ## 5. Multi-Account Pool & Resilient Execution (v0.3.3)
@@ -145,7 +145,7 @@ graph LR
 | `/dsh-clinebot/smoke` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Запуск быстрого тестового инференса с замером задержки первого токена и валидацией модели. |
 | `/dsh-clinebot/register` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Декларативная регистрация и обновление провайдера ClineBot в `llm-pi-ai`. |
 | `/dsh-clinebot/unregister` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Удаление регистрации провайдера ClineBot из настроек `llm-pi-ai`. |
-| `/dsh-clinebot/v1/chat/completions` | POST | Loopback Only (`isLoopbackAddress`) | Loopback (127.0.0.1, ::1); 403 otherwise | Прозрачный потоковый OpenAI-совместимый прокси с защитой loopback, failover при HTTP 429 и сессионным роутингом. |
+| `/dsh-clinebot/v1/chat/completions` | POST | Loopback Only (`isLoopbackAddress`) | Loopback (127.0.0.1, ::1); max 64 MiB | Прозрачный потоковый и нестриминговый OpenAI-совместимый прокси: max 64 MiB, failover при HTTP 429, сессионная липкость с least-used квотами, контроль дедлайнов (`streamIdleTimeoutMs`). |
 | `/dsh-clinebot/v1/models` | GET | Loopback Only (`isLoopbackAddress`) | Loopback (127.0.0.1, ::1); 403 otherwise | Каталог активных моделей ClinePass в OpenAI-формате с обязательной loopback-защитой. |
 | `/dsh-clinebot/stats` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Сводная персистентная статистика запросов и токенов (~/.dsh/clinebot-stats.json). |
 | `/dsh-clinebot/stats/reset` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Сброс накопленной статистики использования токенов. |
@@ -153,9 +153,10 @@ graph LR
 
 ## 12. Архитектура версии 0.4.8 (Pack Features)
 
-### 12.1 Transparent Loopback Proxy & Session Routing (`lib/routes/proxy.js`, `lib/session-router.js`)
-* **Loopback Proxy (`/dsh-clinebot/v1`)**: Выступает локальным мостом между DSH `llm-pi-ai` и облаком ClinePass. Эндпоинты строго ограничены loopback-интерфейсом (`isLoopbackAddress(req.socket?.remoteAddress)` -> 403 Forbidden для внешних сетевых запросов). Поддерживает стриминг SSE с отменой вышестоящего потока (`reader.cancel()`) при разрыве соединения клиентом (#138), корректный фолбэк на дефолтную модель при отсутствии `model` (#140), отслеживание токенов инференса, прозрачный failover на резервный ключ при HTTP 429 до отправки первого чанка клиенту.
-* **Sticky Session Least-Used Routing & Bounded Memory**: При старте новой сессии выбирает аккаунт из пула с максимальным остатком квоты (`remainingPercent`). Закрепляет аккаунт за сессией (`sessionId`). Для предотвращения утечек памяти при высокой нагрузке размер таблицы сессий ограничен константой `MAX_SESSIONS = 1000`, а устаревшие сессии вытесняются по TTL (`SESSION_TTL_MS = 24h`) и LRU-алгоритму (`pruneSessions`). При 429 или исчерпании квоты временно переводит ключ в кулдаун и переключает сессию на следующий доступный аккаунт. Реализовано автоматическое восстановление из кулдауна (`cooldownExpiresAt`).
+### 12.1 Transparent Loopback Proxy & Session Routing (`lib/routes/proxy.js`, `lib/session-router.js`, `lib/updater.js`)
+* **Loopback Proxy (`/dsh-clinebot/v1`)**: Локальный мост между DSH `llm-pi-ai` и ClinePass. Эндпоинты строго ограничены loopback-интерфейсом (`isLoopbackAddress(req.socket?.remoteAddress)` -> 403 Forbidden). Поддерживает стриминг SSE с отменой вышестоящего потока (`reader.cancel()`) при обрыве связи (#138, #164, #173), нестриминговые запросы с жестким дедлайном чтения тела по `streamIdleTimeoutMs` и возвратом 502/504 при сбоях (#185), дефолтную модель (`cline-pass/deepseek-v4-flash`), отслеживание токенов инференса и прозрачный failover на резервный ключ при HTTP 429 с отменой тела ответа (#167). Лимит тела запроса прокси — 64 МиБ.
+* **Sticky Session Least-Used Routing & Bounded Capacity**: При старте новой сессии выбирает аккаунт из пула с наименьшим расходом квоты (`least-used`). Закрепляет аккаунт за сессией (`sessionId`). Для гарантированной защиты от утечек памяти таблица строго ограничена емкостью `MAX_SESSIONS = 1000`, эвиктируя старые сессии по TTL (`SESSION_TTL_MS = 24h`) и LRU-алгоритму (`pruneSessions`) на всех ветках маршрутизации, включая ручной пин (#183). При 429 или таймаутах аккаунт переводится в кулдаун на 60 секунд.
+* **Process Tree Termination & Lockfile Sync in Updater**: При обновлении плагина через `installExact` дочерний процесс запускается с флагом `detached: true` на POSIX, образуя выделенную группу процессов (`PGID`). При таймауте сигналы `SIGTERM` и `SIGKILL` транслируются по всей группе процессов (`-child.pid`), предотвращая появление зомби-процессов (`pnpm`/`node`) и зависание блокировок `package.json.lock` (#172).
 
 ### 12.2 Persistent JSON Analytics (`lib/stats-storage.js`)
 * Персистентное хранилище метрик в `~/.dsh/clinebot-stats.json` с автоматической загрузкой при старте плагина (`apply()`).
