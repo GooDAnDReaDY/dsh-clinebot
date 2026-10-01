@@ -326,3 +326,51 @@ test('account-pool: getAccountQuotaSnapshot evaluates expired resetsAt as reset 
   assert.equal(snap.fiveHour, 0)
   assert.equal(snap.percentUsed, 0)
 })
+
+test('session-router & account-pool: empty activeAccount defaults to least-used auto routing without pinning default (#162)', async () => {
+  clearUsageCache()
+  resetSessionRouter()
+
+  const keyA = 'key-alpha-99'
+  const keyB = 'key-bravo-1'
+
+  usageCache.set(buildUsageCacheKey(DEFAULT_BASE_URL, keyA), {
+    timestamp: Date.now(),
+    data: { windows: { fiveHour: { percentUsed: 99 } } }
+  })
+  usageCache.set(buildUsageCacheKey(DEFAULT_BASE_URL, keyB), {
+    timestamp: Date.now(),
+    data: { windows: { fiveHour: { percentUsed: 1 } } }
+  })
+
+  const ctxMock = {
+    get: (name) => {
+      if (name === 'credentials') {
+        return {
+          resolve: async (envName) => ({
+            value: envName === 'CLINEBOT_API_KEY' ? keyA : keyB,
+            source: 'credentials'
+          })
+        }
+      }
+      return null
+    }
+  }
+
+  const cfg = {
+    apiKeyEnv: 'CLINEBOT_API_KEY',
+    activeAccount: '',
+    accounts: [
+      { id: 'account-2', apiKeyEnv: 'CLINEBOT_API_KEY_2', label: 'Account B' }
+    ]
+  }
+
+  const pool = await resolveAccountPool(ctxMock, cfg)
+  assert.equal(pool.length, 2)
+  assert.equal(pool[0].isPinned, false, 'default account must not be implicitly pinned when activeAccount is empty')
+  assert.equal(pool[1].isPinned, false)
+
+  const result = resolveSessionAccount('session-empty-active', pool, '')
+  assert.equal(result.account.apiKeyEnv, 'CLINEBOT_API_KEY_2', 'least used account (1%) must be selected over default (99%)')
+  assert.equal(result.reason, 'new_session_assigned')
+})
