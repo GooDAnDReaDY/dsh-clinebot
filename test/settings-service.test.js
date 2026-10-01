@@ -544,3 +544,110 @@ test("host: live config retains native cosmokit volatile references without sett
   await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes2)
   assert.equal(JSON.parse(getRes2.body).config.enabled, false, "live config must reflect updated volatile getter")
 })
+
+
+test("host: frozen config with native volatile references preserves reactivity through proxy overlay (#157, #173)", async () => {
+  let enabled = false
+  const config = Object.freeze({
+    enabled: Object.freeze({ get: () => enabled }),
+    statsPath: "/tmp/frozen-test.json",
+  })
+
+  let persisted = null
+  const mockSettingsForms = {
+    describe: () => [{ ns: "dsh-clinebot", revision: 1 }],
+    replace: async (ns, payload) => {
+      persisted = payload
+      enabled = true
+    },
+    update: async () => {},
+  }
+
+  const registeredRoutes = {}
+  const mockCtx = {
+    get: (name) => (name === "settings" ? mockSettingsForms : null),
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (fn) => fn(),
+  }
+
+  apply(mockCtx, config)
+
+  const makeReq = (method, body = {}) => {
+    const req = Readable.from([Buffer.from(JSON.stringify(body))])
+    req.method = method
+    req.headers = { "sec-fetch-site": "same-origin" }
+    req.socket = { remoteAddress: "127.0.0.1" }
+    return req
+  }
+
+  let putRes = { writeHead: () => {}, end: (d) => { putRes.body = d } }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("PUT", {
+    config: { enabled: true }
+  }), putRes)
+
+  enabled = false
+
+  let getRes = { writeHead: () => {}, end: (d) => { getRes.body = d } }
+  await registeredRoutes["/dsh-clinebot/config"](makeReq("GET"), getRes)
+  const json = JSON.parse(getRes.body)
+  assert.equal(json.config.enabled, false, "Dynamic volatile getter on frozen config must remain reactive")
+})
+
+test("host: native DSH llm-pi-ai adapter accepts provider and populates model catalog (#173)", async () => {
+  let applyNative = null
+  try {
+    const mod = await import("/home/vadim/.nvm/versions/node/v24.15.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js")
+    applyNative = mod.apply
+  } catch {
+    /* fallback if native DSH is not installed globally */
+  }
+
+  const { buildPiAiProvider } = await import("../lib/cline-client.js")
+  const provider = buildPiAiProvider({
+    baseUrl: "http://127.0.0.1:12345/v1",
+    models: [{ id: "synthetic-model", name: "Synthetic" }],
+  })
+
+  // Compat flags must NOT contain rejected affinity flags
+  assert.equal(provider.compat?.sendSessionAffinityHeaders, undefined)
+  assert.equal(provider.compat?.sessionAffinityFormat, undefined)
+
+  if (applyNative) {
+    let adapter = null
+    const ctx = {
+      fiber: { entry: { options: { id: "llm-pi-ai" } } },
+      inject() {},
+      on() {},
+      get() { return undefined },
+      logger: { warn() {}, error() {} },
+      llm: {
+        registerConfigurableProviders() { return { replace() {} } },
+        registerModelDiscovery() {},
+        registerAdapter(routes, registered) {
+          adapter = registered
+          return { replace() {} }
+        },
+      },
+    }
+
+    applyNative(ctx, { providers: { get: () => ({ clinebot: provider }) } })
+    const snapshot = adapter.current()
+    const profile = snapshot.profiles.get("clinebot")
+    assert.equal(profile.catalogError, undefined, "Native DSH llm-pi-ai must not report catalogError")
+    const models = await adapter.listModels("clinebot")
+    assert.ok(models.some((m) => m.id === "synthetic-model"))
+
+    let modelError = null
+    try {
+      adapter.modelOf(snapshot, "clinebot", "synthetic-model")
+    } catch (e) {
+      modelError = e
+    }
+    assert.equal(modelError, null, "modelOf must resolve model without throwing")
+  }
+})
