@@ -14,7 +14,8 @@ import {
   getStatsSummary,
   resetStats,
   createEmptyStats,
-  resolvePath
+  resolvePath,
+  switchStatsStorage
 } from '../lib/stats-storage.js'
 import { resolvePathWithHome } from '../lib/provider-sync.js'
 
@@ -288,4 +289,33 @@ test('stats-storage: unrelated config write preserves in-memory pending usage (#
   flushStats(file)
   const afterDisk = JSON.parse(readFileSync(file, 'utf8'))
   assert.equal(afterDisk.totals.requests, 51, 'flushed disk stats must contain the pending usage')
+})
+
+
+test('stats-storage: dynamic statsPath switch flushes previous storage and loads target storage (#158)', async () => {
+  const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-switch-stats-'))
+  const pathA = path.join(dir, 'stats-a.json')
+  const pathB = path.join(dir, 'stats-b.json')
+
+  const initialA = createEmptyStats()
+  initialA.totals.requests = 50
+  fs.writeFileSync(pathA, JSON.stringify(initialA))
+
+  const initialB = createEmptyStats()
+  initialB.totals.requests = 100
+  fs.writeFileSync(pathB, JSON.stringify(initialB))
+
+  loadStats(pathA)
+  recordUsage({ model: 'model-a', statsPath: pathA })
+  assert.equal(getStatsSummary().totals.requests, 51)
+
+  // Switch to B
+  switchStatsStorage(pathB)
+  assert.equal(getStatsSummary().totals.requests, 100, 'must load target B storage upon switch')
+  assert.equal(JSON.parse(fs.readFileSync(pathA, 'utf8')).totals.requests, 51, 'path A must be flushed on switch')
+
+  recordUsage({ model: 'model-b', statsPath: pathB })
+  assert.equal(getStatsSummary().totals.requests, 101)
+  flushStats(pathB)
+  assert.equal(JSON.parse(fs.readFileSync(pathB, 'utf8')).totals.requests, 101)
 })

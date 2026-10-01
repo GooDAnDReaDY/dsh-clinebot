@@ -77,7 +77,9 @@ test('cline-client: buildPiAiProvider with custom models and reasoningEfforts sc
   assert.equal(provider.apiKeyEnv, 'MY_KEY')
   assert.deepEqual(provider.compat, {
     supportsReasoningEffort: true,
+    supportsLongCacheRetention: true,
   })
+  assert.equal(provider.cacheRetention, 'long')
   assert.equal(provider.models.length, 4)
   assert.equal(provider.models[0].id, 'cline-pass/deepseek-v4-moe')
   assert.equal(provider.models[0].provider, PROVIDER_ID)

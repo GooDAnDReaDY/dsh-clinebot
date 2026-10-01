@@ -240,3 +240,35 @@ test('updater: installExact holds profile lock until child process exits (#172)'
     fs.rmSync(tmpProfile, { recursive: true, force: true })
   }
 })
+
+
+test('updater: process group escalation continues if descendants survive parent exit (#172)', async () => {
+  const child = createMockChild()
+  const signals = []
+  child.kill = (sig) => { signals.push(sig); return true }
+
+  const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: os.tmpdir() }
+  let settled = false
+
+  const promise = installExact(target, 'pkg@1.0.0', {
+    timeoutMs: 20,
+    sigtermGraceMs: 30,
+    sigkillGraceMs: 30,
+    spawn: () => child,
+  }).catch((err) => {
+    settled = true
+    return err.message
+  })
+
+  // Wait for timeout to trigger SIGTERM
+  await new Promise((r) => setTimeout(r, 25))
+  assert.equal(signals.includes('SIGTERM'), true)
+
+  // Parent exits on SIGTERM, but let promise stay unsettled until group terminates or deadline
+  child.signalCode = 'SIGTERM'
+  child.emit('exit', null, 'SIGTERM')
+
+  const outcome = await promise
+  assert.equal(outcome, 'Update timed out.')
+  assert.equal(settled, true)
+})
