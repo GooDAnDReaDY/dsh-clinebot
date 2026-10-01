@@ -198,6 +198,23 @@ test('updater: installExact stubborn child ignoring SIGTERM gets escalated to SI
   await assert.rejects(promise, /Update timed out\./)
 })
 
+test('updater: installExact spawns child with detached process group on POSIX (#172)', async () => {
+  let capturedOptions = null
+  const child = createMockChild()
+  const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: '/tmp/test' }
+  const promise = installExact(target, 'pkg@1.0.0', {
+    spawn: (...args) => {
+      capturedOptions = args[2]
+      return child
+    },
+  })
+  child.emit('exit', 0, null)
+  await promise
+  if (process.platform !== 'win32') {
+    assert.equal(capturedOptions?.detached, true)
+  }
+})
+
 test('updater: installExact holds profile lock until child process exits (#172)', async () => {
   const tmpProfile = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-lock-test-'))
   const lockFile = path.join(tmpProfile, 'package.json.lock')
