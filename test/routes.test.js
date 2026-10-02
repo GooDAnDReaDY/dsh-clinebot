@@ -760,3 +760,71 @@ test('routes: accounts/delete returns honest partial state and allows secret ret
   await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_2', deleteSecret: true }), res4)
   assert.equal(res4.getStatus(), 404)
 })
+
+test('routes: accounts/delete rollback preserves concurrent automatic mode activeAccount (#187)', async () => {
+  const routes = []
+  let cfg = Config({
+    enabled: false,
+    timeoutMs: 15000,
+    accounts: [{ apiKeyEnv: 'CLINEBOT_API_KEY_2', label: 'Owned' }],
+    activeAccount: 'CLINEBOT_API_KEY_2',
+  })
+
+  const mockCtx = {
+    get: (name) => {
+      if (name === 'credentials') {
+        return {
+          resolve: async () => ({ value: 'test-secret' }),
+          unset: async () => {
+            // Simulate concurrent switch to automatic mode during secret deletion
+            cfg = { ...cfg, activeAccount: '', timeoutMs: 20000 }
+            throw new Error('Credential store temporarily unavailable')
+          },
+        }
+      }
+      return null
+    },
+    logger: { warn() {} },
+    webServer: { register: (r) => { routes.push(r); return () => {} } },
+    effect: (fn) => fn(),
+  }
+
+  const mockApi = {
+    replace: async (next) => { cfg = next },
+  }
+
+  registerAccountsRoutes(mockCtx, {
+    live: () => cfg,
+    getSettingsApi: () => mockApi,
+    syncProviderState: async () => {},
+  })
+
+  const deleteHandler = routes.find((r) => r.path === '/dsh-clinebot/accounts/delete')?.handler
+  assert.ok(deleteHandler, 'delete handler must exist')
+
+  function createReq(body) {
+    const r = Readable.from([Buffer.from(JSON.stringify(body))])
+    r.method = 'POST'
+    r.socket = { remoteAddress: '127.0.0.1' }
+    r.headers = { 'sec-fetch-site': 'same-origin' }
+    return r
+  }
+  function createRes() {
+    let status = 0
+    let body = null
+    return {
+      writeHead: (s) => { status = s },
+      end: (data) => { body = JSON.parse(data) },
+      getStatus: () => status,
+      getBody: () => body,
+    }
+  }
+
+  const res = createRes()
+  await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_2', deleteSecret: true }), res)
+  assert.equal(res.getStatus(), 500)
+  assert.equal(res.getBody().partial, false)
+  assert.equal(cfg.accounts.length, 1, 'Account must be restored to pool')
+  assert.equal(cfg.activeAccount, '', 'Concurrent selection of automatic mode must be preserved')
+  assert.equal(cfg.timeoutMs, 20000, 'Concurrent timeout must be preserved')
+})
