@@ -656,7 +656,7 @@ test('commands & routes: custom models are preserved in slash command test/model
 })
 
 
-test('routes: accounts/delete returns honest partial state and allows secret retry (#184, #187)', async () => {
+test('routes: accounts/delete returns honest partial state and allows secret retry (#155, #184, #187)', async () => {
   const routes = []
   let cfg = Config({
     enabled: false,
@@ -664,13 +664,19 @@ test('routes: accounts/delete returns honest partial state and allows secret ret
     accounts: [{ apiKeyEnv: 'CLINEBOT_API_KEY_2', label: 'Owned' }],
   })
 
+  let unsetCallCount = 0
+  let unsetShouldFail = true
   const mockCtx = {
     get: (name) => {
       if (name === 'credentials') {
         return {
           resolve: async () => ({ value: 'test-secret' }),
           unset: async () => {
-            throw new Error('Credential store temporarily unavailable')
+            unsetCallCount++
+            if (unsetShouldFail) {
+              throw new Error('Credential store temporarily unavailable')
+            }
+            return true
           },
         }
       }
@@ -681,8 +687,16 @@ test('routes: accounts/delete returns honest partial state and allows secret ret
     effect: (fn) => fn(),
   }
 
+  let replaceCallCount = 0
+  let rollbackShouldFail = true
   const mockApi = {
-    replace: async (next) => { cfg = next },
+    replace: async (next) => {
+      replaceCallCount++
+      if (replaceCallCount === 2 && rollbackShouldFail) {
+        throw new Error('Rollback persistence failed')
+      }
+      cfg = next
+    },
   }
 
   registerAccountsRoutes(mockCtx, {
@@ -712,14 +726,37 @@ test('routes: accounts/delete returns honest partial state and allows secret ret
     }
   }
 
-  // 1. Initial attempt fails credentials unset, returns 500 with partial state
+  // 1. Unknown / unowned account without prior partial state must return 404 without attempting unset (#155)
+  const resUnknown = createRes()
+  const unsetBefore = unsetCallCount
+  await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_777', deleteSecret: true }), resUnknown)
+  assert.equal(resUnknown.getStatus(), 404)
+  assert.equal(unsetCallCount, unsetBefore, 'Must not touch credentials unset for unknown account')
+
+  // 2. Initial attempt fails credentials unset and rollback fails -> honest partial failure
   const res1 = createRes()
   await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_2', deleteSecret: true }), res1)
   assert.equal(res1.getStatus(), 500)
   assert.equal(res1.getBody().ok, false)
+  assert.equal(res1.getBody().partial, true)
+  assert.equal(res1.getBody().accountRemoved, true)
+  assert.equal(res1.getBody().secretDeleted, false)
 
-  // 2. Retry of secret deletion for account already removed from pool returns 500 (since credential store still fails) rather than 404
+  // 3. Retry of secret deletion while credential store still fails returns 500 (not 404)
   const res2 = createRes()
   await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_2', deleteSecret: true }), res2)
   assert.equal(res2.getStatus(), 500, 'Retry must not return 404 when secret cleanup is pending')
+
+  // 4. Retry after credential store recovers succeeds with 200
+  unsetShouldFail = false
+  const res3 = createRes()
+  await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_2', deleteSecret: true }), res3)
+  assert.equal(res3.getStatus(), 200)
+  assert.equal(res3.getBody().ok, true)
+  assert.equal(res3.getBody().secretDeleted, true)
+
+  // 5. Subsequent retry returns 404 because pending secret was cleaned up
+  const res4 = createRes()
+  await deleteHandler(createReq({ apiKeyEnv: 'CLINEBOT_API_KEY_2', deleteSecret: true }), res4)
+  assert.equal(res4.getStatus(), 404)
 })

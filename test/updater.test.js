@@ -244,31 +244,61 @@ test('updater: installExact holds profile lock until child process exits (#172)'
 
 test('updater: process group escalation continues if descendants survive parent exit (#172)', async () => {
   const child = createMockChild()
+  const mockPid = 54321
+  child.pid = mockPid
   const signals = []
   child.kill = (sig) => { signals.push(sig); return true }
 
-  const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: os.tmpdir() }
-  let settled = false
+  const proc = typeof process !== 'undefined' ? process : (setTimeout.constructor('return process')());
+  const originalKill = proc.kill
+  let groupAlive = true
+  proc.kill = (pid, sig) => {
+    if (pid === -mockPid) {
+      if (sig === 0) return groupAlive
+      if (sig === 'SIGKILL') {
+        signals.push('SIGKILL')
+        groupAlive = false
+      }
+      return true
+    }
+    return originalKill.call(proc, pid, sig)
+  }
 
-  const promise = installExact(target, 'pkg@1.0.0', {
-    timeoutMs: 20,
-    sigtermGraceMs: 30,
-    sigkillGraceMs: 30,
-    spawn: () => child,
-  }).catch((err) => {
-    settled = true
-    return err.message
-  })
+  try {
+    const target = { cliEntry: '/bin/dsh', profileName: 'test', profileDir: os.tmpdir() }
+    let promiseSettled = false
 
-  // Wait for timeout to trigger SIGTERM
-  await new Promise((r) => setTimeout(r, 25))
-  assert.equal(signals.includes('SIGTERM'), true)
+    const promise = installExact(target, 'pkg@1.0.0', {
+      timeoutMs: 20,
+      sigtermGraceMs: 30,
+      sigkillGraceMs: 30,
+      spawn: () => child,
+    }).catch((err) => {
+      promiseSettled = true
+      return err.message
+    })
 
-  // Parent exits on SIGTERM, but let promise stay unsettled until group terminates or deadline
-  child.signalCode = 'SIGTERM'
-  child.emit('exit', null, 'SIGTERM')
+    // Wait for timeout to trigger SIGTERM
+    await new Promise((r) => setTimeout(r, 25))
+    assert.equal(signals.includes('SIGTERM'), true)
 
-  const outcome = await promise
-  assert.equal(outcome, 'Update timed out.')
-  assert.equal(settled, true)
+    // Parent exits on SIGTERM, but descendants in process group survive
+    child.exitCode = 0
+    child.signalCode = 'SIGTERM'
+    child.emit('exit', 0, 'SIGTERM')
+
+    // On baseline 7f2e30e, onProcessExit immediately settled and canceled sigtermTimer.
+    // In fixed updater, promise must not settle immediately on parent exit while group survives.
+    assert.equal(promiseSettled, false, 'Promise must not settle immediately on parent exit while group survives')
+
+    // Wait for sigtermGraceMs escalation to trigger SIGKILL
+    await new Promise((r) => setTimeout(r, 45))
+    assert.equal(signals.includes('SIGKILL'), true)
+
+    const outcome = await promise
+    assert.equal(outcome, 'Update timed out.')
+    assert.equal(promiseSettled, true)
+  } finally {
+    proc.kill = originalKill
+  }
 })
