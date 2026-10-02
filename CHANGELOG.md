@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.13] - 2026-10-02
+
+### Fixed
+- **Native Volatile Account Switch Catalog & Plan Reset (Issue #168)**: In `loader/volatile-update`, actively detect when `activeAccount` changes via native Cosmokit volatile settings, resetting `dynamicModels = []`, `planSyncedAt = 0`, and clearing usage and probe caches (`clearUsageCache()`, `clearProbeCache()`) to guarantee stale catalogs from previous accounts are never marked verified.
+- **Account Deletion Rollback Automatic Mode Preservation (Issue #187)**: Ensure surgical rollback of account deletion in `lib/routes/accounts.js` unconditionally preserves live `fresh.activeAccount`, preventing unintended restoration of deleted accounts or overriding concurrent selections of automatic mode (`activeAccount: ""`).
+
 ## [0.5.12] - 2026-10-02
 
 ### Fixed

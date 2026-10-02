@@ -685,3 +685,43 @@ test("host: native DSH llm-pi-ai adapter accepts provider and populates model ca
   }
   assert.equal(modelError, null, "modelOf must resolve model without throwing")
 })
+
+test("host: loader/volatile-update resets dynamic catalog and plan synced timestamp on native activeAccount switch (#168)", async () => {
+  const handlers = {}
+  let activeVal = "CLINEBOT_API_KEY"
+  const activeVolatile = {
+    get() { return activeVal },
+    [Symbol.for("cosmokit.volatile")]: true,
+  }
+
+  const cfg = {
+    ...Config({
+      enabled: false,
+      dynamicModels: [{ id: "cline-pass/account-a-only", name: "A only" }],
+      planSyncedAt: 1000,
+      accounts: [{ apiKeyEnv: "CLINEBOT_API_KEY_2", label: "B" }],
+    }),
+    activeAccount: activeVolatile,
+  }
+
+  const mockCtx = {
+    inject() {},
+    on(name, cb) { (handlers[name] ??= []).push(cb) },
+    logger: { warn() {} },
+    webServer: { register: () => () => {} },
+    effect: (fn) => fn(),
+  }
+
+  apply(mockCtx, cfg)
+  assert.equal(cfg.dynamicModels.length, 1)
+  assert.equal(cfg.planSyncedAt, 1000)
+
+  // Natively update activeAccount volatile to account 2
+  activeVal = "CLINEBOT_API_KEY_2"
+  for (const h of handlers["loader/volatile-update"] || []) {
+    await h()
+  }
+
+  assert.equal(cfg.dynamicModels.length, 0, "Dynamic models must be cleared on native activeAccount switch")
+  assert.equal(cfg.planSyncedAt, 0, "Plan synced timestamp must be reset to 0")
+})
