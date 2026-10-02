@@ -1,6 +1,9 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readFileSync, existsSync, readdirSync } from "node:fs"
+import path from "node:path"
+import os from "node:os"
+import { pathToFileURL } from "node:url"
 import { Readable } from "node:stream"
 import { apply, configReader, inject, NS } from "../lib/index.js"
 import { Config } from "../lib/config.js"
@@ -598,15 +601,41 @@ test("host: frozen config with native volatile references preserves reactivity t
   assert.equal(json.config.enabled, false, "Dynamic volatile getter on frozen config must remain reactive")
 })
 
-test("host: native DSH llm-pi-ai adapter accepts provider and populates model catalog (#173)", async () => {
-  let applyNative = null
+async function loadNativeDshPiAi() {
+  const candidates = [
+    path.resolve(path.dirname(process.execPath), "../lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js"),
+    "/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js",
+    "/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js",
+  ]
+  let home = null
   try {
-    const mod = await import("/home/vadim/.nvm/versions/node/v24.15.0/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js")
-    applyNative = mod.apply
+    home = os.userInfo().homedir
   } catch {
-    /* fallback if native DSH is not installed globally */
+    home = os.homedir() || process.env.HOME
+  }
+  if (home) {
+    const nvmDir = path.join(home, ".nvm/versions/node")
+    if (existsSync(nvmDir)) {
+      try {
+        const versions = readdirSync(nvmDir)
+        for (const v of versions) {
+          candidates.push(path.join(nvmDir, v, "lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-llm-pi-ai/lib/index.js"))
+        }
+      } catch {}
+    }
   }
 
+  for (const c of candidates) {
+    if (existsSync(c)) {
+      try {
+        return await import(pathToFileURL(c).href)
+      } catch {}
+    }
+  }
+  return null
+}
+
+test("host: native DSH llm-pi-ai adapter accepts provider and populates model catalog (#173)", async (t) => {
   const { buildPiAiProvider } = await import("../lib/cline-client.js")
   const provider = buildPiAiProvider({
     baseUrl: "http://127.0.0.1:12345/v1",
@@ -617,37 +646,42 @@ test("host: native DSH llm-pi-ai adapter accepts provider and populates model ca
   assert.equal(provider.compat?.sendSessionAffinityHeaders, undefined)
   assert.equal(provider.compat?.sessionAffinityFormat, undefined)
 
-  if (applyNative) {
-    let adapter = null
-    const ctx = {
-      fiber: { entry: { options: { id: "llm-pi-ai" } } },
-      inject() {},
-      on() {},
-      get() { return undefined },
-      logger: { warn() {}, error() {} },
-      llm: {
-        registerConfigurableProviders() { return { replace() {} } },
-        registerModelDiscovery() {},
-        registerAdapter(routes, registered) {
-          adapter = registered
-          return { replace() {} }
-        },
-      },
-    }
-
-    applyNative(ctx, { providers: { get: () => ({ clinebot: provider }) } })
-    const snapshot = adapter.current()
-    const profile = snapshot.profiles.get("clinebot")
-    assert.equal(profile.catalogError, undefined, "Native DSH llm-pi-ai must not report catalogError")
-    const models = await adapter.listModels("clinebot")
-    assert.ok(models.some((m) => m.id === "synthetic-model"))
-
-    let modelError = null
-    try {
-      adapter.modelOf(snapshot, "clinebot", "synthetic-model")
-    } catch (e) {
-      modelError = e
-    }
-    assert.equal(modelError, null, "modelOf must resolve model without throwing")
+  const mod = await loadNativeDshPiAi()
+  if (!mod?.apply) {
+    t.skip("native DSH adapter not found")
+    return
   }
+  const applyNative = mod.apply
+
+  let adapter = null
+  const ctx = {
+    fiber: { entry: { options: { id: "llm-pi-ai" } } },
+    inject() {},
+    on() {},
+    get() { return undefined },
+    logger: { warn() {}, error() {} },
+    llm: {
+      registerConfigurableProviders() { return { replace() {} } },
+      registerModelDiscovery() {},
+      registerAdapter(routes, registered) {
+        adapter = registered
+        return { replace() {} }
+      },
+    },
+  }
+
+  applyNative(ctx, { providers: { get: () => ({ clinebot: provider }) } })
+  const snapshot = adapter.current()
+  const profile = snapshot.profiles.get("clinebot")
+  assert.equal(profile.catalogError, undefined, "Native DSH llm-pi-ai must not report catalogError")
+  const models = await adapter.listModels("clinebot")
+  assert.ok(models.some((m) => m.id === "synthetic-model"))
+
+  let modelError = null
+  try {
+    adapter.modelOf(snapshot, "clinebot", "synthetic-model")
+  } catch (e) {
+    modelError = e
+  }
+  assert.equal(modelError, null, "modelOf must resolve model without throwing")
 })

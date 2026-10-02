@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.12] - 2026-10-02
+
+### Fixed
+- **Credential Ownership Enforcement on Deletion Retry (Issue #155)**: Reject deletion of unowned or non-existent credentials with HTTP 404 and zero calls to the credentials store, preventing unconfirmed secrets deletion. Retries of previously failed secret cleanups are explicitly tracked in-memory to safely allow recovery without exposing arbitrary secret deletion.
+- **Catalog Lifecycle Across All Account Switch Paths (Issue #168)**: Reset dynamic model catalog (`dynamicModels: []`) and plan synchronization state (`planSyncedAt: 0`) uniformly across slash-command switches (`/cline switch`), automatic account pool rotations, and manual configuration updates, preventing stale or cross-account models from being considered verified.
+- **Rollback Concurrency & Active Account Selection Preservation (Issue #187)**: Ensure transactional account deletion rollback does not overwrite concurrent changes to `activeAccount`. Only restore the deleted account as active if no concurrent change has occurred, preserving external selection alongside other settings.
+- **Test Hardening & Multi-Environment Portability (Issue #173)**: Hardened regression tests to detect surviving descendants across parent exits under genuine failure conditions, updated account deletion tests to assert honest partial state (`partial: true`), and replaced hardcoded path references with dynamic DSH adapter discovery and graceful skips across diverse environments.
+
 ## [0.5.11] - 2026-10-01
 
 ### Fixed
