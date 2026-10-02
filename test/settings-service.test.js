@@ -803,3 +803,65 @@ test("host: loader/volatile-update resets dynamic catalog and plan synced timest
   assert.equal(cfg.dynamicModels.length, 0, "Dynamic models must be cleared on native baseUrl switch")
   assert.equal(cfg.planSyncedAt, 0, "Plan synced timestamp must be reset to 0")
 })
+
+test("host: settingsApi.replace preserves verified catalog and timestamp when persistence fails (#192)", async () => {
+  let registeredRoutes = {}
+  const raw = {
+    ...Config({
+      enabled: false,
+      dynamicModels: [{ id: "cline-pass/account-a-only", name: "A only" }],
+      planSyncedAt: 1000,
+      baseUrl: "https://synthetic-a.invalid/v1",
+    }),
+  }
+  const cfg = Object.freeze(raw)
+  const settings = {
+    describe: () => [{ ns: "dsh-clinebot", revision: 1 }],
+    replace: async () => {
+      throw new Error("synthetic persistent revision conflict")
+    },
+  }
+  const ctx = {
+    get: (n) => (n === "settings" ? settings : null),
+    inject() {},
+    on() {},
+    logger: { warn() {} },
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (f) => f(),
+  }
+  apply(ctx, cfg)
+
+  const putReq = {
+    method: "PUT",
+    headers: {},
+    socket: { remoteAddress: "127.0.0.1" },
+    [Symbol.asyncIterator]: async function* () {
+      yield Buffer.from(JSON.stringify({ baseUrl: "https://synthetic-b.invalid/v1" }))
+    },
+  }
+  let putStatus = 0
+  let putBody = null
+  const putRes = {
+    writeHead: (s) => { putStatus = s },
+    end: (d) => { putBody = JSON.parse(d) },
+  }
+  await registeredRoutes["/dsh-clinebot/config"](putReq, putRes)
+  assert.equal(putStatus, 400)
+  assert.equal(putBody.ok, false)
+
+  let getBody = null
+  const getRes = {
+    writeHead: () => {},
+    end: (d) => { getBody = JSON.parse(d) },
+  }
+  await registeredRoutes["/dsh-clinebot/config"]({ method: "GET", headers: {}, socket: { remoteAddress: "127.0.0.1" } }, getRes)
+  assert.equal(getBody.config.baseUrl, "https://synthetic-a.invalid/v1")
+  assert.equal(getBody.config.dynamicModels.length, 1, "Verified catalog must NOT be cleared when persistence fails")
+  assert.equal(getBody.config.planSyncedAt, 1000, "Plan synced timestamp must NOT be reset when persistence fails")
+  assert.equal(getBody.config.planSynced, true)
+})

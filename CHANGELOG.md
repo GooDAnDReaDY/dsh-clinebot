@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.15] - 2026-10-02
+
+### Fixed
+- **Atomic Catalog Snapshot Reset on Settings Persistence (Issue #192)**: In `settingsApi.update` and `settingsApi.replace`, defer invalidating the verified model catalog snapshot (`resetCatalogSnapshot()`) and updating `lastCatalogIdentity` until after persistence to the DSH settings service completes successfully. If settings persistence fails (e.g. revision conflict or rejection), local in-memory dynamic models and plan synchronization timestamp are strictly preserved, preventing catalog loss when endpoint and credentials remain unchanged.
+
 ## [0.5.14] - 2026-10-02
 
 ### Fixed
