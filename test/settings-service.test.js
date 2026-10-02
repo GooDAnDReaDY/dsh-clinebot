@@ -725,3 +725,81 @@ test("host: loader/volatile-update resets dynamic catalog and plan synced timest
   assert.equal(cfg.dynamicModels.length, 0, "Dynamic models must be cleared on native activeAccount switch")
   assert.equal(cfg.planSyncedAt, 0, "Plan synced timestamp must be reset to 0")
 })
+
+test("host: loader/volatile-update resets dynamic catalog and plan synced timestamp on native apiKeyEnv switch (#168)", async () => {
+  const handlers = {}
+  let keyVal = "CLINEBOT_API_KEY"
+  const keyVolatile = {
+    get() { return keyVal },
+    [Symbol.for("cosmokit.volatile")]: true,
+  }
+
+  const cfg = {
+    ...Config({
+      enabled: false,
+      dynamicModels: [{ id: "cline-pass/account-a-only", name: "A only" }],
+      planSyncedAt: 1000,
+    }),
+    apiKeyEnv: keyVolatile,
+  }
+
+  const mockCtx = {
+    inject() {},
+    on(name, cb) { (handlers[name] ??= []).push(cb) },
+    logger: { warn() {} },
+    webServer: { register: () => () => {} },
+    effect: (fn) => fn(),
+  }
+
+  apply(mockCtx, cfg)
+  assert.equal(cfg.dynamicModels.length, 1)
+  assert.equal(cfg.planSyncedAt, 1000)
+
+  // Natively update primary apiKeyEnv volatile to another key
+  keyVal = "CLINEBOT_API_KEY_2"
+  for (const h of handlers["loader/volatile-update"] || []) {
+    await h()
+  }
+
+  assert.equal(cfg.dynamicModels.length, 0, "Dynamic models must be cleared on native apiKeyEnv switch")
+  assert.equal(cfg.planSyncedAt, 0, "Plan synced timestamp must be reset to 0")
+})
+
+test("host: loader/volatile-update resets dynamic catalog and plan synced timestamp on native baseUrl switch (#168)", async () => {
+  const handlers = {}
+  let baseVal = "https://synthetic-a.invalid/v1"
+  const baseVolatile = {
+    get() { return baseVal },
+    [Symbol.for("cosmokit.volatile")]: true,
+  }
+
+  const cfg = {
+    ...Config({
+      enabled: false,
+      dynamicModels: [{ id: "cline-pass/account-a-only", name: "A only" }],
+      planSyncedAt: 1000,
+    }),
+    baseUrl: baseVolatile,
+  }
+
+  const mockCtx = {
+    inject() {},
+    on(name, cb) { (handlers[name] ??= []).push(cb) },
+    logger: { warn() {} },
+    webServer: { register: () => () => {} },
+    effect: (fn) => fn(),
+  }
+
+  apply(mockCtx, cfg)
+  assert.equal(cfg.dynamicModels.length, 1)
+  assert.equal(cfg.planSyncedAt, 1000)
+
+  // Natively update baseUrl volatile to new endpoint
+  baseVal = "https://synthetic-b.invalid/v1"
+  for (const h of handlers["loader/volatile-update"] || []) {
+    await h()
+  }
+
+  assert.equal(cfg.dynamicModels.length, 0, "Dynamic models must be cleared on native baseUrl switch")
+  assert.equal(cfg.planSyncedAt, 0, "Plan synced timestamp must be reset to 0")
+})
