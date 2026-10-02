@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.15] - 2026-10-02
+
+### Fixed
+- **Atomic Catalog Snapshot Reset on Settings Persistence (Issue #192)**: In `settingsApi.update` and `settingsApi.replace`, defer invalidating the verified model catalog snapshot (`resetCatalogSnapshot()`) and updating `lastCatalogIdentity` until after persistence to the DSH settings service completes successfully. If settings persistence fails (e.g. revision conflict or rejection), local in-memory dynamic models and plan synchronization timestamp are strictly preserved, preventing catalog loss when endpoint and credentials remain unchanged.
+
+## [0.5.14] - 2026-10-02
+
+### Fixed
+- **Catalog Identity Lifecycle on Endpoint & Primary Credential Switch (Issue #168)**: Unified catalog invalidation under an identity contract: the verified catalog and plan synchronization timestamp strictly belong to the identity tuple (`baseUrl::activeAccount::apiKeyEnv`). Changing primary credential reference (`apiKeyEnv`) or provider endpoint (`baseUrl`) — via native Cosmokit volatile updates or `PUT /dsh-clinebot/config` — immediately resets `dynamicModels = []`, `planSyncedAt = 0`, and purges both usage and probe caches (`clearUsageCache()`, `clearProbeCache()`), preventing foreign or unverified model snapshots from persisting across endpoint or credential changes.
+
 ## [0.5.13] - 2026-10-02
 
 ### Fixed
