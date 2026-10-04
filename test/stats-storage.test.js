@@ -319,3 +319,19 @@ test('stats-storage: dynamic statsPath switch flushes previous storage and loads
   flushStats(pathB)
   assert.equal(JSON.parse(fs.readFileSync(pathB, 'utf8')).totals.requests, 101)
 })
+
+test('stats-storage: prunes old corrupt backups keeping at most 3 copies (#201)', () => {
+  const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-corrupt-prune-'))
+  const statsPath = path.join(dir, 'stats.json')
+  fs.writeFileSync(statsPath, '{ invalid json')
+
+  for (let i = 0; i < 5; i++) {
+    const corruptFile = `${statsPath}.corrupt.${1000 + i}`
+    fs.writeFileSync(corruptFile, 'corrupt backup ' + i)
+  }
+
+  loadStats(statsPath)
+
+  const corruptFiles = fs.readdirSync(dir).filter((f) => f.startsWith('stats.json.corrupt.'))
+  assert.ok(corruptFiles.length <= 3, `Expected at most 3 corrupt backups, got ${corruptFiles.length}`)
+})

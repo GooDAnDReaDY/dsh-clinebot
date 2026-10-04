@@ -1374,3 +1374,89 @@ test('proxy: non-stream response body read deadline and fail-closed error handli
     globalThis.fetch = originalFetch
   }
 })
+
+test('proxy: non-streaming body read timeout respects pub.timeoutMs and rejects payload exceeding MAX_BODY_BYTES (#198, #202)', async () => {
+  resetSessionRouter()
+  resetStats()
+  let completionsHandler = null
+  const mockCreds = { resolve: async () => ({ value: 'sk-test-key-202' }) }
+  const mockCtx = {
+    effect: (fn) => fn(),
+    get: (name) => (name === 'credentials' ? mockCreds : null),
+    credentials: mockCreds,
+    webServer: {
+      register: (route) => {
+        if (route.path === '/dsh-clinebot/v1/chat/completions') completionsHandler = route.handler
+      }
+    }
+  }
+
+  const currentConfig = {
+    enabled: true,
+    baseUrl: 'https://api.cline.bot/api/v1',
+    accounts: [{ id: 'acc-1', apiKeyEnv: 'CLINEBOT_API_KEY' }],
+    timeoutMs: 50,
+    streamIdleTimeoutMs: 30000
+  }
+
+  registerProxyRoutes(mockCtx, { live: () => currentConfig })
+
+  const createReq = (bodyObj) => {
+    const req = new EventEmitter()
+    req.method = 'POST'
+    req.socket = { remoteAddress: '127.0.0.1' }
+    req.headers = {
+      authorization: 'Bearer ' + TEST_TOKEN,
+      'content-type': 'application/json'
+    }
+    req[Symbol.asyncIterator] = async function* () {
+      yield Buffer.from(JSON.stringify(bodyObj))
+    }
+    return req
+  }
+
+  const createMockRes = () => {
+    const res = new EventEmitter()
+    res.statusCode = 200
+    res.headers = {}
+    res.data = ''
+    res.setHeader = (k, v) => { res.headers[k.toLowerCase()] = v }
+    res.writeHead = (code, hdrs) => {
+      res.statusCode = code
+      if (hdrs) Object.assign(res.headers, hdrs)
+    }
+    res.write = (chunk) => { res.data += chunk.toString() }
+    res.end = (chunk) => {
+      if (chunk) res.data += chunk.toString()
+      res.emit('finish')
+    }
+    return res
+  }
+
+  const originalFetch = globalThis.fetch
+  try {
+    const start = Date.now()
+    globalThis.fetch = async () => new Response(new ReadableStream({
+      start(c) {
+        c.enqueue(new TextEncoder().encode('{"choices":'))
+      }
+    }), { status: 200, headers: { 'content-type': 'application/json' } })
+
+    const res = createMockRes()
+    await completionsHandler(createReq({ stream: false, model: 'deepseek-v4-flash' }), res)
+    const elapsed = Date.now() - start
+    assert.equal(res.statusCode, 504)
+    assert.ok(elapsed < 2000, `Expected body read timeout to trigger under 2s, took ${elapsed}ms`)
+
+    globalThis.fetch = async () => new Response('{}', {
+      status: 200,
+      headers: { 'content-type': 'application/json', 'content-length': String(15 * 1024 * 1024) }
+    })
+    const resOver = createMockRes()
+    await completionsHandler(createReq({ stream: false, model: 'deepseek-v4-flash' }), resOver)
+    assert.equal(resOver.statusCode, 502)
+    assert.ok(resOver.data.includes('exceeded maximum allowed size'))
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})

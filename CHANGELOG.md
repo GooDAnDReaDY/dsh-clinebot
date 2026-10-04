@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.17] - 2026-10-05
+
+### Fixed
+- **Cosmokit Volatile Getters Unwrapping in Live Config (Issues #194, #200)**: Resolved issue where `live()` returned raw Cosmokit `Volatile` `{ get }` object boxes for volatile schema fields, causing downstream boolean checks (such as `!pub.enabled` in `syncProviderState`) to always evaluate as truthy objects regardless of actual boolean value. Fully unwrapped `live()` return values via `plainConfig(Config(plainConfig(...)))` and guaranteed robust fallback defaults when `apply()` receives null/undefined config.
+- **Proxy Body Read Timeout & Payload Size Bounds (Issues #198, #202)**: Switched non-streaming upstream body read timeouts from `streamIdleTimeoutMs` (30s) to `bodyTimeoutMs = Math.max(50, Number(pub.timeoutMs) || 15000)`. Added strict guard against unbounded payload responses (`MAX_BODY_BYTES = 10 * 1024 * 1024`) returning 502 Bad Gateway if upstream response exceeds 10MB.
+- **Dead Configuration Keys & Timeout Cleanup (Issue #197)**: Removed non-existent configuration keys (`streamTotalTimeoutMs`, `connectTimeoutMs`, `idleTimeoutMs`) from `lib/routes/proxy.js` and eliminated dead timer logic.
+- **DSH Non-Existent Service API Calls Removal (Issue #199)**: Removed dead `settings?.get` and `settingsApi.watch` calls on DSH services that lack those methods.
+- **Corrupted Stats Backup Pruning (Issue #201)**: Added automatic rotation and pruning for `.corrupt.*` backup files in `lib/stats-storage.js`, retaining at most the 3 latest diagnostic copies to prevent unbounded disk usage.
+- **Version Literals & Slash Command Cleanup (Issue #202)**: Synchronized hardcoded fallback version literals to `'0.5.17'`, cleaned up unused `invocation` argument in `slash-command.js`, and updated fallback port detection (`ctx?.webServer?.port || ctx?.get?.('webServer')?.port || process.env.PORT || 3080`).
+
 ## [0.5.16] - 2026-10-04
 
 ### Fixed
