@@ -6,8 +6,7 @@ function SettingsPage(props) {
   const [status, setStatus] = React.useState(null)
   const [draft, setDraft] = React.useState(null)
   const [busy, setBusy] = React.useState('')
-  const [err, setErr] = React.useState('')
-  const [msg, setMsg] = React.useState('')
+  const [err, setErr] = React.useState(''), [msg, setMsg] = React.useState('')
   const [smokeResult, setSmokeResult] = React.useState(null)
 
   const [updateState, setUpdateState] = React.useState({
@@ -16,8 +15,7 @@ function SettingsPage(props) {
     error: '', notice: '',
   })
 
-  const [apiKeyInput, setApiKeyInput] = React.useState('')
-  const [showKey, setShowKey] = React.useState(false)
+  const [apiKeyInput, setApiKeyInput] = React.useState(''), [showKey, setShowKey] = React.useState(false)
 
   React.useEffect(() => { ensureCss() }, [])
 
@@ -35,9 +33,7 @@ function SettingsPage(props) {
     setDraft(data.config || {})
   }, [])
 
-  React.useEffect(() => {
-    load().catch((e) => setErr(String(e.message || e)))
-  }, [load])
+  React.useEffect(() => { load().catch((e) => setErr(String(e.message || e))) }, [load])
 
   const checkUpdate = React.useCallback(async () => {
     setUpdateState((s) => ({ ...s, checking: true, status: 'checking', error: '' }))
@@ -307,11 +303,7 @@ function SettingsPage(props) {
 
   const debounceTimerRef = typeof React.useRef === 'function' ? React.useRef(null) : { current: null }
 
-  React.useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-    }
-  }, [])
+  React.useEffect(() => () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current) }, [])
 
   function debounceSaveDisabledModels(nextDisabled, previousDisabled) {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
@@ -473,8 +465,7 @@ function SettingsPage(props) {
       onConfigUpdate: handleConfigPatch,
       onUpdateReasoningEffort: (modelId, effort) => {
         const next = { ...(draft?.modelReasoningDefaults || {}) }
-        if (!effort) delete next[modelId]
-        else next[modelId] = effort
+        if (!effort) delete next[modelId]; else next[modelId] = effort
         handleConfigPatch({ modelReasoningDefaults: next })
       },
       t,
@@ -492,6 +483,8 @@ function SettingsPage(props) {
       handleSmoke,
       handleUnregister,
       handleRegister,
+      proxyMode: draft?.proxyMode !== false,
+      onToggleProxy: (val) => handleConfigPatch({ proxyMode: val }),
       t,
     })
   )

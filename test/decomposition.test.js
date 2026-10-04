@@ -16,6 +16,7 @@ test('decomposition: all server modules are <= 600 lines', () => {
     'lib/http.js',
     'lib/index.js',
     'lib/models.js',
+    'lib/proxy-server.js',
     'lib/proxy-token.js',
     'lib/provider-sync.js',
     'lib/session-router.js',
@@ -125,4 +126,10 @@ test('decomposition: exported domain functions and objects exist', async () => {
 
   const slash = readFileSync(path.join(root, 'lib', 'slash-command.js'), 'utf8')
   assert.ok(slash.includes('export function registerSlashCommand'), 'registerSlashCommand must be exported')
+
+  const proxyServer = await import('../lib/proxy-server.js')
+  assert.equal(typeof proxyServer.startLoopbackProxyServer, 'function')
+  assert.equal(typeof proxyServer.stopLoopbackProxyServer, 'function')
+  assert.equal(typeof proxyServer.getProxyPort, 'function')
+  assert.equal(typeof proxyServer.detectHostWebServerFence, 'function')
 })
