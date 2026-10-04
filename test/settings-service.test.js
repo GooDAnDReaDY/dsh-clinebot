@@ -865,3 +865,66 @@ test("host: settingsApi.replace preserves verified catalog and timestamp when pe
   assert.equal(getBody.config.planSyncedAt, 1000, "Plan synced timestamp must NOT be reset when persistence fails")
   assert.equal(getBody.config.planSynced, true)
 })
+
+test('host: apply() with null or undefined config safely resolves default plain config (#200)', async () => {
+  let registeredRoutes = {}
+  const mockCtx = {
+    inject() {},
+    on() {},
+    logger: { warn() {} },
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (fn) => fn(),
+  }
+  apply(mockCtx, null)
+
+  let getBody = null
+  const getRes = {
+    writeHead: () => {},
+    end: (d) => { getBody = JSON.parse(d) },
+  }
+  await registeredRoutes['/dsh-clinebot/config']({ method: 'GET', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, getRes)
+  assert.equal(getBody.ok, true)
+  assert.equal(typeof getBody.config.enabled, 'boolean')
+  assert.equal(getBody.config.enabled, true)
+  assert.equal(getBody.config.baseUrl, 'https://api.cline.bot/api/v1')
+})
+
+test('host: live() returns plain booleans and unwrapped values when volatile boxes are present (#194)', async () => {
+  let registeredRoutes = {}
+  const enabledVolatile = {
+    get() { return false },
+    [Symbol.for('cosmokit.volatile')]: true,
+  }
+  const mockCtx = {
+    inject() {},
+    on() {},
+    logger: { warn() {} },
+    webServer: {
+      register: (r) => {
+        registeredRoutes[r.path] = r.handler
+        return () => {}
+      },
+    },
+    effect: (fn) => fn(),
+  }
+  const cfg = {
+    ...Config({}),
+    enabled: enabledVolatile,
+  }
+  apply(mockCtx, cfg)
+
+  let getBody = null
+  const getRes = {
+    writeHead: () => {},
+    end: (d) => { getBody = JSON.parse(d) },
+  }
+  await registeredRoutes['/dsh-clinebot/config']({ method: 'GET', headers: {}, socket: { remoteAddress: '127.0.0.1' } }, getRes)
+  assert.equal(getBody.ok, true)
+  assert.equal(typeof getBody.config.enabled, 'boolean')
+  assert.equal(getBody.config.enabled, false)
+})
