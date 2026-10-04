@@ -228,6 +228,8 @@ dsh-clinebot:
 * `POST /dsh-clinebot/v1/chat/completions` — 本地透明代理，支持 SSE 流式与完整响应、会话粘性路由、最低用量负载均衡、响应体超时防护 (`streamIdleTimeoutMs`) 以及 429 自动故障转移。
 * `GET /dsh-clinebot/v1/models` — 符合 OpenAI API 规范的模型列表。
 
+> **DSH Desktop 2.x 与无界面环境**：环回代理在 `127.0.0.1` 绑定独立的专用 HTTP 服务（临时端口），彻底绕过桌面端路由防护 (`DesktopWebServer` 的 `x-dsh-desktop-renderer` 限制）。内置防护检测机制 (`detectHostWebServerFence`) 在环回端口受限时自动回退为直连模式，用户亦可在设置页的“诊断”模块中直接切换代理模式。
+
 ---
 
 ## 🧪 测试
