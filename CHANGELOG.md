@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.16] - 2026-10-04
+
+### Fixed
+- **Dedicated Loopback Proxy Server & DSH Desktop 2.x Compatibility (Issues GH #12, #195)**: Resolved issue where `DesktopWebServer` on DSH Desktop 2.x in advanced shell mode rejected all internal loopback requests from the Node.js host process with HTTP 403 `forbidden` (lacking `x-dsh-desktop-renderer`). Decoupled proxy execution by spinning up an isolated dedicated HTTP loopback server listening on `127.0.0.1` (ephemeral port), completely bypassing host route fencing and restoring transparent proxy routing, multi-account failover, and telemetry on Desktop installations.
+- **Desktop Fence Self-Detection & Direct Upstream Fallback (Issues GH #12, #195)**: Added `detectHostWebServerFence` probe that detects `DesktopWebServer` 403 `forbidden` signatures on host ports; automatically falls back to direct upstream endpoint (`baseUrl`) if the dedicated loopback server is unavailable or fails to bind, guaranteeing requests never stall with `AUTH 403`.
+- **Proxy Mode UI Toggle in Diagnostics Section (Issues GH #12, #195)**: Added an explicit user-facing toggle in the Diagnostics & Auto-Registration settings card (`src/client/components/diag-section.js`) allowing users to easily switch between Transparent Loopback Proxy Mode (failover & telemetry) and Direct Mode (direct upstream connection) directly from the Web & Desktop UI.
+
 ## [0.5.15] - 2026-10-02
 
 ### Fixed

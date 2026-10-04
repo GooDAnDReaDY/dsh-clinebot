@@ -229,6 +229,8 @@ All endpoints are registered under `/dsh-clinebot/*` and protected against untru
 * `POST /dsh-clinebot/v1/chat/completions` — Transparent local proxy supporting streaming SSE and non-streaming responses, Bearer token authentication, sticky session affinity with least-used quota allocation, body read watchdog (`streamIdleTimeoutMs`), and automatic 429 failover.
 * `GET /dsh-clinebot/v1/models` — OpenAI-compatible catalog listing all active plan and custom models.
 
+> **DSH Desktop 2.x & Headless Environments**: The loopback proxy binds an isolated loopback HTTP server on `127.0.0.1` (ephemeral port), completely bypassing `DesktopWebServer` renderer fences (`x-dsh-desktop-renderer`). Automated fence detection (`detectHostWebServerFence`) falls back to direct upstream connection if the loopback server is restricted, and proxy mode can be directly toggled via the Diagnostics settings card.
+
 ---
 
 ## Visual verification
