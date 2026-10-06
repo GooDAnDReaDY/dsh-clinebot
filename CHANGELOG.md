@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.19] - 2026-10-07
+
+### Added
+- **Multi-Account Round-Robin Pool Mode (Issue #211)**: Added `accountMode` configuration setting (`least_used` | `round_robin`, default `least_used`) in schema, public config, and DSH settings API. Implemented sequential round-robin candidate rotation in `session-router.js` (`getNextRoundRobinAccount`) and active account rotation in `account-pool.js` (`rotateToNextAccount`), automatically skipping accounts in active cooldown. Added UI strategy selector button group in `AccountsSection` with canonical DSH core tokens and full English/Chinese localization.
+- **Pre-First-Token Failover Contract (Issue #212)**: In transparent loopback proxy (`/dsh-clinebot/v1/chat/completions`), response headers (`HTTP 200`, `Content-Type: text/event-stream`, `flushHeaders`) are now committed to the client only after receiving the first valid token chunk. Any upstream failure prior to the first token (HTTP 429, 402, 5xx, 401/403, TTFT timeout, connection reset, or early JSON error payload in 200 OK stream) triggers immediate cooldown and seamless failover to the next candidate account in the pool without exposing errors to the client. Non-streaming requests similarly enforce deadline and failover on body read errors before committing client response.
+
 ## [0.5.18] - 2026-10-06
 
 ### Fixed
