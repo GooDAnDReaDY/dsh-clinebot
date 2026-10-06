@@ -1,4 +1,4 @@
-function AccountsSection({ status, busy, handlePinAccount, handleAddAccount, handleDeleteAccount, t }) {
+function AccountsSection({ status, busy, handlePinAccount, handleAddAccount, handleDeleteAccount, accountMode, handleUpdateAccountMode, t }) {
   if (!status.accounts || !status.accounts.length) return null
 
   const [showAdd, setShowAdd] = React.useState(false)
@@ -68,6 +68,72 @@ function AccountsSection({ status, busy, handlePinAccount, handleAddAccount, han
         : null
     ),
     React.createElement('div', { className: 'cb-section-desc' }, t('accounts.desc')),
+    React.createElement(
+      'div',
+      {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          margin: '8px 0 12px 0',
+          fontSize: '12px',
+          color: 'var(--dsw-alias-label-secondary, #888)',
+        },
+      },
+      React.createElement('span', { style: { fontWeight: 500 } }, t('accounts.mode_label') + ':'),
+      React.createElement(
+        'div',
+        {
+          style: {
+            display: 'inline-flex',
+            borderRadius: '6px',
+            border: '1px solid var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 12%, transparent))',
+            overflow: 'hidden',
+          },
+        },
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: 'cb-btn',
+            style: {
+              borderRadius: 0,
+              fontSize: '11px',
+              padding: '3px 9px',
+              border: 'none',
+              background: (accountMode || 'least_used') === 'least_used'
+                ? 'var(--dsw-alias-interactive-bg-active, color-mix(in srgb, currentColor 14%, transparent))'
+                : 'transparent',
+              fontWeight: (accountMode || 'least_used') === 'least_used' ? 600 : 400,
+            },
+            onClick: () => typeof handleUpdateAccountMode === 'function' && handleUpdateAccountMode('least_used'),
+            disabled: !!busy,
+          },
+          t('accounts.mode_least_used')
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: 'cb-btn',
+            style: {
+              borderRadius: 0,
+              fontSize: '11px',
+              padding: '3px 9px',
+              border: 'none',
+              borderLeft: '1px solid var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 12%, transparent))',
+              background: accountMode === 'round_robin'
+                ? 'var(--dsw-alias-interactive-bg-active, color-mix(in srgb, currentColor 14%, transparent))'
+                : 'transparent',
+              fontWeight: accountMode === 'round_robin' ? 600 : 400,
+            },
+            onClick: () => typeof handleUpdateAccountMode === 'function' && handleUpdateAccountMode('round_robin'),
+            disabled: !!busy,
+          },
+          t('accounts.mode_round_robin')
+        )
+      )
+    ),
 
     showAdd
       ? React.createElement(

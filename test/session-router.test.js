@@ -14,7 +14,8 @@ import {
   getSessionRouterStatus,
   matchesAccount,
   isAccountBlocked,
-  getAccountUsageMetric
+  getAccountUsageMetric,
+  getNextRoundRobinAccount
 } from '../lib/session-router.js'
 
 test('session-router: selectLeastUsedAccount picks account with lowest percentUsed', () => {
@@ -385,4 +386,64 @@ test('session-router & account-pool: empty activeAccount defaults to least-used 
   const result = resolveSessionAccount('session-empty-active', pool, '')
   assert.equal(result.account.apiKeyEnv, 'CLINEBOT_API_KEY_2', 'least used account (1%) must be selected over default (99%)')
   assert.equal(result.reason, 'new_session_assigned')
+})
+
+test('session-router: getNextRoundRobinAccount sequentially rotates candidates and wraps cursor (#211)', () => {
+  resetSessionRouter()
+  const pool = [
+    { apiKeyEnv: 'CLINEBOT_API_KEY_1', id: 'acc1', present: true, value: 'k1' },
+    { apiKeyEnv: 'CLINEBOT_API_KEY_2', id: 'acc2', present: true, value: 'k2' },
+    { apiKeyEnv: 'CLINEBOT_API_KEY_3', id: 'acc3', present: true, value: 'k3' },
+  ]
+
+  const first = getNextRoundRobinAccount(pool)
+  assert.equal(first.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+
+  const second = getNextRoundRobinAccount(pool)
+  assert.equal(second.apiKeyEnv, 'CLINEBOT_API_KEY_2')
+
+  const third = getNextRoundRobinAccount(pool)
+  assert.equal(third.apiKeyEnv, 'CLINEBOT_API_KEY_3')
+
+  // Wrap around
+  const fourth = getNextRoundRobinAccount(pool)
+  assert.equal(fourth.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+})
+
+test('session-router: getNextRoundRobinAccount skips accounts in cooldown (#211)', () => {
+  resetSessionRouter()
+  const pool = [
+    { apiKeyEnv: 'CLINEBOT_API_KEY_1', id: 'acc1', present: true, value: 'k1' },
+    { apiKeyEnv: 'CLINEBOT_API_KEY_2', id: 'acc2', present: true, value: 'k2' },
+    { apiKeyEnv: 'CLINEBOT_API_KEY_3', id: 'acc3', present: true, value: 'k3' },
+  ]
+
+  markAccountCooldown('CLINEBOT_API_KEY_2', 60000, null, 'rate_limit')
+
+  const first = getNextRoundRobinAccount(pool)
+  assert.equal(first.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+
+  const second = getNextRoundRobinAccount(pool)
+  assert.equal(second.apiKeyEnv, 'CLINEBOT_API_KEY_3', 'Must skip acc2 in cooldown')
+})
+
+test('session-router: resolveSessionAccount in round_robin mode allocates sequentially for new sessions (#211)', () => {
+  resetSessionRouter()
+  const pool = [
+    { apiKeyEnv: 'CLINEBOT_API_KEY_1', id: 'acc1', present: true, value: 'k1' },
+    { apiKeyEnv: 'CLINEBOT_API_KEY_2', id: 'acc2', present: true, value: 'k2' },
+  ]
+
+  const s1 = resolveSessionAccount('session-1', pool, '', 'round_robin')
+  assert.equal(s1.account.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+  assert.equal(s1.reason, 'round_robin_assigned')
+
+  const s2 = resolveSessionAccount('session-2', pool, '', 'round_robin')
+  assert.equal(s2.account.apiKeyEnv, 'CLINEBOT_API_KEY_2')
+  assert.equal(s2.reason, 'round_robin_assigned')
+
+  // Sticky session persists
+  const s1Again = resolveSessionAccount('session-1', pool, '', 'round_robin')
+  assert.equal(s1Again.account.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+  assert.equal(s1Again.reason, 'sticky_pinned')
 })
