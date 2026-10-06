@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, statSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
@@ -12,6 +12,7 @@ const files = [
   'locales.js',
   'chevron.js',
   'styles.js',
+  'api.js',
   'error-boundary.js',
   'progress-bar.js',
   'components/update-banner.js',
@@ -49,6 +50,22 @@ ${parts.join('\n\n')}
 })
 `
 
+const isCheck = process.argv.includes('--check')
+
+if (isCheck) {
+  if (!existsSync(outFile)) {
+    console.error('[build-client] ERROR: lib/client.js does not exist!')
+    process.exit(1)
+  }
+  const current = readFileSync(outFile, 'utf8')
+  if (current !== bundle) {
+    console.error('[build-client] ERROR: Drift detected between src/client/ and lib/client.js! Run "npm run build:client" to sync.')
+    process.exit(1)
+  }
+  console.log('[build-client] Check mode: lib/client.js is up to date.')
+  process.exit(0)
+}
+
 writeFileSync(outFile, bundle, 'utf8')
 const stats = statSync(outFile)
 console.log(`[build-client] Rebuilt lib/client.js: ${stats.size} bytes (< 256 KiB limit)`)
@@ -66,20 +83,22 @@ try {
   process.exit(1)
 }
 
+const localEslint = path.join(root, 'node_modules', '.bin', 'eslint')
+const eslintCmd = existsSync(localEslint) ? localEslint : 'eslint'
+
 try {
-  execFileSync('eslint', [
+  execFileSync(eslintCmd, [
     '--no-config-lookup',
     '--rule', 'no-undef: 2',
-    '--global', 'window,document,console,fetch,setTimeout,clearTimeout',
+    '--global', 'window,document,console,fetch,setTimeout,clearTimeout,AbortController',
     outFile
   ], { stdio: 'inherit' })
   console.log('[build-client] no-undef check: OK')
 } catch (err) {
   if (err.code === 'ENOENT') {
-    // eslint not installed globally in this environment, skip CLI lint
+    console.warn('[build-client] WARNING: eslint binary not found (neither local nor global). Skipping CLI no-undef lint verification.')
   } else {
     console.error('[build-client] no-undef violations found in assembled lib/client.js!')
     process.exit(1)
   }
 }
-

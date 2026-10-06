@@ -65,7 +65,7 @@ function KeySection({ keyPresent, apiKeyInput, setApiKeyInput, showKey, setShowK
           href: 'https://app.cline.bot/settings/api-keys',
           target: '_blank',
           rel: 'noreferrer',
-          style: { color: 'var(--dsw-alias-state-brand-primary)' },
+          style: { color: 'var(--dsw-alias-brand-primary)' },
         },
         t('key.get_key')
       )

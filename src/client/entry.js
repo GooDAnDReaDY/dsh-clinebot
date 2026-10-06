@@ -12,7 +12,8 @@ function apply(ctx) {
   const addLocale = (locale, dictionary) => {
     try {
       return ctx.locale.register(NS, locale, dictionary)
-    } catch (_) {
+    } catch (err) {
+      console.warn(`[dsh-clinebot] Failed to register locale dictionary for ns "${NS}", locale "${locale}":`, err)
       return () => {}
     }
   }
@@ -82,19 +83,18 @@ function apply(ctx) {
   // The core keys the seat as `<bundle name>#<row id>`; `bundle.name` may be the
   // package name or the short bundle name depending on the manager's view, so both
   // spellings are registered — the unused one is inert.
-  for (const key of [ROW_CONFIG_KEY, ROW_ID + '#' + ROW_ID]) {
-    registerSlotWhenReady('plugins.row.config', () =>
-      ctx.slots.register(
-        {
-          name: 'plugins.row.config',
-          key,
-          locale: NS,
-          inject: () => ({ ctx }),
-        },
-        (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
-      )
+  // Row seat: key = ROW_CONFIG_KEY ('@goodandready/dsh-clinebot#dsh-clinebot').
+  registerSlotWhenReady('plugins.row.config', () =>
+    ctx.slots.register(
+      {
+        name: 'plugins.row.config',
+        key: ROW_CONFIG_KEY,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
     )
-  }
+  )
 
   registerSlotWhenReady('settings.plugin.item', () =>
     ctx.slots.register(

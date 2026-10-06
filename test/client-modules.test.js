@@ -88,8 +88,8 @@ test("client: apply registers settings.plugin.item exclusively without settings.
   assert.equal(cards[0].id, "dsh-clinebot")
   assert.equal(cards[0].locale, "dsh-clinebot")
   const rows = primaryRegistrations.filter((r) => r.name === "plugins.row.config")
-  assert.equal(rows.length, 2)
-  assert.deepEqual(rows.map((r) => r.key).sort(), ["@goodandready/dsh-clinebot#dsh-clinebot", "dsh-clinebot#dsh-clinebot"])
+  assert.equal(rows.length, 1)
+  assert.deepEqual(rows.map((r) => r.key), ["@goodandready/dsh-clinebot#dsh-clinebot"])
   assert.equal(rows[0].locale, "dsh-clinebot")
   const legacy = primaryRegistrations.filter((r) => r.name === "settings.plugin.item")
   assert.equal(legacy.length, 1)
@@ -497,7 +497,7 @@ test('client: no-undef check on lib/client.js passes with zero undeclared variab
     execFileSync('eslint', [
       '--no-config-lookup',
       '--rule', 'no-undef: 2',
-      '--global', 'window,document,console,fetch,setTimeout,clearTimeout',
+      '--global', 'window,document,console,fetch,setTimeout,clearTimeout,AbortController',
       path.join(root, 'lib', 'client.js')
     ], { stdio: 'pipe' })
   } catch (err) {
@@ -769,4 +769,239 @@ test('client: UpdateBanner distinguishes idle, error, available, and current sta
   })
   const curText = collectText(curVdom).join(' ')
   assert.ok(curText.includes('update.up_to_date'), 'current state must show update.up_to_date')
+})
+
+
+test('client (#204): all CSS alias tokens in src/client/ match canonical DSH core tokens', () => {
+  const CANONICAL_CORE_ALIAS_TOKENS = new Set([
+    '--dsw-alias-accent',
+    '--dsw-alias-accent-ink',
+    '--dsw-alias-accent-primary',
+    '--dsw-alias-accent-soft',
+    '--dsw-alias-action-primary',
+    '--dsw-alias-bg-accent',
+    '--dsw-alias-bg-base',
+    '--dsw-alias-bg-brand',
+    '--dsw-alias-bg-card',
+    '--dsw-alias-bg-danger',
+    '--dsw-alias-bg-field',
+    '--dsw-alias-bg-floating',
+    '--dsw-alias-bg-l1',
+    '--dsw-alias-bg-layer-0',
+    '--dsw-alias-bg-layer-1',
+    '--dsw-alias-bg-layer-2',
+    '--dsw-alias-bg-layer-3',
+    '--dsw-alias-bg-layer-hover',
+    '--dsw-alias-bg-multi-select',
+    '--dsw-alias-bg-overlay',
+    '--dsw-alias-bg-primary',
+    '--dsw-alias-bg-secondary',
+    '--dsw-alias-bg-skeleton',
+    '--dsw-alias-bg-surface',
+    '--dsw-alias-bg-warning',
+    '--dsw-alias-border-brand',
+    '--dsw-alias-border-default',
+    '--dsw-alias-border-l1',
+    '--dsw-alias-border-l2',
+    '--dsw-alias-border-l3',
+    '--dsw-alias-border-l4',
+    '--dsw-alias-brand-primary',
+    '--dsw-alias-brand-primary-invert',
+    '--dsw-alias-brand-text',
+    '--dsw-alias-button-primary-dimmed',
+    '--dsw-alias-button-primary-fill',
+    '--dsw-alias-button-primary-hover',
+    '--dsw-alias-interactive-bg-active',
+    '--dsw-alias-interactive-bg-hover',
+    '--dsw-alias-interactive-bg-hover-accent',
+    '--dsw-alias-label-dimmed',
+    '--dsw-alias-label-primary',
+    '--dsw-alias-label-primary-foreground',
+    '--dsw-alias-label-secondary',
+    '--dsw-alias-label-tertiary',
+    '--dsw-alias-markdown-code-block',
+    '--dsw-alias-markdown-code-block-banner',
+    '--dsw-alias-markdown-inline-code',
+    '--dsw-alias-scrollbar-bg-l1',
+    '--dsw-alias-scrollbar-hover-l1',
+    '--dsw-alias-state-business-primary',
+    '--dsw-alias-state-error-primary',
+    '--dsw-alias-state-success-primary',
+    '--dsw-alias-state-warn-primary',
+    '--dsw-alias-toast-bg',
+    '--dsw-alias-tooltip-bg',
+  ])
+
+  const invalidTokens = [
+    '--dsw-alias-state-warning-primary',
+    '--dsw-alias-state-brand-primary',
+    '--dsw-alias-bg-hover',
+    '--dsw-alias-border',
+    '--dsw-alias-bg-layer-4',
+    '--dsw-alias-status-danger',
+  ]
+
+  const clientDir = path.join(root, 'src', 'client')
+  function getJsFiles(dir) {
+    let results = []
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        results = results.concat(getJsFiles(full))
+      } else if (entry.name.endsWith('.js')) {
+        results.push(full)
+      }
+    }
+    return results
+  }
+
+  const jsFiles = getJsFiles(clientDir)
+  const usedTokens = new Set()
+  for (const f of jsFiles) {
+    const code = readFileSync(f, 'utf8')
+    const matches = code.match(/--dsw-alias-[a-zA-Z0-9_-]+/g) || []
+    for (const m of matches) {
+      usedTokens.add(m)
+    }
+  }
+
+  for (const bad of invalidTokens) {
+    assert.equal(usedTokens.has(bad), false, `Invalid token ${bad} must not be used in src/client/`)
+  }
+
+  for (const token of usedTokens) {
+    assert.ok(
+      CANONICAL_CORE_ALIAS_TOKENS.has(token),
+      `CSS token "${token}" is not a canonical DSH core alias token`
+    )
+  }
+})
+
+test('client (#205): fetchWithTimeout enforces abort timeout and formats error', async () => {
+  const apiCode = readFileSync(path.join(root, 'src', 'client', 'api.js'), 'utf8')
+  const sandbox = {
+    setTimeout,
+    clearTimeout,
+    AbortController,
+    Error: globalThis.Error,
+    fetch: async (url, opts) => {
+      if (url.includes('/timeout')) {
+        return new Promise((resolve, reject) => {
+          opts.signal.addEventListener('abort', () => {
+            const err = new Error('The operation was aborted')
+            err.name = 'AbortError'
+            reject(err)
+          })
+        })
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true }) }
+    },
+    module: { exports: {} },
+  }
+  vm.createContext(sandbox)
+  vm.runInContext(apiCode + '\nmodule.exports = { fetchWithTimeout };', sandbox)
+  const { fetchWithTimeout } = sandbox.module.exports
+
+  const res = await fetchWithTimeout('http://example.com/ok', {}, 500)
+  assert.equal(res.ok, true)
+
+  await assert.rejects(
+    async () => {
+      await fetchWithTimeout('http://example.com/timeout', {}, 50)
+    },
+    (err) => {
+      assert.match(String(err?.message || err), /Request timed out/i)
+      return true
+    }
+  )
+
+  await assert.rejects(
+    async () => {
+      await fetchWithTimeout(
+        'http://example.com/timeout',
+        { t: (k, vars) => `Запрос превысил таймаут (${vars.seconds}с)` },
+        50
+      )
+    },
+    (err) => {
+      assert.equal(String(err?.message || err), 'Запрос превысил таймаут (0с)')
+      return true
+    }
+  )
+})
+
+test('client (#208): entry registers plugins.row.config strictly with ROW_CONFIG_KEY', () => {
+  const entryCode = readFileSync(path.join(root, 'src', 'client', 'entry.js'), 'utf8')
+  assert.ok(
+    entryCode.includes('key: ROW_CONFIG_KEY'),
+    'entry.js must register plugins.row.config with ROW_CONFIG_KEY'
+  )
+  assert.ok(
+    !entryCode.includes("ROW_ID + '#' + ROW_ID"),
+    'entry.js must not register redundant legacy row id key'
+  )
+  assert.ok(
+    !entryCode.includes("'dsh-clinebot#dsh-clinebot'"),
+    'entry.js must not contain literal dsh-clinebot#dsh-clinebot'
+  )
+})
+
+test('client (#209): entry logs warning on locale dictionary registration failure without crashing', () => {
+  let record = null
+  const originalLoader = globalThis.__ModuleLoader__
+  const originalWindow = globalThis.window
+  globalThis.window = {
+    __ModuleLoader__: {
+      load: (rec) => { record = rec }
+    }
+  }
+  globalThis.__ModuleLoader__ = globalThis.window.__ModuleLoader__
+
+  const clientPath = path.join(root, 'lib', 'client.js')
+  const clientCode = readFileSync(clientPath, 'utf8')
+
+  const warnings = []
+  const originalWarn = console.warn
+  console.warn = (...args) => { warnings.push(args.join(' ')) }
+
+  try {
+    vm.runInThisContext(clientCode)
+    assert.ok(record, 'record must be loaded')
+
+    const ReactMock = {
+      useState: (init) => [init, () => {}],
+      useEffect: () => {},
+      useCallback: (cb) => cb,
+      useMemo: (cb) => cb(),
+      useSyncExternalStore: () => 'ready',
+      createElement: () => ({}),
+    }
+
+    const exports = record.factory((spec) => {
+      if (spec === 'react') return ReactMock
+      throw new Error('Unexpected spec: ' + spec)
+    })
+
+    const ctx = {
+      effect: (fn) => fn(),
+      slots: { inject: () => {}, register: () => {} },
+      locale: {
+        register: (ns, loc) => {
+          throw new Error('Duplicate locale registration error')
+        }
+      },
+    }
+
+    assert.doesNotThrow(() => {
+      exports.apply(ctx)
+    })
+
+    assert.ok(warnings.length >= 2, 'Should have logged warnings for en and zh failures')
+    assert.ok(warnings.some((w) => w.includes('dsh-clinebot') && w.includes('en')), 'Warning must contain ns and locale en')
+    assert.ok(warnings.some((w) => w.includes('dsh-clinebot') && w.includes('zh')), 'Warning must contain ns and locale zh')
+  } finally {
+    console.warn = originalWarn
+    globalThis.__ModuleLoader__ = originalLoader
+    globalThis.window = originalWindow
+  }
 })

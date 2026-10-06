@@ -22,8 +22,8 @@ function SettingsPage(props) {
   const load = React.useCallback(async () => {
     setErr('')
     const [res, statsRes] = await Promise.all([
-      fetch(`${ROUTE_PREFIX}/status`, { cache: 'no-store' }),
-      fetch(`${ROUTE_PREFIX}/stats`, { cache: 'no-store' }).catch(() => null),
+      fetchWithTimeout(`${ROUTE_PREFIX}/status`, { cache: 'no-store' }),
+      fetchWithTimeout(`${ROUTE_PREFIX}/stats`, { cache: 'no-store' }).catch(() => null),
     ])
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
@@ -38,7 +38,7 @@ function SettingsPage(props) {
   const checkUpdate = React.useCallback(async () => {
     setUpdateState((s) => ({ ...s, checking: true, status: 'checking', error: '' }))
     try {
-      const res = await fetch(`${ROUTE_PREFIX}/update`)
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/update`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json().catch(() => ({}))
       if (data.latestCheckFailed) {
@@ -82,7 +82,7 @@ function SettingsPage(props) {
     if (updateState.updating) return
     setUpdateState((s) => ({ ...s, updating: true, error: '', notice: '' }))
     try {
-      const res = await fetch(`${ROUTE_PREFIX}/update`, {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/update`, {
         method: 'POST',
         headers: { 'x-dsh-plugin-update': '1' },
       })
@@ -126,7 +126,7 @@ function SettingsPage(props) {
     const keyVal = String(apiKeyInput || '').trim()
     if (!keyVal) { setErr(t('key.empty_err')); return }
     await performAction('save-key', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/save-key`, {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/save-key`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKey: keyVal, apiKeyEnv: draft?.apiKeyEnv }),
       })
@@ -140,7 +140,7 @@ function SettingsPage(props) {
 
   async function handleRefreshQuota() {
     await performAction('refresh-quota', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/usage`)
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/usage`)
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setStatus((prev) => (prev ? { ...prev, usage: data } : prev))
@@ -150,7 +150,7 @@ function SettingsPage(props) {
 
   async function handleUpdateModelContext(payload) {
     await performAction('update-context', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/models/context`, {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/models/context`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
@@ -163,7 +163,7 @@ function SettingsPage(props) {
 
   async function handleSyncPlanModels() {
     await performAction('sync-models', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/models/sync`, { method: 'POST' })
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/models/sync`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setMsg(t('models.synced_msg', { total: data.totalModelsCount, discovered: data.discoveredCount }))
@@ -173,7 +173,7 @@ function SettingsPage(props) {
 
   async function handleRegister() {
     await performAction('register', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/register`, { method: 'POST' })
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/register`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       const count = status?.availableModels?.filter((m) => !(draft?.disabledModels || []).includes(m.id)).length || 0
@@ -184,7 +184,7 @@ function SettingsPage(props) {
 
   async function handleUnregister() {
     await performAction('unregister', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/unregister`, { method: 'POST' })
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/unregister`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setMsg(t('diag.unregistered_msg'))
@@ -195,7 +195,7 @@ function SettingsPage(props) {
   async function handleSmoke() {
     setSmokeResult(null)
     await performAction('smoke', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/smoke`, {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/smoke`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: draft?.defaultModel }),
@@ -219,7 +219,7 @@ function SettingsPage(props) {
     verifyTimerRef.current = setTimeout(async () => {
       setVerifyStatus({ state: 'verifying', email: '', plan: '', error: '' })
       try {
-        const res = await fetch(`${ROUTE_PREFIX}/key/verify`, {
+        const res = await fetchWithTimeout(`${ROUTE_PREFIX}/key/verify`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ key: raw }),
         })
@@ -244,7 +244,7 @@ function SettingsPage(props) {
 
   async function handlePinAccount(accountEnv) {
     await performAction('pin-account', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/accounts/active`, {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/accounts/active`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ account: accountEnv }),
       })
@@ -256,7 +256,7 @@ function SettingsPage(props) {
 
   async function handleAddAccount({ label, apiKeyEnv, apiKey }) {
     await performAction('add-account', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/accounts`, {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/accounts`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label, apiKeyEnv, apiKey }),
       })
@@ -269,7 +269,7 @@ function SettingsPage(props) {
 
   async function handleDeleteAccount(accountEnv, deleteSecret = true) {
     await performAction('delete-account', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/accounts/delete`, {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/accounts/delete`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ apiKeyEnv: accountEnv, deleteSecret }),
       })
@@ -282,7 +282,7 @@ function SettingsPage(props) {
   async function handleConfigPatch(patch) {
     setDraft((d) => ({ ...(d || {}), ...(patch || {}) }))
     await performAction('patch-config', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/config`, {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/config`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ config: patch }),
       })
@@ -294,7 +294,7 @@ function SettingsPage(props) {
 
   async function handleResetStats() {
     await performAction('reset-stats', async () => {
-      const res = await fetch(`${ROUTE_PREFIX}/stats/reset`, { method: 'POST' })
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/stats/reset`, { method: 'POST' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       await load()
@@ -309,7 +309,7 @@ function SettingsPage(props) {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
     debounceTimerRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`${ROUTE_PREFIX}/models/toggle`, {
+        const res = await fetchWithTimeout(`${ROUTE_PREFIX}/models/toggle`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ disabledModels: nextDisabled }),
