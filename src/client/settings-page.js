@@ -435,11 +435,9 @@ function SettingsPage(props) {
 
     // Accounts Pool Card
     React.createElement(AccountsSection, {
-      status,
-      busy,
-      handlePinAccount,
-      handleAddAccount,
-      handleDeleteAccount,
+      status, busy, handlePinAccount, handleAddAccount, handleDeleteAccount,
+      accountMode: draft?.accountMode || status?.config?.accountMode || 'least_used',
+      handleUpdateAccountMode: (mode) => handleConfigPatch({ accountMode: mode }),
       t,
     }),
 
