@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.18] - 2026-10-06
+
+### Fixed
+- **Canonical Core CSS Theme Tokens Replacement (Issue #204)**: Replaced 6 non-existent legacy theme tokens across `src/client/` (`state-warning-primary`, `state-brand-primary`, `bg-hover`, `border`, `bg-layer-4`, `status-danger`) with canonical DSH 0.2.0-rc.2 core alias tokens (`state-warn-primary`, `brand-primary`, `interactive-bg-hover`, `border-l2`, `state-error-primary`), restoring color accents to warning badges, progress bars, warning banners, input focus states, button hover states, and critical quota warnings. Added automated test verifying all `--dsw-alias-*` tokens against canonical core allowlist.
+- **Client Fetch Abort Timeout Protection (Issue #205)**: Implemented modular client helper `fetchWithTimeout(url, opts, ms = 30000)` using `AbortController` in `src/client/api.js`. Wrapped all 18 client-side `fetch` calls in `src/client/settings-page.js` to prevent infinite loading/busy button lockups on unresponsive networks or stalled endpoints, unlocking UI states after 30 seconds with informative timeout messaging.
+- **Explicit Warning and Local Fallback for Missing ESLint (Issue #206)**: Updated `scripts/build-client.js` to look for local `node_modules/.bin/eslint` before fallback and emit an explicit stdout warning when eslint is not installed rather than silently suppressing ENOENT. Added `AbortController` to global identifier declarations.
+- **Build Drift Verification via --check Flag (Issue #207)**: Added `--check` mode to `scripts/build-client.js` to verify in memory whether `lib/client.js` is in sync with `src/client/` source modules without rewriting the bundle. Integrated `--check` validation into `test/decomposition.test.js` to prevent uncommitted client bundle drift.
+- **Strict Canonical Row Slot Key Registration (Issue #208)**: Removed redundant loop in `src/client/entry.js` registering inert legacy key `dsh-clinebot#dsh-clinebot`. Retained strictly canonical row seat registration under `ROW_CONFIG_KEY` (`@goodandready/dsh-clinebot#dsh-clinebot`).
+- **Locale Dictionary Registration Error Logging (Issue #209)**: In `src/client/entry.js`, added explicit `console.warn` diagnostics reporting namespace and locale details upon `ctx.locale.register` failure instead of silently swallowing dictionary errors.
+
 ## [0.5.17] - 2026-10-05
 
 ### Fixed
