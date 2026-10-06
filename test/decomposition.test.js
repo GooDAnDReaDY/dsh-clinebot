@@ -133,3 +133,11 @@ test('decomposition: exported domain functions and objects exist', async () => {
   assert.equal(typeof proxyServer.getProxyPort, 'function')
   assert.equal(typeof proxyServer.detectHostWebServerFence, 'function')
 })
+
+
+test('decomposition: build-client --check verifies lib/client.js matches src/client/ (#207)', async () => {
+  const { execFileSync } = await import('node:child_process')
+  assert.doesNotThrow(() => {
+    execFileSync(process.execPath, [path.join(root, 'scripts', 'build-client.js'), '--check'], { stdio: 'pipe' })
+  })
+})

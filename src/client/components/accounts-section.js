@@ -75,8 +75,8 @@ function AccountsSection({ status, busy, handlePinAccount, handleAddAccount, han
           {
             onSubmit: onSubmitAdd,
             style: {
-              background: 'var(--dsw-alias-bg-hover, color-mix(in srgb, currentColor 4%, transparent))',
-              border: '1px solid var(--dsw-alias-border, color-mix(in srgb, currentColor 12%, transparent))',
+              background: 'var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, currentColor 4%, transparent))',
+              border: '1px solid var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 12%, transparent))',
               borderRadius: '8px',
               padding: '12px',
               marginBottom: '14px',
