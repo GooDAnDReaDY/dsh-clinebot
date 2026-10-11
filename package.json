@@ -1,6 +1,6 @@
 {
   "name": "@goodandready/dsh-clinebot",
-  "version": "0.5.19",
+  "version": "0.5.20",
   "description": "DeepSeek Harness companion for ClineBot / ClinePass: dynamic subscription models sync, quota exhaustion warnings, session metrics, dedicated settings page, live usage limits, and /cline slash-command.",
   "license": "MIT",
   "type": "module",
@@ -64,7 +64,8 @@
     "@deepseek-ai/schemastery": "^3.18.1"
   },
   "devDependencies": {
-    "@deepseek-ai/schemastery": "^3.18.1"
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "eslint": "^9.39.5"
   },
   "homepage": "https://github.com/GooDAnDReaDY/dsh-clinebot#readme",
   "bugs": {
