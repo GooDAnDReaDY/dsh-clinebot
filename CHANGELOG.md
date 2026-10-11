@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.20] - 2026-10-11
+
+### Fixed
+- **Local ESLint Binary Execution and devDependencies Enforcement (Issue #214)**: Added `eslint` (`^9.39.5`) to `devDependencies` in `package.json` and committed `package-lock.json`. Updated `scripts/build-client.js` to strictly enforce local binary execution (`node_modules/.bin/eslint`) and immediately abort with exit code 1 if `eslint` is missing, preventing silent bypass of `no-undef` validation on fresh clones and CI environments. Added automated decomposition test in `test/decomposition.test.js` validating local `eslint` presence and zero `no-undef` violations.
+
 ## [0.5.19] - 2026-10-07
 
 ### Added
