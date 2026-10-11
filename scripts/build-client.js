@@ -96,9 +96,9 @@ try {
   console.log('[build-client] no-undef check: OK')
 } catch (err) {
   if (err.code === 'ENOENT') {
-    console.warn('[build-client] WARNING: eslint binary not found (neither local nor global). Skipping CLI no-undef lint verification.')
-  } else {
-    console.error('[build-client] no-undef violations found in assembled lib/client.js!')
+    console.error('[build-client] ERROR: eslint binary not found! Install devDependencies (npm install) before building.')
     process.exit(1)
   }
+  console.error('[build-client] no-undef violations found in assembled lib/client.js!')
+  process.exit(1)
 }

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
@@ -140,4 +140,17 @@ test('decomposition: build-client --check verifies lib/client.js matches src/cli
   assert.doesNotThrow(() => {
     execFileSync(process.execPath, [path.join(root, 'scripts', 'build-client.js'), '--check'], { stdio: 'pipe' })
   })
+})
+
+
+test('decomposition: build-client invokes local eslint and enforces no-undef check (#214)', async () => {
+  const { execFileSync } = await import('node:child_process')
+  const eslintBinary = path.join(root, 'node_modules', '.bin', 'eslint')
+  assert.ok(existsSync(eslintBinary), 'Local eslint binary must exist in node_modules/.bin/eslint')
+
+  const out = execFileSync(process.execPath, [path.join(root, 'scripts', 'build-client.js')], {
+    encoding: 'utf8',
+    stdio: 'pipe'
+  })
+  assert.ok(out.includes('[build-client] no-undef check: OK'), 'build-client must successfully execute no-undef check')
 })
