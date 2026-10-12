@@ -5,6 +5,17 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.21] - 2026-10-12
+
+### Added
+- **Configurable Model Max Output Tokens (maxTokens) & Form Controls (Issue #216, GH #13)**: Exposed editable `maxTokens` (Max Output Tokens) in the Models settings UI alongside context window, complete with preset Default/Original buttons, input controls, and badge status displays. Added context length and max output token configuration fields to the Custom Models form.
+- **Wildcard Override Defaults and Apply-to-All Action (Issue #216, GH #13)**: Implemented wildcard model context override (`modelId: '*'`) in `getAllModels` and an "All" action in the settings UI calling `/dsh-clinebot/models/context` (`mode: 'apply-all'`) to batch-apply preferred context window and max output tokens across all models.
+- **Authentic Vendor Model Limits (Issue #216, GH #13)**: Added accurate `originalMaxTokens` specifications across models (Qwen 131072, GLM 128000, MiniMax 128000, Kimi 65536, DeepSeek-V4.1 65536, MiMo 16384) and updated original context windows for DeepSeek-V4.1 and GLM-5.3.
+
+### Fixed
+- **Preservation of Manual Provider Token Limits Across Sync (Issue #216, GH #13)**: `buildPiAiProvider` and `upsertPiAiProvider` now query existing provider models from `llm-pi-ai.providers.clinebot.models` and preserve user edits to `contextWindow` and `maxTokens` during dynamic catalog synchronization when not explicitly overridden by plugin configuration.
+- **Context Override Detection for Output Limits (Issue #216, GH #13)**: Updated `isContextOverridden` calculation to consider custom `maxTokens` deviations (`activeMaxTokens !== defaultMaxTokens`), properly reflecting override badges in the UI.
+
 ## [0.5.20] - 2026-10-11
 
 ### Fixed
