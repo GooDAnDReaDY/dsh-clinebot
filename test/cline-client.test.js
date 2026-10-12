@@ -471,18 +471,24 @@ test('cline-client: buildPiAiProvider preserves custom overridden contextWindow 
       name: 'Kimi K3',
       contextLength: 2000000,
       maxTokens: 16384,
+      isContextOverridden: true,
     },
     {
       id: 'cline-pass/qwen3.7-max',
       name: 'Qwen 3.7 Max',
-      contextWindow: 1000000,
+      contextLength: 200000,
       maxTokens: 8192,
+      isContextOverridden: false,
     },
+  ]
+  const existingModels = [
+    { id: 'cline-pass/qwen3.7-max', contextWindow: 123456, maxTokens: 65432 },
   ]
   const provider = buildPiAiProvider({
     baseUrl: 'https://api.cline.bot/api/v1',
     apiKeyEnv: 'MY_KEY',
     models,
+    existingModels,
   })
 
   const kimi = provider.models.find((m) => m.id === 'cline-pass/kimi-k3')
@@ -492,8 +498,8 @@ test('cline-client: buildPiAiProvider preserves custom overridden contextWindow 
 
   const qwen = provider.models.find((m) => m.id === 'cline-pass/qwen3.7-max')
   assert.ok(qwen)
-  assert.equal(qwen.contextWindow, 1000000)
-  assert.equal(qwen.maxTokens, 8192)
+  assert.equal(qwen.contextWindow, 123456, 'Preserves manual contextWindow from existing provider models')
+  assert.equal(qwen.maxTokens, 65432, 'Preserves manual maxTokens from existing provider models')
 })
 
 test('cline-client: retryWithBackoff cancels response body on rejected HTTP 429/502/503/504 before retry (#167)', async () => {

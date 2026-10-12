@@ -639,6 +639,33 @@ test('commands & routes: custom models are preserved in slash command test/model
     const customInUpdated = data1.models.find((m) => m.id === 'custom/specialized-coder')
     assert.ok(customInUpdated, 'Custom model must be included in updated models')
 
+    // 4b. POST /dsh-clinebot/models/context with mode=apply-all applies limits to all models and wildcard (GH #13)
+    const { req: reqApplyAll, res: resApplyAll, getData: getDataApplyAll } = createMockReqRes({
+      mode: 'apply-all',
+      contextLength: 500000,
+      maxTokens: 32768,
+    })
+    await contextHandler(reqApplyAll, resApplyAll)
+    const dataApplyAll = getDataApplyAll()
+    assert.ok(dataApplyAll.ok)
+    const dsModel = dataApplyAll.models.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
+    assert.ok(dsModel)
+    assert.equal(dsModel.contextLength, 500000)
+    assert.equal(dsModel.maxTokens, 32768)
+
+    // 4c. POST /dsh-clinebot/models/context single-model override preserving other field (GH #13)
+    const { req: reqSingle, res: resSingle, getData: getDataSingle } = createMockReqRes({
+      modelId: 'cline-pass/deepseek-v4-flash',
+      maxTokens: 64000,
+    })
+    await contextHandler(reqSingle, resSingle)
+    const dataSingle = getDataSingle()
+    assert.ok(dataSingle.ok)
+    const dsSingle = dataSingle.models.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
+    assert.ok(dsSingle)
+    assert.equal(dsSingle.maxTokens, 64000)
+    assert.equal(dsSingle.contextLength, 500000)
+
     // 5. POST /dsh-clinebot/models/toggle with enabledModels preserves custom model
     const toggleHandler = registeredRoutes.find((r) => r.path === '/dsh-clinebot/models/toggle')?.handler
     assert.ok(toggleHandler, 'Toggle handler must be registered')

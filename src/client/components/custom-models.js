@@ -1,17 +1,21 @@
 function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
   const [newId, setNewId] = React.useState('')
   const [newName, setNewName] = React.useState('')
+  const [newCtx, setNewCtx] = React.useState('')
+  const [newMax, setNewMax] = React.useState('')
   const [isExpanded, setIsExpanded] = React.useState(false)
 
   function handleAdd() {
     const trimmedId = newId.trim()
     const trimmedName = newName.trim() || trimmedId
     if (!trimmedId) return
+    const parsedCtx = parseInt(newCtx, 10)
+    const parsedMax = parseInt(newMax, 10)
     const nextList = [...customModels.filter((m) => m.id !== trimmedId), {
       id: trimmedId,
       name: trimmedName,
-      contextLength: 128000,
-      maxTokens: 8192,
+      contextLength: parsedCtx > 0 ? parsedCtx : 128000,
+      maxTokens: parsedMax > 0 ? parsedMax : 8192,
       category: 'general',
       isCustom: true,
     }]
@@ -20,6 +24,8 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
     }
     setNewId('')
     setNewName('')
+    setNewCtx('')
+    setNewMax('')
   }
 
   function handleDelete(id) {
@@ -70,7 +76,7 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
             React.createElement('input', {
               type: 'text',
               className: 'cb-input',
-              style: { flex: '1 1 180px' },
+              style: { flex: '2 1 140px' },
               placeholder: t('models.custom_id'),
               value: newId,
               disabled: !!busy,
@@ -79,11 +85,31 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
             React.createElement('input', {
               type: 'text',
               className: 'cb-input',
-              style: { flex: '1 1 180px' },
+              style: { flex: '2 1 140px' },
               placeholder: t('models.custom_name'),
               value: newName,
               disabled: !!busy,
               onChange: (e) => setNewName(e.target.value),
+            }),
+            React.createElement('input', {
+              type: 'number',
+              className: 'cb-input',
+              style: { flex: '1 1 90px' },
+              placeholder: t('models.custom_ctx_label'),
+              title: t('models.custom_ctx_label'),
+              value: newCtx,
+              disabled: !!busy,
+              onChange: (e) => setNewCtx(e.target.value),
+            }),
+            React.createElement('input', {
+              type: 'number',
+              className: 'cb-input',
+              style: { flex: '1 1 80px' },
+              placeholder: t('models.custom_max_label'),
+              title: t('models.custom_max_label'),
+              value: newMax,
+              disabled: !!busy,
+              onChange: (e) => setNewMax(e.target.value),
             }),
             React.createElement(
               'button',
@@ -120,7 +146,8 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
                       'div',
                       null,
                       React.createElement('span', { style: { fontWeight: 500 } }, cm.name || cm.id),
-                      React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)', marginLeft: '8px' } }, `(${cm.id})`)
+                      React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)', marginLeft: '8px' } }, `(${cm.id})`),
+                      React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)', marginLeft: '8px', fontSize: '11px' } }, `[${cm.contextLength || 128000} / ${cm.maxTokens || 8192}]`)
                     ),
                     React.createElement(
                       'button',

@@ -22,6 +22,7 @@ function ModelsSection({
   const [viewFilter, setViewFilter] = React.useState('all')
   const [editingModelId, setEditingModelId] = React.useState(null)
   const [customCtxVal, setCustomCtxVal] = React.useState('')
+  const [customMaxVal, setCustomMaxVal] = React.useState('')
 
   function formatCtx(num) {
     num = Number(num) || 200000
@@ -217,9 +218,11 @@ function ModelsSection({
           const isEnabled = !disabledSet.has(m.id)
           const defaultCtx = m.defaultContextLength || m.clineContextLength || 200000
           const origCtx = m.originalContextLength || 200000
+          const defaultMax = m.defaultMaxTokens || 8192
+          const origMax = m.originalMaxTokens || defaultMax
           const origProv = m.originalProvider || 'Original'
           const isOverridden = Boolean(m.isContextOverridden)
-          const isOriginal = isOverridden && (m.contextLength === origCtx)
+          const isOriginal = isOverridden && (m.contextLength === origCtx && (m.maxTokens || defaultMax) === origMax)
 
           return React.createElement(
             'tr',
@@ -278,7 +281,7 @@ function ModelsSection({
                             setEditingModelId(null)
                           },
                         },
-                        t('models.ctx_default', { ctx: formatCtx(defaultCtx) })
+                        t('models.ctx_default', { ctx: formatCtx(defaultCtx), max: formatCtx(defaultMax) })
                       ),
                       React.createElement(
                         'button',
@@ -288,40 +291,75 @@ function ModelsSection({
                           style: { padding: '2px 6px', fontSize: '11px' },
                           onClick: () => {
                             if (typeof handleUpdateModelContext === 'function') {
-                              handleUpdateModelContext({ modelId: m.id, contextLength: origCtx })
+                              handleUpdateModelContext({ modelId: m.id, contextLength: origCtx, maxTokens: origMax })
                             }
                             setEditingModelId(null)
                           },
                         },
-                        t('models.ctx_original', { ctx: formatCtx(origCtx), provider: origProv })
+                        t('models.ctx_original', { ctx: formatCtx(origCtx), max: formatCtx(origMax), provider: origProv })
                       )
                     ),
                     React.createElement(
                       'div',
-                      { style: { display: 'flex', gap: '4px', alignItems: 'center' } },
+                      { style: { display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' } },
                       React.createElement('input', {
                         type: 'number',
                         className: 'cb-input',
-                        style: { height: '24px', fontSize: '11px', padding: '0 6px', width: '120px' },
-                        placeholder: t('models.ctx_custom_placeholder'),
+                        style: { height: '24px', fontSize: '11px', padding: '0 6px', width: '90px' },
+                        placeholder: t('models.ctx_window_label'),
+                        title: t('models.ctx_window_label'),
                         value: customCtxVal,
                         onChange: (e) => setCustomCtxVal(e.target.value),
+                      }),
+                      React.createElement('input', {
+                        type: 'number',
+                        className: 'cb-input',
+                        style: { height: '24px', fontSize: '11px', padding: '0 6px', width: '75px' },
+                        placeholder: t('models.ctx_max_tokens_label'),
+                        title: t('models.ctx_max_tokens_label'),
+                        value: customMaxVal,
+                        onChange: (e) => setCustomMaxVal(e.target.value),
                       }),
                       React.createElement(
                         'button',
                         {
                           type: 'button',
                           className: 'cb-btn cb-btn-primary',
-                          style: { padding: '2px 8px', fontSize: '11px' },
+                          style: { padding: '2px 6px', fontSize: '11px' },
                           onClick: () => {
-                            const val = parseInt(customCtxVal, 10)
-                            if (val > 0 && typeof handleUpdateModelContext === 'function') {
-                              handleUpdateModelContext({ modelId: m.id, contextLength: val })
+                            const cVal = parseInt(customCtxVal, 10)
+                            const mVal = parseInt(customMaxVal, 10)
+                            if (typeof handleUpdateModelContext === 'function') {
+                              const payload = { modelId: m.id }
+                              if (cVal > 0) payload.contextLength = cVal
+                              if (mVal > 0) payload.maxTokens = mVal
+                              handleUpdateModelContext(payload)
                             }
                             setEditingModelId(null)
                           },
                         },
                         t('models.ctx_save')
+                      ),
+                      React.createElement(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'cb-btn',
+                          title: t('models.ctx_apply_all_title'),
+                          style: { padding: '2px 5px', fontSize: '11px' },
+                          onClick: () => {
+                            const cVal = parseInt(customCtxVal, 10)
+                            const mVal = parseInt(customMaxVal, 10)
+                            if (typeof handleUpdateModelContext === 'function') {
+                              const payload = { mode: 'apply-all' }
+                              if (cVal > 0) payload.contextLength = cVal
+                              if (mVal > 0) payload.maxTokens = mVal
+                              handleUpdateModelContext(payload)
+                            }
+                            setEditingModelId(null)
+                          },
+                        },
+                        t('models.ctx_apply_all')
                       ),
                       React.createElement(
                         'button',
@@ -344,10 +382,11 @@ function ModelsSection({
                         style: { fontWeight: '600', cursor: 'pointer' },
                         onClick: () => {
                           setCustomCtxVal(String(m.contextLength || defaultCtx))
+                          setCustomMaxVal(String(m.maxTokens || defaultMax))
                           setEditingModelId(m.id)
                         },
                       },
-                      formatCtx(m.contextLength || defaultCtx)
+                      `${formatCtx(m.contextLength || defaultCtx)} / ${formatCtx(m.maxTokens || defaultMax)}`
                     ),
                     isOverridden
                       ? React.createElement(
@@ -357,6 +396,7 @@ function ModelsSection({
                             style: { fontSize: '10px', padding: '1px 6px', cursor: 'pointer' },
                             onClick: () => {
                               setCustomCtxVal(String(m.contextLength || defaultCtx))
+                              setCustomMaxVal(String(m.maxTokens || defaultMax))
                               setEditingModelId(m.id)
                             },
                           },
@@ -372,6 +412,7 @@ function ModelsSection({
                         title: t('models.ctx_edit'),
                         onClick: () => {
                           setCustomCtxVal(String(m.contextLength || defaultCtx))
+                          setCustomMaxVal(String(m.maxTokens || defaultMax))
                           setEditingModelId(m.id)
                         },
                       },

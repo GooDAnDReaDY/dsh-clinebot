@@ -19,6 +19,7 @@ import {
   saveModelsDiskCache,
   loadModelsDiskCache,
   getOriginalModelContext,
+  getOriginalModelMaxTokens,
 } from '../lib/models.js'
 import os from 'node:os'
 import path from 'node:path'
@@ -513,4 +514,47 @@ test('models: findModel and isSupportedModel resolve custom models (#170)', () =
   const ids = getDefaultModelIds([], [], customModels)
   assert.ok(ids.includes('custom-internal-llm'))
   assert.ok(ids.includes('custom-vision-agent'))
+})
+
+test('models: getOriginalModelMaxTokens returns vendor specifications (GH #13)', () => {
+  assert.equal(getOriginalModelMaxTokens('cline-pass/qwen-2.5-coder-32b'), 131072)
+  assert.equal(getOriginalModelMaxTokens('qwen3.7-max'), 131072)
+  assert.equal(getOriginalModelMaxTokens('cline-pass/glm-5.2'), 128000)
+  assert.equal(getOriginalModelMaxTokens('minimax-m3'), 128000)
+  assert.equal(getOriginalModelMaxTokens('cline-pass/kimi-k3'), 65536)
+  assert.equal(getOriginalModelMaxTokens('deepseek-v4.1'), 65536)
+  assert.equal(getOriginalModelMaxTokens('deepseek-v3'), 16384)
+  assert.equal(getOriginalModelMaxTokens('mimo-v2.5'), 16384)
+  assert.equal(getOriginalModelMaxTokens('unknown-custom-model'), 16384)
+})
+
+test('models: wildcard override * applies to all models without specific override (GH #13)', () => {
+  const overrides = [
+    { modelId: '*', contextLength: 500000, maxTokens: 32768 },
+    { modelId: 'cline-pass/kimi-k3', contextLength: 1000000, maxTokens: 65536 },
+  ]
+  const models = getAllModels([], overrides)
+
+  const kimi = models.find((m) => m.id === 'cline-pass/kimi-k3')
+  assert.ok(kimi)
+  assert.equal(kimi.contextLength, 1000000)
+  assert.equal(kimi.maxTokens, 65536)
+  assert.equal(kimi.isContextOverridden, true)
+
+  const glm = models.find((m) => m.id === 'cline-pass/glm-5.2')
+  assert.ok(glm)
+  assert.equal(glm.contextLength, 500000)
+  assert.equal(glm.maxTokens, 32768)
+  assert.equal(glm.isContextOverridden, true)
+})
+
+test('models: isContextOverridden detects maxTokens changes alone (GH #13)', () => {
+  const overrides = [
+    { modelId: 'cline-pass/glm-5.2', maxTokens: 32768 },
+  ]
+  const models = getAllModels([], overrides)
+  const glm = models.find((m) => m.id === 'cline-pass/glm-5.2')
+  assert.ok(glm)
+  assert.equal(glm.maxTokens, 32768)
+  assert.equal(glm.isContextOverridden, true)
 })
