@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.22] - 2026-10-13
+
+### Added
+- **Per-Model Account Routing (`modelRoutes`) (Issue #218)**: Map specific models or patterns to dedicated accounts in the pool (e.g. `deepseek-v4-pro -> KEY_PRO`) with automatic graceful fallback when the assigned account is in cooldown or unavailable. Added dedicated management UI in Accounts tab with route badges and model selector.
+- **Reasoning Tokens & Detailed Telemetry (`reasoningTokens`, CSV Export) (Issue #218)**: Full tracking of reasoning tokens (`reasoning_tokens`, `completion_tokens_details.reasoning_tokens`) across streaming SSE and non-streaming proxy responses in totals, byModel, and byDay dimensions. Added `GET /dsh-clinebot/stats/export` for complete CSV export and added reasoning token breakdown to Settings stats overview and `/cline stats`.
+- **Model Speed Benchmark / TTFT Latency Probe (Issue #218)**: Added `POST /dsh-clinebot/models/probe` endpoint to benchmark real TTFT latency for any specific model on demand with visual latency badges and trigger buttons in the Models table.
+- **Chat UX & `/cline` Enhancements (Issue #218)**: Added `/cline account <KEY_NAME>` and `/cline use <KEY_NAME>` aliases to switch active account directly from chat, enabled `/cline ping [model]` to probe specific model latency, and added reasoning tokens breakdown to `/cline stats`.
+
 ## [0.5.21] - 2026-10-12
 
 ### Added
