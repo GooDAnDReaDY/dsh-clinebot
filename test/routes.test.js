@@ -952,3 +952,91 @@ test('routes: /dsh-clinebot/models/probe benchmarks TTFT latency and /stats/expo
     delete process.env.CLINEBOT_API_KEY
   }
 })
+
+
+test('routes (#222): settings and accounts routes enforce connection.requestRejection gate', async () => {
+  const routes = []
+  let rejectionCode = 401
+  const mockConnection = {
+    requestRejection: () => rejectionCode,
+  }
+  const mockCtx = {
+    webServer: {
+      register: (route) => { routes.push(route) },
+    },
+    effect: (fn) => fn(),
+    connection: mockConnection,
+  }
+
+  const liveConfig = { accounts: [], activeAccount: '' }
+  registerSettingsRoutes(mockCtx, {
+    live: () => liveConfig,
+    getSettingsApi: () => ({ replace: async () => {} }),
+    syncProviderState: async () => {},
+  })
+  registerAccountsRoutes(mockCtx, {
+    live: () => liveConfig,
+    getSettingsApi: () => ({ replace: async () => {} }),
+    syncProviderState: async () => {},
+  })
+
+  function createMockRes() {
+    let status = 0
+    let body = null
+    const res = {
+      writeHead: (s) => { status = s },
+      end: (data) => {
+        try { body = JSON.parse(data) } catch { body = data }
+      },
+      getStatus: () => status || res.statusCode,
+      getBody: () => body,
+    }
+    return res
+  }
+
+  function createMockReq(method, path, body = {}) {
+    const r = Readable.from([Buffer.from(JSON.stringify(body))])
+    r.method = method
+    r.url = path
+    r.socket = { remoteAddress: '192.168.1.100' }
+    r.headers = { host: '192.168.1.111:3000', origin: 'http://192.168.1.111:3000', 'sec-fetch-site': 'same-origin' }
+    return r
+  }
+
+  const saveKeyHandler = routes.find(r => r.path === '/dsh-clinebot/save-key')?.handler
+  const accountsHandler = routes.find(r => r.path === '/dsh-clinebot/accounts')?.handler
+  const statusHandler = routes.find(r => r.path === '/dsh-clinebot/status')?.handler
+  assert.ok(saveKeyHandler)
+  assert.ok(accountsHandler)
+  assert.ok(statusHandler)
+
+  // 1. When rejectionCode is 401: all return 401
+  rejectionCode = 401
+  const resSave401 = createMockRes()
+  await saveKeyHandler(createMockReq('POST', '/dsh-clinebot/save-key', { apiKey: 'test' }), resSave401)
+  assert.equal(resSave401.getStatus(), 401)
+  assert.deepEqual(resSave401.getBody(), { ok: false, error: 'Authentication required' })
+
+  const resAcc401 = createMockRes()
+  await accountsHandler(createMockReq('POST', '/dsh-clinebot/accounts', { label: 'New' }), resAcc401)
+  assert.equal(resAcc401.getStatus(), 401)
+  assert.deepEqual(resAcc401.getBody(), { ok: false, error: 'Authentication required' })
+
+  const resStatus401 = createMockRes()
+  await statusHandler(createMockReq('GET', '/dsh-clinebot/status'), resStatus401)
+  assert.equal(resStatus401.getStatus(), 401)
+
+  // 2. When rejectionCode is 403: returns 403
+  rejectionCode = 403
+  const resSave403 = createMockRes()
+  await saveKeyHandler(createMockReq('POST', '/dsh-clinebot/save-key', { apiKey: 'test' }), resSave403)
+  assert.equal(resSave403.getStatus(), 403)
+  assert.deepEqual(resSave403.getBody(), { ok: false, error: 'Forbidden' })
+
+  // 3. When connection admits (undefined): passes gate
+  rejectionCode = undefined
+  const resStatusAdmit = createMockRes()
+  await statusHandler(createMockReq('GET', '/dsh-clinebot/status'), resStatusAdmit)
+  assert.equal(resStatusAdmit.getStatus(), 200)
+  assert.equal(resStatusAdmit.getBody().ok, true)
+})
