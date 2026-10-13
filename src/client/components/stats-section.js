@@ -26,7 +26,17 @@ function StatsSection({ status, onResetStats, busy, t }) {
       React.createElement('div', { className: 'cb-section-title' }, t('stats.title')),
       React.createElement(
         'div',
-        null,
+        { style: { display: 'flex', gap: '6px', alignItems: 'center' } },
+        React.createElement(
+          'a',
+          {
+            href: '/dsh-clinebot/stats/export',
+            download: 'clinebot-stats.csv',
+            className: 'cb-btn',
+            style: { padding: '2px 8px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' },
+          },
+          `📥 ${t('stats.export_csv')}`
+        ),
         confirmReset
           ? React.createElement(
               React.Fragment,
@@ -82,8 +92,18 @@ function StatsSection({ status, onResetStats, busy, t }) {
       React.createElement(
         'div',
         { className: 'cb-stat-box' },
-        React.createElement('div', { className: 'cb-stat-val' }, `${Number(totalTokens).toLocaleString()}`),
-        React.createElement('div', { className: 'cb-stat-lbl' }, t('stats.tokens'))
+        React.createElement(
+          'div',
+          { className: 'cb-stat-val' },
+          `${Number(totalTokens).toLocaleString()}`
+        ),
+        React.createElement(
+          'div',
+          { className: 'cb-stat-lbl' },
+          totals.reasoningTokens || sess.reasoningTokensEst
+            ? `${t('stats.tokens')} (${Number(totals.reasoningTokens || sess.reasoningTokensEst).toLocaleString()} reasoning)`
+            : t('stats.tokens')
+        )
       ),
       React.createElement(
         'div',
@@ -121,7 +141,7 @@ function StatsSection({ status, onResetStats, busy, t }) {
                   },
                 },
                 React.createElement('span', { style: { fontFamily: 'monospace' } }, modId),
-                React.createElement('span', null, `${data.requests || 0} reqs · ${Number(data.totalTokens ?? data.tokens ?? 0).toLocaleString()} tok`)
+                React.createElement('span', null, `${data.requests || 0} reqs · ${Number(data.totalTokens ?? data.tokens ?? 0).toLocaleString()} tok${data.reasoningTokens ? ` (${Number(data.reasoningTokens).toLocaleString()} thk)` : ''}`)
               )
             )
           )

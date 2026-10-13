@@ -15,7 +15,8 @@ import {
   resetStats,
   createEmptyStats,
   resolvePath,
-  switchStatsStorage
+  switchStatsStorage,
+  exportStatsAsCsv,
 } from '../lib/stats-storage.js'
 import { resolvePathWithHome } from '../lib/provider-sync.js'
 
@@ -334,4 +335,36 @@ test('stats-storage: prunes old corrupt backups keeping at most 3 copies (#201)'
 
   const corruptFiles = fs.readdirSync(dir).filter((f) => f.startsWith('stats.json.corrupt.'))
   assert.ok(corruptFiles.length <= 3, `Expected at most 3 corrupt backups, got ${corruptFiles.length}`)
+})
+
+
+test('stats-storage: recordUsage tracks reasoningTokens and exportStatsAsCsv formats valid CSV (#218)', () => {
+  const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-reasoning-'))
+  const statsPath = path.join(dir, 'stats.json')
+
+  resetStats(statsPath)
+  recordUsage({
+    model: 'cline-pass/deepseek-v4-pro',
+    accountId: 'KEY_PRO',
+    promptTokens: 100,
+    completionTokens: 200,
+    reasoningTokens: 150,
+    statsPath,
+  })
+  flushStats(statsPath)
+
+  const s = getStatsSummary()
+  assert.equal(s.totals.promptTokens, 100)
+  assert.equal(s.totals.completionTokens, 200)
+  assert.equal(s.totals.reasoningTokens, 150)
+  assert.equal(s.totals.totalTokens, 300)
+
+  const modelEntry = s.byModel['cline-pass/deepseek-v4-pro']
+  assert.ok(modelEntry)
+  assert.equal(modelEntry.reasoningTokens, 150)
+
+  const csv = exportStatsAsCsv()
+  assert.ok(csv.includes('Dimension,Key,Requests,PromptTokens,CompletionTokens,ReasoningTokens,TotalTokens'))
+  assert.ok(csv.includes('Total,"all",1,100,200,150,300'))
+  assert.ok(csv.includes('Model,"cline-pass/deepseek-v4-pro",1,100,200,150,300'))
 })
