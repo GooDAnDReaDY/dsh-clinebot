@@ -438,6 +438,8 @@ function SettingsPage(props) {
       status, busy, handlePinAccount, handleAddAccount, handleDeleteAccount,
       accountMode: draft?.accountMode || status?.config?.accountMode || 'least_used',
       handleUpdateAccountMode: (mode) => handleConfigPatch({ accountMode: mode }),
+      modelRoutes: draft?.modelRoutes || status?.config?.modelRoutes || {},
+      onUpdateModelRoutes: (routes) => handleConfigPatch({ modelRoutes: routes }),
       t,
     }),
 

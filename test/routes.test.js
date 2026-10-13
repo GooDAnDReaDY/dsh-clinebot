@@ -855,3 +855,100 @@ test('routes: accounts/delete rollback preserves concurrent automatic mode activ
   assert.equal(cfg.activeAccount, '', 'Concurrent selection of automatic mode must be preserved')
   assert.equal(cfg.timeoutMs, 20000, 'Concurrent timeout must be preserved')
 })
+
+
+test('routes: /dsh-clinebot/models/probe benchmarks TTFT latency and /stats/export returns CSV (#218)', async () => {
+  const routes = []
+  const mockCtx = {
+    webServer: {
+      register: (route) => { routes.push(route) }
+    },
+    effect: (fn) => fn(),
+    get: () => null,
+  }
+
+  const cfg = Config({
+    enabled: true,
+    baseUrl: 'https://api.cline.bot/api/v1',
+    apiKeyEnv: 'CLINEBOT_API_KEY',
+    defaultModel: 'cline-pass/deepseek-v4-flash',
+  })
+
+  process.env.CLINEBOT_API_KEY = 'test_key_probe'
+
+  // Register routes
+  registerModelsRoutes(mockCtx, {
+    live: () => cfg,
+    getSettingsApi: () => ({}),
+    syncProviderState: async () => {},
+  })
+  registerSettingsRoutes(mockCtx, {
+    live: () => cfg,
+    getSettingsApi: () => ({}),
+    syncProviderState: async () => {},
+  })
+
+  const probeHandler = routes.find((r) => r.path === '/dsh-clinebot/models/probe')?.handler
+  assert.ok(probeHandler, 'probe handler must exist')
+
+  const exportHandler = routes.find((r) => r.path === '/dsh-clinebot/stats/export')?.handler
+  assert.ok(exportHandler, 'export handler must exist')
+
+  // Mock global fetch for smokeChat
+  const origFetch = globalThis.fetch
+  globalThis.fetch = async (url) => {
+    return new Response(JSON.stringify({ id: 'probe-1', choices: [{ message: { content: 'pong' } }] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  try {
+    function createReq(body) {
+      const r = Readable.from([Buffer.from(JSON.stringify(body))])
+      r.method = 'POST'
+      r.socket = { remoteAddress: '127.0.0.1' }
+      r.headers = { 'sec-fetch-site': 'same-origin' }
+      return r
+    }
+    function createRes() {
+      let status = 0
+      let body = null
+      let headers = {}
+      const res = {
+        statusCode: 200,
+        writeHead: (s) => { status = s },
+        setHeader: (k, v) => { headers[k] = v },
+        end: (data) => {
+          try { body = JSON.parse(data) } catch { body = data }
+        },
+        getStatus: () => status || res.statusCode,
+        getBody: () => body,
+        getHeaders: () => headers,
+      }
+      return res
+    }
+
+    // 1. Probe specific model
+    const resProbe = createRes()
+    await probeHandler(createReq({ modelId: 'cline-pass/qwen3.7-max' }), resProbe)
+    assert.equal(resProbe.getStatus(), 200)
+    assert.equal(resProbe.getBody().ok, true)
+    assert.equal(resProbe.getBody().modelId, 'cline-pass/qwen3.7-max')
+    assert.equal(typeof resProbe.getBody().latencyMs, 'number')
+
+    // 2. Export CSV
+    const reqExport = Readable.from([])
+    reqExport.method = 'GET'
+    reqExport.socket = { remoteAddress: '127.0.0.1' }
+    reqExport.headers = { 'sec-fetch-site': 'same-origin' }
+    const resExport = createRes()
+    await exportHandler(reqExport, resExport)
+    assert.equal(resExport.getStatus(), 200)
+    assert.equal(resExport.getHeaders()['Content-Type'], 'text/csv; charset=utf-8')
+    assert.ok(typeof resExport.getBody() === 'string' && resExport.getBody().includes('Dimension,Key,Requests'))
+  } finally {
+    globalThis.fetch = origFetch
+    delete process.env.CLINEBOT_API_KEY
+  }
+})

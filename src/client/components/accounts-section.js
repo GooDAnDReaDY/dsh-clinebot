@@ -1,4 +1,15 @@
-function AccountsSection({ status, busy, handlePinAccount, handleAddAccount, handleDeleteAccount, accountMode, handleUpdateAccountMode, t }) {
+function AccountsSection({
+  status,
+  busy,
+  handlePinAccount,
+  handleAddAccount,
+  handleDeleteAccount,
+  accountMode,
+  handleUpdateAccountMode,
+  modelRoutes = {},
+  onUpdateModelRoutes,
+  t,
+}) {
   if (!status.accounts || !status.accounts.length) return null
 
   const [showAdd, setShowAdd] = React.useState(false)
@@ -7,6 +18,8 @@ function AccountsSection({ status, busy, handlePinAccount, handleAddAccount, han
   const [newKey, setNewKey] = React.useState('')
   const [showKey, setShowKey] = React.useState(false)
   const [deleteSecret, setDeleteSecret] = React.useState(true)
+  const [routeModel, setRouteModel] = React.useState('')
+  const [routeAccount, setRouteAccount] = React.useState('')
 
   function handleOpenAdd() {
     let max = 1
@@ -308,6 +321,111 @@ function AccountsSection({ status, busy, handlePinAccount, handleAddAccount, han
             reason: status.lastRotation.reason,
           })
         )
-      : null
+      : null,
+    React.createElement(
+      'div',
+      { style: { marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+      React.createElement(
+        'div',
+        { style: { fontSize: '12px', fontWeight: 600, color: 'var(--dsw-alias-label-primary)', marginBottom: '4px' } },
+        t('accounts.routes_title')
+      ),
+      React.createElement(
+        'div',
+        { style: { fontSize: '11px', color: 'var(--dsw-alias-label-secondary)', marginBottom: '8px' } },
+        t('accounts.routes_desc')
+      ),
+      React.createElement(
+        'div',
+        { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' } },
+        React.createElement('input', {
+          type: 'text',
+          className: 'cb-input',
+          style: { flex: '2 1 140px', height: '26px', fontSize: '11px', padding: '0 6px' },
+          placeholder: t('accounts.route_model_placeholder'),
+          value: routeModel,
+          onChange: (e) => setRouteModel(e.target.value),
+        }),
+        React.createElement(
+          'select',
+          {
+            className: 'cb-select',
+            style: { flex: '1 1 120px', height: '26px', fontSize: '11px', padding: '0 4px' },
+            value: routeAccount,
+            onChange: (e) => setRouteAccount(e.target.value),
+          },
+          React.createElement('option', { value: '' }, t('accounts.route_account_placeholder')),
+          (status.accounts || []).map((acc) => {
+            const keyName = acc.apiKeyEnv || acc.id
+            return React.createElement('option', { key: keyName, value: keyName }, `${acc.label || keyName} (${keyName})`)
+          })
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: 'cb-btn cb-btn-primary',
+            style: { padding: '3px 8px', fontSize: '11px' },
+            disabled: !routeModel.trim() || !routeAccount.trim() || !!busy,
+            onClick: () => {
+              if (typeof onUpdateModelRoutes === 'function') {
+                const next = { ...(modelRoutes || {}), [routeModel.trim()]: routeAccount.trim() }
+                onUpdateModelRoutes(next)
+                setRouteModel('')
+                setRouteAccount('')
+              }
+            },
+          },
+          t('accounts.route_btn_add')
+        )
+      ),
+      Object.keys(modelRoutes || {}).length > 0
+        ? React.createElement(
+            'div',
+            { style: { display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' } },
+            Object.entries(modelRoutes || {}).map(([mId, accKey]) =>
+              React.createElement(
+                'div',
+                {
+                  key: mId,
+                  style: {
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '3px 8px',
+                    fontSize: '11px',
+                    background: 'var(--dsw-alias-bg-layer-2)',
+                    borderRadius: '4px',
+                  },
+                },
+                React.createElement(
+                  'span',
+                  null,
+                  React.createElement('code', null, mId),
+                  ' ➔ ',
+                  React.createElement('strong', null, accKey)
+                ),
+                React.createElement(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'cb-btn cb-btn-danger',
+                    style: { padding: '1px 6px', fontSize: '10px' },
+                    disabled: !!busy,
+                    onClick: () => {
+                      if (typeof onUpdateModelRoutes === 'function') {
+                        const next = { ...(modelRoutes || {}) }
+                        delete next[mId]
+                        onUpdateModelRoutes(next)
+                      }
+                    },
+                  },
+                  '✕'
+                )
+              )
+            )
+          )
+        : null
+    )
   )
 }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   selectLeastUsedAccount,
   resolveSessionAccount,
+  resolveModelRouteAccount,
   markAccountCooldown,
   isAccountInCooldown,
   clearAccountCooldown,
@@ -446,4 +447,36 @@ test('session-router: resolveSessionAccount in round_robin mode allocates sequen
   const s1Again = resolveSessionAccount('session-1', pool, '', 'round_robin')
   assert.equal(s1Again.account.apiKeyEnv, 'CLINEBOT_API_KEY_1')
   assert.equal(s1Again.reason, 'sticky_pinned')
+})
+
+
+test('session-router: resolveModelRouteAccount respects per-model mapping and fallback (#218)', () => {
+  resetSessionRouter()
+  const pool = [
+    { apiKeyEnv: 'CLINEBOT_API_KEY_1', id: 'acc1', present: true, value: 'k1' },
+    { apiKeyEnv: 'CLINEBOT_API_KEY_2', id: 'acc2', present: true, value: 'k2' },
+  ]
+  const routes = {
+    'cline-pass/deepseek-v4-pro': 'CLINEBOT_API_KEY_2',
+    'kimi-k3': 'CLINEBOT_API_KEY_1',
+  }
+
+  // Exact match
+  const r1 = resolveModelRouteAccount('cline-pass/deepseek-v4-pro', routes, pool)
+  assert.ok(r1)
+  assert.equal(r1.apiKeyEnv, 'CLINEBOT_API_KEY_2')
+
+  // Short ID match without cline-pass/ prefix
+  const r2 = resolveModelRouteAccount('cline-pass/kimi-k3', routes, pool)
+  assert.ok(r2)
+  assert.equal(r2.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+
+  // Unmapped model returns null
+  const r3 = resolveModelRouteAccount('cline-pass/glm-5.2', routes, pool)
+  assert.equal(r3, null)
+
+  // resolveSessionAccount uses modelRoutes
+  const sRouted = resolveSessionAccount('sess-routed', pool, '', 'least_used', 'cline-pass/deepseek-v4-pro', routes)
+  assert.equal(sRouted.account.apiKeyEnv, 'CLINEBOT_API_KEY_2')
+  assert.equal(sRouted.reason, 'model_route')
 })
