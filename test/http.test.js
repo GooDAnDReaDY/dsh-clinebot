@@ -110,3 +110,60 @@ test('http: assertTrustedSettingsRequest enforces security and responds 403', ()
 
   assert.equal(assertTrustedSettingsRequest(trustedReq, fakeRes), true)
 })
+
+
+test('http (#222): connection.requestRejection authenticates settings requests', () => {
+  let statusCode = null
+  let body = null
+  const createFakeRes = () => ({
+    writeHead(code) { statusCode = code },
+    end(str) { body = str },
+  })
+
+  const req = {
+    headers: {
+      'sec-fetch-site': 'same-origin',
+      host: '192.168.1.123:3000',
+      origin: 'http://192.168.1.123:3000',
+    },
+    socket: { remoteAddress: '192.168.1.50' },
+  }
+
+  // 1. connection service rejects with 401 (login required)
+  const ctx401 = { connection: { requestRejection: () => 401 } }
+  assert.equal(isTrustedSettingsRequest(req, ctx401), false)
+  const res401 = createFakeRes()
+  assert.equal(assertTrustedSettingsRequest(req, res401, ctx401), false)
+  assert.equal(statusCode, 401)
+  assert.deepEqual(JSON.parse(body), { ok: false, error: 'Authentication required' })
+
+  // 2. connection service rejects with 403 (host fence violation)
+  const ctx403 = { connection: { requestRejection: () => 403 } }
+  assert.equal(isTrustedSettingsRequest(req, ctx403), false)
+  const res403 = createFakeRes()
+  assert.equal(assertTrustedSettingsRequest(req, res403, ctx403), false)
+  assert.equal(statusCode, 403)
+  assert.deepEqual(JSON.parse(body), { ok: false, error: 'Forbidden' })
+
+  // 3. connection service throws (fails closed with 403)
+  const ctxThrow = { connection: { requestRejection: () => { throw new Error('boom') } } }
+  assert.equal(isTrustedSettingsRequest(req, ctxThrow), false)
+  const resThrow = createFakeRes()
+  assert.equal(assertTrustedSettingsRequest(req, resThrow, ctxThrow), false)
+  assert.equal(statusCode, 403)
+
+  // 4. connection service admits request (returns undefined)
+  const ctxAdmit = { connection: { requestRejection: () => undefined } }
+  assert.equal(isTrustedSettingsRequest(req, ctxAdmit), true)
+  const resAdmit = createFakeRes()
+  assert.equal(assertTrustedSettingsRequest(req, resAdmit, ctxAdmit), true)
+
+  // 5. connection via request.connectionService
+  const reqWithConn = {
+    ...req,
+    connectionService: { requestRejection: () => 401 },
+  }
+  const resReqConn = createFakeRes()
+  assert.equal(assertTrustedSettingsRequest(reqWithConn, resReqConn), false)
+  assert.equal(statusCode, 401)
+})
