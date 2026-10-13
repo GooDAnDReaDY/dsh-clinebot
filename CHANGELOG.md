@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.24] - 2026-10-13
+
+### Security
+- **Settings & Updater Authentication Boundary (Issue #222)**: Integrated `getConnection(ctx)` and delegated request verification to DSH core service `connection.requestRejection(request)`. When accessed across LAN bridges or reverse-proxies, unauthenticated requests lacking DSH session authentication are rejected with HTTP 401/403 fail-closed, preventing unauthorized credential modification (`/save-key`), account pool manipulation, model toggling, or telemetry resets from LAN clients.
+
 ## [0.5.23] - 2026-10-13
 
 ### Removed
