@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.23] - 2026-10-13
+
+### Removed
+- **Dead Exports & Helper Hygiene (Issue #220)**: Removed unused `getOrStartProxyPort` export from `lib/proxy-server.js` and unused cursor helper exports `getRoundRobinCursor` and `resetRoundRobinCursor` from `lib/session-router.js`. Internal round-robin cursor rotation and lifecycle resets remain fully operational.
+
 ## [0.5.22] - 2026-10-13
 
 ### Added
