@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.25] - 2026-10-16
+
+### Fixed
+- **Subscription Plan Model Synchronization & Default Model Migration (Issue #224, GH #14)**: Updated canonical default model identifier and baseline catalog entry to `cline-pass/deepseek-v4.1-flash` (`DeepSeek V4.1 Flash`), matching upstream ClinePass plan changes. Added automatic silent migration for legacy `cline-pass/deepseek-v4-flash` in `OBSOLETE_MODEL_ID_MAP` and `publicConfig` (`defaultModel`, `disabledModels`, `enabledModels`), eliminating false-positive `Configured default model ... is not available in your active plan` warning banners. Updated `parsePlanIncludedModels` to resolve both legacy and modern plan model feature strings with model deduplication.
+
 ## [0.5.24] - 2026-10-13
 
 ### Security
