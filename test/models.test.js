@@ -29,7 +29,7 @@ import {
 
 test('models: catalog integrity', () => {
   assert.equal(PROVIDER_ID, 'clinebot')
-  assert.equal(DEFAULT_MODEL_ID, 'cline-pass/deepseek-v4-flash')
+  assert.equal(DEFAULT_MODEL_ID, 'cline-pass/deepseek-v4.1-flash')
   assert.ok(CLINE_MODELS.length >= 10, 'Catalog should contain at least 10 official models')
 
   const ids = new Set()
@@ -48,7 +48,7 @@ test('models: lookup functions', () => {
   const all = getAllModels()
   const defaultModel = all.find(m => m.id === DEFAULT_MODEL_ID)
   assert.ok(defaultModel)
-  assert.equal(defaultModel.name, 'DeepSeek V4 Flash')
+  assert.equal(defaultModel.name, 'DeepSeek V4.1 Flash')
 
   assert.equal(all.find(m => m.id === 'unknown-model') || null, null)
   assert.equal(isSupportedModel('cline-pass/kimi-k3'), true)
@@ -67,7 +67,7 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
 
   const parsed = parsePlanIncludedModels(sampleIncluded)
   assert.ok(parsed.length >= 10, 'Should parse all models in list')
-  assert.ok(parsed.some((m) => m.id === 'cline-pass/deepseek-v4-flash'))
+  assert.ok(parsed.some((m) => m.id === 'cline-pass/deepseek-v4.1-flash'))
   assert.ok(parsed.some((m) => m.id === 'cline-pass/kimi-k3'))
   assert.ok(parsed.some((m) => m.id === 'cline-pass/qwen3.7-max'))
 
@@ -86,7 +86,7 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
   ]
   const parsedFromArray = parsePlanIncludedModels(featuresArray)
   assert.equal(parsedFromArray.length, 11)
-  assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/deepseek-v4-flash'))
+  assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/deepseek-v4.1-flash'))
   assert.ok(parsedFromArray.some((m) => m.id === 'cline-pass/glm-5.2'))
 
   // Issue #103: preserve dots in model names and IDs
@@ -113,7 +113,7 @@ test('models: parsePlanIncludedModels parsing and dynamic merging', () => {
 test('models: getActiveModelIds respects disabled models and auto-enables new models', () => {
   const dynamicList = [
     { id: 'cline-pass/brand-new-ai', name: 'Brand New AI', contextLength: 128000, input: ['text'] },
-    { id: DEFAULT_MODEL_ID, name: 'DeepSeek V4 Flash' },
+    { id: DEFAULT_MODEL_ID, name: 'DeepSeek V4.1 Flash' },
     { id: 'cline-pass/kimi-k3', name: 'Kimi K3' },
   ]
   const all = getAllModels(dynamicList)
@@ -133,19 +133,19 @@ test('models: getActiveModelIds respects disabled models and auto-enables new mo
 
 test('models: plan with 3 models registers strictly 3 models with curated catalog properties mixed in', () => {
   const planModels = [
-    { id: 'cline-pass/deepseek-v4-flash' },
+    { id: 'cline-pass/deepseek-v4.1-flash' },
     { id: 'cline-pass/deepseek-v4-pro' },
     { id: 'cline-pass/glm-5.2' },
   ]
   const result = getAllModels(planModels)
   assert.equal(result.length, 3)
   assert.deepEqual(result.map((m) => m.id), [
-    'cline-pass/deepseek-v4-flash',
+    'cline-pass/deepseek-v4.1-flash',
     'cline-pass/deepseek-v4-pro',
     'cline-pass/glm-5.2',
   ])
-  const flash = result.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
-  assert.equal(flash.name, 'DeepSeek V4 Flash')
+  const flash = result.find((m) => m.id === 'cline-pass/deepseek-v4.1-flash')
+  assert.equal(flash.name, 'DeepSeek V4.1 Flash')
   assert.equal(flash.contextLength, 128000)
   assert.deepEqual(flash.input, ['text', 'image'])
   assert.deepEqual(flash.reasoningEfforts, ['low', 'medium', 'high'])
@@ -166,14 +166,28 @@ test('models: defaultModel missing from plan triggers warning and fallback repla
     { id: 'cline-pass/kimi-k3', name: 'Kimi K3' },
   ]
   const cfg = {
-    defaultModel: 'cline-pass/deepseek-v4-flash',
+    defaultModel: 'cline-pass/deepseek-v4.1-flash',
     dynamicModels: planModels,
   }
   const pub = publicConfig(cfg)
   assert.equal(pub.defaultModel, 'cline-pass/glm-5.2', 'Should fall back to first available plan model')
   assert.ok(pub.defaultModelWarning, 'Should produce a defaultModelWarning')
-  assert.match(pub.defaultModelWarning, /cline-pass\/deepseek-v4-flash/)
+  assert.match(pub.defaultModelWarning, /cline-pass\/deepseek-v4\.1-flash/)
   assert.match(pub.defaultModelWarning, /cline-pass\/glm-5.2/)
+})
+
+test('models: legacy defaultModel deepseek-v4-flash silently migrates to deepseek-v4.1-flash when plan has v4.1 (GH #14)', () => {
+  const planModels = [
+    { id: 'cline-pass/deepseek-v4.1-flash', name: 'DeepSeek V4.1 Flash' },
+    { id: 'cline-pass/kimi-k3', name: 'Kimi K3' },
+  ]
+  const cfg = {
+    defaultModel: 'cline-pass/deepseek-v4.1-flash',
+    dynamicModels: planModels,
+  }
+  const pub = publicConfig(cfg)
+  assert.equal(pub.defaultModel, 'cline-pass/deepseek-v4.1-flash')
+  assert.equal(pub.defaultModelWarning, null, 'No warning should be triggered because obsolete ID was migrated')
 })
 
 test('models: formatModelContext and formatModelDescription', () => {
@@ -259,7 +273,7 @@ test('models: saveModelsDiskCache and loadModelsDiskCache', async () => {
 
 test('models: reasoning efforts catalog coverage and dynamic assignment', () => {
   const reasoningIds = [
-    'cline-pass/deepseek-v4-flash',
+    'cline-pass/deepseek-v4.1-flash',
     'cline-pass/deepseek-v4-pro',
     'cline-pass/glm-5.2',
     'cline-pass/kimi-k3',
@@ -295,8 +309,8 @@ test('models: model context customization and authentic original provider specs'
   assert.equal(findOriginal('minimax-m3')?.originalProvider, 'MiniMax')
   assert.equal(getOriginalModelContext('mimo-v2.5'), 1000000)
   assert.equal(findOriginal('mimo-v2.5')?.originalProvider, 'Xiaomi')
-  assert.equal(getOriginalModelContext('deepseek-v4-flash'), 128000)
-  assert.equal(findOriginal('deepseek-v4-flash')?.originalProvider, 'DeepSeek')
+  assert.equal(getOriginalModelContext('deepseek-v4.1-flash'), 1000000)
+  assert.equal(findOriginal('deepseek-v4.1-flash')?.originalProvider, 'DeepSeek')
 
   // 2. formatModelContext handles various units cleanly
   assert.equal(formatModelContext(2000000), '2M')
@@ -331,7 +345,7 @@ test('models: model context customization and authentic original provider specs'
   assert.equal(qwenOverridden.contextLength, 1000000)
   assert.equal(qwenOverridden.isContextOverridden, true)
 
-  const deepseek = allOverridden.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
+  const deepseek = allOverridden.find((m) => m.id === 'cline-pass/deepseek-v4.1-flash')
   assert.equal(deepseek.contextLength, 128000)
   assert.equal(deepseek.isContextOverridden, false)
 })
@@ -339,6 +353,8 @@ test('models: model context customization and authentic original provider specs'
 
 test('models: obsolete model ID migration and normalization', async () => {
   // 1. Direct ID migration mapping via migrateModelEntry and OBSOLETE_MODEL_ID_MAP
+  assert.equal(migrateModelEntry({ id: 'cline-pass/deepseek-v4-flash' }).id, 'cline-pass/deepseek-v4.1-flash')
+  assert.equal(OBSOLETE_MODEL_ID_MAP['cline-pass/deepseek-v4-flash'], 'cline-pass/deepseek-v4.1-flash')
   assert.equal(migrateModelEntry({ id: 'cline-pass/deepseek-v41-flash' }).id, 'cline-pass/deepseek-v4.1-flash')
   assert.equal(migrateModelEntry({ id: 'cline-pass/qwen38-max' }).id, 'cline-pass/qwen3.8-max')
   assert.equal(migrateModelEntry({ id: 'cline-pass/glm-53' }).id, 'cline-pass/glm-5.3')
@@ -398,7 +414,7 @@ test('provider-sync: autoDiscoverPlanModels reconciles removed models and metada
     }
   }
 
-  const modelFlash = { id: 'cline-pass/deepseek-v4-flash', name: 'DeepSeek V4 Flash', contextLength: 128000, maxTokens: 8192, category: 'general' }
+  const modelFlash = { id: 'cline-pass/deepseek-v4.1-flash', name: 'DeepSeek V4.1 Flash', contextLength: 128000, maxTokens: 8192, category: 'general' }
   const modelPro = { id: 'cline-pass/deepseek-v4-pro', name: 'DeepSeek V4 Pro', contextLength: 200000, maxTokens: 8192, category: 'coding' }
 
   let currentConfig = {
@@ -446,7 +462,7 @@ test('provider-sync: autoDiscoverPlanModels reconciles removed models and metada
 
     assert.ok(replacedConfig, 'Settings must be replaced on catalog reconciliation')
     assert.equal(replacedConfig.dynamicModels.length, 1, 'Pro model must be removed from dynamicModels')
-    assert.equal(replacedConfig.dynamicModels[0].id, 'cline-pass/deepseek-v4-flash')
+    assert.equal(replacedConfig.dynamicModels[0].id, 'cline-pass/deepseek-v4.1-flash')
     assert.ok(replacedConfig.planSyncedAt > 1000, 'planSyncedAt timestamp must be updated')
 
     // 2. Upstream API failure does NOT overwrite catalog with empty or bump planSyncedAt

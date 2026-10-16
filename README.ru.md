@@ -42,7 +42,7 @@
 
 Интеграция ClinePass в DeepSeek Harness (DSH) напрямую сопряжена со следующими сложностями:
 1. **Отсутствие эндпоинта `/v1/models`**: запрос `GET /v1/models` к `api.cline.bot` возвращает `404 Not Found`, из-за чего динамический поиск моделей в DSH падает или оставляет список пустым.
-2. **Специфический формат идентификаторов**: моделям требуется обязательный префикс `cline-pass/` (например, `cline-pass/deepseek-v4-flash`, `cline-pass/kimi-k3`).
+2. **Специфический формат идентификаторов**: моделям требуется обязательный префикс `cline-pass/` (например, `cline-pass/deepseek-v4.1-flash`, `cline-pass/kimi-k3`).
 3. **Отслеживание лимитов**: 5-часовые и недельные скользящие окна расхода токенов требуют прозрачной визуализации в интерфейсе.
 4. **Безопасность ключей**: хранение API-токенов в открытых конфигурациях небезопасно.
 
@@ -137,7 +137,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 ### 🤖 ClinePass Status (ClinePass)
 * Пинг хоста: ✅ 210 мс
 * Активный ключ: CLINEBOT_API_KEY (credentials)
-* Модель по умолчанию: `cline-pass/deepseek-v4-flash`
+* Модель по умолчанию: `cline-pass/deepseek-v4.1-flash`
 
 ⏱ 5-часовое окно: [████░░░░░░] 42% (сброс: 18:00)
 📅 Недельное окно: [██████░░░░] 60% (сброс: 08.09)
@@ -183,7 +183,7 @@ dsh-clinebot:
 | `enabled` | `boolean` | `true` | Включение моста провайдера ClineBot в DSH |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | Базовый URL OpenAI-совместимого API ClinePass |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Имя переменной / ключа в хранилище credentials |
-| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Модель, выбираемая по умолчанию для чата и smoke-тестов |
+| `defaultModel` | `string` | `"cline-pass/deepseek-v4.1-flash"` | Модель, выбираемая по умолчанию для чата и smoke-тестов |
 | `disabledModels` | `array` | `[]` | Список отключённых моделей (новые модели подписки включаются автоматически) |
 | `customModels` | `array` | `[]` | Пользовательские модели шлюза (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | Значения thinking effort по умолчанию для моделей (`low`, `medium`, `high`, `max`) |

@@ -42,7 +42,7 @@
 
 在将 ClinePass 接入 DeepSeek Harness (DSH) 时存在以下挑战：
 1. **缺失 `/v1/models` 接口**：`api.cline.bot` 的 `GET /v1/models` 会直接返回 `404 Not Found`，导致动态模型同步失败或模型列表为空。
-2. **专属模型前缀**：所有模型 ID 均需前缀 `cline-pass/`（如 `cline-pass/deepseek-v4-flash`, `cline-pass/kimi-k3`）。
+2. **专属模型前缀**：所有模型 ID 均需前缀 `cline-pass/`（如 `cline-pass/deepseek-v4.1-flash`, `cline-pass/kimi-k3`）。
 3. **用量额度监控**：5 小时滑动窗口与每周限额需要清晰直观的可视化进度监控。
 4. **安全凭据隔离**：禁止在明文配置中直接填写密钥。
 
@@ -139,7 +139,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 ### 🤖 ClinePass Status (ClinePass)
 * 响应延迟: ✅ 210 ms
 * 活跃密钥: CLINEBOT_API_KEY (credentials)
-* 默认模型: `cline-pass/deepseek-v4-flash`
+* 默认模型: `cline-pass/deepseek-v4.1-flash`
 
 ⏱ 5 小时窗口: [████░░░░░░] 42% (重置时间: 18:00)
 📅 每周窗口:   [██████░░░░] 60% (重置时间: 09月08日)
@@ -185,7 +185,7 @@ dsh-clinebot:
 | `enabled` | `boolean` | `true` | 是否在 DSH 中启用 ClineBot 桥接插件 |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI 兼容接口地址 |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | 凭据管理系统中的密钥名称 |
-| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | 默认选中的模型 ID（用于对话及探活） |
+| `defaultModel` | `string` | `"cline-pass/deepseek-v4.1-flash"` | 默认选中的模型 ID（用于对话及探活） |
 | `disabledModels` | `array` | `[]` | 在选择器中隐藏的模型 ID 列表（新订阅模型默认自动启用） |
 | `customModels` | `array` | `[]` | 用户自定义网关模型 (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | 各模型默认思考强度配置 (`low`, `medium`, `high`, `max`) |

@@ -253,8 +253,8 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     assert.ok(replacedAllOrig.modelContextOverrides.length >= 2)
     const kimiOrig = replacedAllOrig.modelContextOverrides.find((o) => o.modelId === 'cline-pass/kimi-k3')
     assert.equal(kimiOrig.contextLength, 2000000)
-    const dsOrig = replacedAllOrig.modelContextOverrides.find((o) => o.modelId === 'cline-pass/deepseek-v4-flash')
-    assert.equal(dsOrig.contextLength, 128000)
+    const dsOrig = replacedAllOrig.modelContextOverrides.find((o) => o.modelId === 'cline-pass/deepseek-v4.1-flash')
+    assert.equal(dsOrig.contextLength, 1000000)
 
     // mode: 'all-default'
     const outReset = createRes()
@@ -648,20 +648,20 @@ test('commands & routes: custom models are preserved in slash command test/model
     await contextHandler(reqApplyAll, resApplyAll)
     const dataApplyAll = getDataApplyAll()
     assert.ok(dataApplyAll.ok)
-    const dsModel = dataApplyAll.models.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
+    const dsModel = dataApplyAll.models.find((m) => m.id === 'cline-pass/deepseek-v4.1-flash')
     assert.ok(dsModel)
     assert.equal(dsModel.contextLength, 500000)
     assert.equal(dsModel.maxTokens, 32768)
 
     // 4c. POST /dsh-clinebot/models/context single-model override preserving other field (GH #13)
     const { req: reqSingle, res: resSingle, getData: getDataSingle } = createMockReqRes({
-      modelId: 'cline-pass/deepseek-v4-flash',
+      modelId: 'cline-pass/deepseek-v4.1-flash',
       maxTokens: 64000,
     })
     await contextHandler(reqSingle, resSingle)
     const dataSingle = getDataSingle()
     assert.ok(dataSingle.ok)
-    const dsSingle = dataSingle.models.find((m) => m.id === 'cline-pass/deepseek-v4-flash')
+    const dsSingle = dataSingle.models.find((m) => m.id === 'cline-pass/deepseek-v4.1-flash')
     assert.ok(dsSingle)
     assert.equal(dsSingle.maxTokens, 64000)
     assert.equal(dsSingle.contextLength, 500000)
@@ -675,7 +675,7 @@ test('commands & routes: custom models are preserved in slash command test/model
     const data2 = getData2()
     assert.ok(data2.ok)
     assert.deepEqual(data2.enabledModels, ['custom/specialized-coder'])
-    assert.ok(data2.disabledModels.includes('cline-pass/deepseek-v4-flash'), 'Non-enabled curated models must be disabled')
+    assert.ok(data2.disabledModels.includes('cline-pass/deepseek-v4.1-flash'), 'Non-enabled curated models must be disabled')
     assert.equal(data2.disabledModels.includes('custom/specialized-coder'), false, 'Enabled custom model must not be disabled')
   } finally {
     globalThis.fetch = originalFetch
