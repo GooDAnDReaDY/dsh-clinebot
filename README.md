@@ -42,7 +42,7 @@
 
 Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 1. **No `/v1/models` Discovery**: `GET /v1/models` on `api.cline.bot` returns `404 Not Found`. Dynamic discovery fails silently or leaves the provider with 0 models.
-2. **Model Identifier Formats**: Models require the specific prefix `cline-pass/` (e.g. `cline-pass/deepseek-v4-flash`, `cline-pass/kimi-k3`).
+2. **Model Identifier Formats**: Models require the specific prefix `cline-pass/` (e.g. `cline-pass/deepseek-v4.1-flash`, `cline-pass/kimi-k3`).
 3. **Quota Tracking**: Rolling 5-hour and weekly limits need clear in-browser visualization.
 4. **Credential Security**: Storing API keys directly in plain settings is insecure.
 
@@ -140,7 +140,7 @@ From any DSH chat session, type `/cline` to inspect quota, warning alerts, and s
 ### 🤖 ClinePass Status (ClinePass)
 * Latency: ✅ 210 ms
 * Active Key: CLINEBOT_API_KEY (credentials)
-* Default Model: `cline-pass/deepseek-v4-flash`
+* Default Model: `cline-pass/deepseek-v4.1-flash`
 
 ⏱ 5-Hour Window: [████░░░░░░] 42% (resets: 18:00)
 📅 Weekly Window: [██████░░░░] 60% (resets: Sep 8)
@@ -186,7 +186,7 @@ dsh-clinebot:
 | `enabled` | `boolean` | `true` | Enable or disable the ClineBot provider bridge in DSH |
 | `baseUrl` | `string` | `"https://api.cline.bot/api/v1"` | ClinePass OpenAI-compatible base URL |
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Environment variable / credentials key name |
-| `defaultModel` | `string` | `"cline-pass/deepseek-v4-flash"` | Default selected model ID for chat and smoke tests |
+| `defaultModel` | `string` | `"cline-pass/deepseek-v4.1-flash"` | Default selected model ID for chat and smoke tests |
 | `disabledModels` | `array` | `[]` | List of model IDs hidden from the DSH chat picker (new subscription models are auto-enabled) |
 | `customModels` | `array` | `[]` | User-defined gateway models (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | Configured default reasoning effort per model (`low`, `medium`, `high`, `max`) |
