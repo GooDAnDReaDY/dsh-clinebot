@@ -103,7 +103,7 @@ test('proxy: /v1/models returns OpenAI-compatible models format when authorized 
   assert.equal(res.json.object, 'list')
   assert.ok(Array.isArray(res.json.data))
   assert.ok(res.json.data.some(m => m.id === 'cline-pass/custom-llama'))
-  assert.ok(res.json.data.some(m => m.id === 'cline-pass/deepseek-v4-flash'))
+  assert.ok(res.json.data.some(m => m.id === 'cline-pass/deepseek-v4.1-flash'))
 })
 
 test('proxy: rejects unauthorized requests missing or with invalid Bearer token (#145)', async () => {
