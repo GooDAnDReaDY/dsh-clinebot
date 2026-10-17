@@ -13,6 +13,8 @@ function ModelsSection({
   defaultModelWarning,
   customModels,
   modelReasoningDefaults,
+  visibleModels,
+  filterModelsByPlan,
   onConfigUpdate,
   onUpdateReasoningEffort,
   t,
@@ -64,6 +66,14 @@ function ModelsSection({
     defaultModelWarning
       ? React.createElement('div', { className: 'cb-alert-bad', style: { marginBottom: '12px' } }, `⚠️ ${defaultModelWarning}`)
       : null,
+    React.createElement(VisibleModelsSub, {
+      modelsList,
+      visibleModels,
+      filterModelsByPlan,
+      onConfigUpdate,
+      busy,
+      t,
+    }),
     React.createElement(
       'div',
       { className: 'cb-section-title' },

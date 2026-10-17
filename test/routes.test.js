@@ -173,6 +173,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     { path: '/dsh-clinebot/save-key', allowedMethod: 'POST', badBody: {}, goodBody: { apiKey: 'test-key', apiKeyEnv: 'CLINEBOT_API_KEY' } },
     { path: '/dsh-clinebot/models/toggle', allowedMethod: 'POST', badBody: null, goodBody: { disabledModels: ['cline-pass/kimi-k3'] } },
     { path: '/dsh-clinebot/models/context', allowedMethod: 'POST', badBody: {}, goodBody: { modelId: 'cline-pass/kimi-k3', contextLength: 2000000 } },
+    { path: '/dsh-clinebot/models/visible', allowedMethod: 'POST', badBody: null, goodBody: { visibleModels: ['cline-pass/deepseek-v4.1-flash'], filterModelsByPlan: true } },
     { path: '/dsh-clinebot/accounts/active', allowedMethod: 'POST', badBody: null, goodBody: { account: 'CLINEBOT_API_KEY_WORK' } },
     { path: '/dsh-clinebot/accounts', allowedMethod: 'POST', badBody: { apiKey: '' }, goodBody: { label: 'New Acc', apiKeyEnv: 'CLINEBOT_API_KEY_2', apiKey: 'test-key' } },
     { path: '/dsh-clinebot/accounts/delete', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } },
@@ -207,7 +208,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
   }
 
   // 4. Settings service unavailable (503) for settings-dependent write endpoints
-  const settingsDependent = ['/dsh-clinebot/models/toggle', '/dsh-clinebot/models/context', '/dsh-clinebot/accounts/active', '/dsh-clinebot/accounts', '/dsh-clinebot/accounts/delete', '/dsh-clinebot/config']
+  const settingsDependent = ['/dsh-clinebot/models/toggle', '/dsh-clinebot/models/context', '/dsh-clinebot/models/visible', '/dsh-clinebot/accounts/active', '/dsh-clinebot/accounts', '/dsh-clinebot/accounts/delete', '/dsh-clinebot/config']
   for (const p of settingsDependent) {
     const { getHandler } = setupRouter({ settingsAvailable: false })
     const handler = getHandler(p)
@@ -267,6 +268,19 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     assert.equal(outReset.read().status, 200)
     const replacedReset = plainConfig(getReplacedConfig())
     assert.deepEqual(replacedReset.modelContextOverrides, [])
+
+  // 5c. Successful write execution: /models/visible (#228)
+  {
+    const { getHandler, getReplacedConfig, isProviderSynced } = setupRouter()
+    const handler = getHandler('/dsh-clinebot/models/visible')
+    const out = createRes()
+    await handler(createReq({ method: 'POST', body: { visibleModels: ['cline-pass/deepseek-v4.1-flash'], filterModelsByPlan: true } }), out.res)
+    assert.equal(out.read().status, 200)
+    assert.equal(out.read().body.ok, true)
+    assert.deepEqual(out.read().body.visibleModels, ['cline-pass/deepseek-v4.1-flash'])
+    assert.equal(out.read().body.filterModelsByPlan, true)
+    assert.equal(isProviderSynced(), true)
+  }
 
     // Single model reset
     await handler(createReq({ method: 'POST', body: { modelId: 'cline-pass/kimi-k3', contextLength: 2000000 } }), createRes().res)

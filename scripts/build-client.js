@@ -20,6 +20,7 @@ const files = [
   'components/accounts-section.js',
   'components/quota-section.js',
   'components/custom-models.js',
+  'components/visible-models.js',
   'components/models-section.js',
   'components/stats-section.js',
   'components/diag-section.js',

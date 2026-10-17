@@ -462,6 +462,8 @@ function SettingsPage(props) {
       defaultModelWarning: status?.config?.defaultModelWarning || '',
       customModels: draft?.customModels || [],
       modelReasoningDefaults: draft?.modelReasoningDefaults || {},
+      visibleModels: draft?.visibleModels || [],
+      filterModelsByPlan: draft?.filterModelsByPlan !== false,
       onConfigUpdate: handleConfigPatch,
       onUpdateReasoningEffort: (modelId, effort) => {
         const next = { ...(draft?.modelReasoningDefaults || {}) }
