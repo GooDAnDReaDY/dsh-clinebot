@@ -3,7 +3,7 @@ import test from 'node:test'
 import { Config, plainConfig, volatileConfig } from '../lib/config.js'
 
 test('user settings fields are volatile so the host namespace is published', () => {
-  const keys = ['enabled', 'baseUrl', 'apiKeyEnv', 'defaultModel', 'disabledModels', 'accounts', 'activeAccount']
+  const keys = ['enabled', 'baseUrl', 'apiKeyEnv', 'defaultModel', 'disabledModels', 'accounts', 'activeAccount', 'filterModelsByPlan', 'visibleModels']
   for (const key of keys) {
     assert.equal(Config.dict[key].meta.volatile, true, key)
   }

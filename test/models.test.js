@@ -146,7 +146,8 @@ test('models: plan with 3 models registers strictly 3 models with curated catalo
   ])
   const flash = result.find((m) => m.id === 'cline-pass/deepseek-v4.1-flash')
   assert.equal(flash.name, 'DeepSeek V4.1 Flash')
-  assert.equal(flash.contextLength, 128000)
+  assert.equal(flash.contextLength, 1000000)
+  assert.equal(flash.maxTokens, 384000)
   assert.deepEqual(flash.input, ['text', 'image'])
   assert.deepEqual(flash.reasoningEfforts, ['low', 'medium', 'high'])
   assert.equal(flash.unverified, false)
@@ -323,30 +324,31 @@ test('models: model context customization and authentic original provider specs'
   const allDefault = getAllModels([])
   const kimi = allDefault.find((m) => m.id === 'cline-pass/kimi-k3')
   assert.ok(kimi)
-  assert.equal(kimi.contextLength, 200000)
-  assert.equal(kimi.defaultContextLength, 200000)
+  assert.equal(kimi.contextLength, 2000000)
+  assert.equal(kimi.defaultContextLength, 2000000)
   assert.equal(kimi.originalContextLength, 2000000)
   assert.equal(kimi.originalProvider, 'Moonshot AI')
   assert.equal(kimi.isContextOverridden, false)
 
-  // 4. Overrides apply correctly
+  // 4. Overrides apply correctly (custom context or token limit deviation)
   const overrides = [
-    { modelId: 'cline-pass/kimi-k3', contextLength: 2000000, maxTokens: 16384 },
-    { modelId: 'cline-pass/qwen3.7-max', contextLength: 1000000 },
+    { modelId: 'cline-pass/kimi-k3', contextLength: 500000, maxTokens: 16384 },
+    { modelId: 'cline-pass/qwen3.7-max', contextLength: 500000 },
   ]
   const allOverridden = getAllModels([], overrides)
   const kimiOverridden = allOverridden.find((m) => m.id === 'cline-pass/kimi-k3')
-  assert.equal(kimiOverridden.contextLength, 2000000)
+  assert.equal(kimiOverridden.contextLength, 500000)
   assert.equal(kimiOverridden.maxTokens, 16384)
   assert.equal(kimiOverridden.isContextOverridden, true)
-  assert.equal(kimiOverridden.defaultContextLength, 200000)
+  assert.equal(kimiOverridden.defaultContextLength, 2000000)
 
   const qwenOverridden = allOverridden.find((m) => m.id === 'cline-pass/qwen3.7-max')
-  assert.equal(qwenOverridden.contextLength, 1000000)
+  assert.equal(qwenOverridden.contextLength, 500000)
   assert.equal(qwenOverridden.isContextOverridden, true)
 
   const deepseek = allOverridden.find((m) => m.id === 'cline-pass/deepseek-v4.1-flash')
-  assert.equal(deepseek.contextLength, 128000)
+  assert.equal(deepseek.contextLength, 1000000)
+  assert.equal(deepseek.maxTokens, 384000)
   assert.equal(deepseek.isContextOverridden, false)
 })
 
@@ -588,4 +590,72 @@ test('models: isContextOverridden detects maxTokens changes alone (GH #13)', () 
   assert.ok(glm)
   assert.equal(glm.maxTokens, 32768)
   assert.equal(glm.isContextOverridden, true)
+})
+
+test('models: default genuine creator specifications for all curated models (#228)', () => {
+  const models = getAllModels([])
+  const find = (id) => models.find((m) => m.id === id)
+
+  const flash = find('cline-pass/deepseek-v4.1-flash')
+  assert.equal(flash.contextLength, 1000000)
+  assert.equal(flash.maxTokens, 384000)
+
+  const pro = find('cline-pass/deepseek-v4-pro')
+  assert.equal(pro.contextLength, 1000000)
+  assert.equal(pro.maxTokens, 384000)
+
+  const kimi = find('cline-pass/kimi-k3')
+  assert.equal(kimi.contextLength, 2000000)
+  assert.equal(kimi.maxTokens, 65536)
+
+  const qwen = find('cline-pass/qwen3.7-max')
+  assert.equal(qwen.contextLength, 1000000)
+  assert.equal(qwen.maxTokens, 131072)
+
+  const minimax = find('cline-pass/minimax-m3')
+  assert.equal(minimax.contextLength, 1000000)
+  assert.equal(minimax.maxTokens, 128000)
+
+  const glm = find('cline-pass/glm-5.2')
+  assert.equal(glm.contextLength, 128000)
+  assert.equal(glm.maxTokens, 128000)
+})
+
+test('models: visibleModels and filterModelsByPlan in publicConfig (#228)', () => {
+
+  const dynamic = [
+    { id: 'cline-pass/deepseek-v4.1-flash', name: 'DeepSeek Flash' },
+    { id: 'cline-pass/kimi-k3', name: 'Kimi K3' },
+  ]
+  const baseConfig = {
+    enabled: true,
+    dynamicModels: dynamic,
+    planSyncedAt: Date.now(),
+    disabledModels: [],
+    filterModelsByPlan: true,
+    visibleModels: [],
+  }
+
+  // 1. By default with filterModelsByPlan=true, only in-plan models are enabled
+  const pub1 = publicConfig(baseConfig)
+  assert.equal(pub1.filterModelsByPlan, true)
+  assert.deepEqual(pub1.visibleModels, [])
+  assert.deepEqual(pub1.enabledModels, ['cline-pass/deepseek-v4.1-flash', 'cline-pass/kimi-k3'])
+
+  // 2. When visibleModels is set to a subset, only visibleModels are enabled
+  const pub2 = publicConfig({
+    ...baseConfig,
+    visibleModels: ['cline-pass/deepseek-v4.1-flash'],
+  })
+  assert.deepEqual(pub2.visibleModels, ['cline-pass/deepseek-v4.1-flash'])
+  assert.deepEqual(pub2.enabledModels, ['cline-pass/deepseek-v4.1-flash'])
+
+  // 3. When filterModelsByPlan=false, all models (including curated ones) can be enabled
+  const pub3 = publicConfig({
+    ...baseConfig,
+    filterModelsByPlan: false,
+    visibleModels: [],
+  })
+  assert.equal(pub3.filterModelsByPlan, false)
+  assert.ok(pub3.enabledModels.includes('cline-pass/deepseek-v4.1-flash'))
 })
