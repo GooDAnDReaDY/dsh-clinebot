@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.26] - 2026-10-17
+
+### Fixed
+- **Authentic Factory Limits for DeepSeek V4 Series (Issue #226, GH #15)**: Fixed authentic factory creator specifications (`mode: 'all-original'`) for all models in the DeepSeek V4 series (`deepseek-v4`, `deepseek-v4-pro`, `deepseek-v4.1`, `deepseek-v41`, `deepseek-v4.1-flash`). Output ceiling (`originalMaxTokens`) is now correctly set to the authentic 384,000 tokens (384K) instead of 65,536, and context length (`originalContextLength`) for `deepseek-v4-pro` is now correctly set to 1,000,000 tokens (1M) instead of falling back to legacy V3 limits (128K / 16.4K).
+
 ## [0.5.25] - 2026-10-16
 
 ### Fixed
