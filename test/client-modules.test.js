@@ -83,6 +83,7 @@ test("client: apply registers settings.plugin.item exclusively without settings.
   // `<bundle name>#<row id>`, and the bundle name may be the package or the short
   // name), and the legacy settings.plugin.item card kept as a fallback.
   assert.deepEqual([...new Set(primaryInjected)].sort(), [
+    "conversation.composer.dock",
     "main",
     "plugins.item",
     "plugins.row.config",
@@ -90,6 +91,9 @@ test("client: apply registers settings.plugin.item exclusively without settings.
     "settings.plugin.item",
     "sidebar.footer.action",
   ].sort())
+  const composerDocks = primaryRegistrations.filter((r) => r.name === "conversation.composer.dock")
+  assert.equal(composerDocks.length, 1)
+  assert.equal(composerDocks[0].id, "clinebot-cost")
   const cards = primaryRegistrations.filter((r) => r.name === "plugins.item")
   assert.equal(cards.length, 1)
   assert.equal(cards[0].id, "dsh-clinebot")

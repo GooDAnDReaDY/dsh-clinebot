@@ -201,6 +201,16 @@ const en = {
       'card.save_key': 'Save Key',
       'card.key_saved': 'Key saved',
       'card.models_active': '{count} active models',
+      'composer.cost_title': 'Estimated Session Cost',
+      'composer.cost_breakdown': 'Token & Cost Breakdown',
+      'composer.prompt_tok': 'Prompt Tokens',
+      'composer.completion_tok': 'Completion Tokens',
+      'composer.reasoning_tok': 'Reasoning Tokens',
+      'composer.est_cost': 'Estimated Cost',
+      'discovery.title': 'Discovered Local Keys',
+      'discovery.import_btn': 'Import from {source}',
+      'discovery.imported': 'Imported to accounts pool',
+      'discovery.scanning': 'Scanning for local Cline keys…',
     }
 
     const zh = {
@@ -406,6 +416,16 @@ const en = {
       'card.save_key': '保存密钥',
       'card.key_saved': '密钥已保存',
       'card.models_active': '{count} 个可用模型',
+      'composer.cost_title': '预估会话成本',
+      'composer.cost_breakdown': 'Token 与费用明细',
+      'composer.prompt_tok': '提示词 Token',
+      'composer.completion_tok': '补全 Token',
+      'composer.reasoning_tok': '思考推理 Token',
+      'composer.est_cost': '预估花费',
+      'discovery.title': '发现本地密钥',
+      'discovery.import_btn': '从 {source} 导入',
+      'discovery.imported': '已成功导入账户池',
+      'discovery.scanning': '正在扫描本地 Cline 密钥…',
     }
 
     function makeT(dict, fallback) {
