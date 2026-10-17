@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.27] - 2026-10-17
+
+### Added
+- **Visible Models Multi-Select (`visibleModels`) (Issue #228)**: Users can now select an exact subset of models to expose in the DSH chat model picker. Includes search filtering, quick-select buttons (*All*, *Plan only*, *Clean stale*), and badge indicators for genuine context window and max output limits.
+- **Subscription Plan Auto-Filtering (`filterModelsByPlan`) (Issue #228)**: Added toggle to automatically hide models that are not included in the active Cline account's subscription tier, preventing request failures due to tier mismatch.
+- **Visible Models API Endpoint (Issue #228)**: Added `POST /dsh-clinebot/models/visible` for updating visible model selections with input validation.
+
+### Changed
+- **Genuine Creator Limits Default (Issue #228)**: `createCuratedModel` now defaults context window and max tokens directly to genuine vendor factory limits (`origCtx` / `origMax`) instead of legacy hardcoded 128k/8k limits.
+
 ## [0.5.26] - 2026-10-17
 
 ### Fixed
