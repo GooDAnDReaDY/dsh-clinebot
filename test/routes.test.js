@@ -96,6 +96,7 @@ function setupRouter({ settingsAvailable = true, activeKey = 'valid-key' } = {})
     disabledModels: [],
     dynamicModels: [
       { id: 'cline-pass/deepseek-v4-flash', name: 'DeepSeek Flash' },
+      { id: 'cline-pass/deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
       { id: 'cline-pass/kimi-k3', name: 'Kimi K3' },
     ],
     timeoutMs: 15000,
@@ -255,6 +256,10 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     assert.equal(kimiOrig.contextLength, 2000000)
     const dsOrig = replacedAllOrig.modelContextOverrides.find((o) => o.modelId === 'cline-pass/deepseek-v4.1-flash')
     assert.equal(dsOrig.contextLength, 1000000)
+    assert.equal(dsOrig.maxTokens, 384000)
+    const dsProOrig = replacedAllOrig.modelContextOverrides.find((o) => o.modelId === 'cline-pass/deepseek-v4-pro')
+    assert.equal(dsProOrig.contextLength, 1000000)
+    assert.equal(dsProOrig.maxTokens, 384000)
 
     // mode: 'all-default'
     const outReset = createRes()

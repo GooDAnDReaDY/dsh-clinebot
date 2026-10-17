@@ -532,16 +532,31 @@ test('models: findModel and isSupportedModel resolve custom models (#170)', () =
   assert.ok(ids.includes('custom-vision-agent'))
 })
 
-test('models: getOriginalModelMaxTokens returns vendor specifications (GH #13)', () => {
+test('models: getOriginalModelMaxTokens returns vendor specifications (GH #13, GH #15)', () => {
   assert.equal(getOriginalModelMaxTokens('cline-pass/qwen-2.5-coder-32b'), 131072)
   assert.equal(getOriginalModelMaxTokens('qwen3.7-max'), 131072)
   assert.equal(getOriginalModelMaxTokens('cline-pass/glm-5.2'), 128000)
   assert.equal(getOriginalModelMaxTokens('minimax-m3'), 128000)
   assert.equal(getOriginalModelMaxTokens('cline-pass/kimi-k3'), 65536)
-  assert.equal(getOriginalModelMaxTokens('deepseek-v4.1'), 65536)
+  assert.equal(getOriginalModelMaxTokens('deepseek-v4.1'), 384000)
+  assert.equal(getOriginalModelMaxTokens('deepseek-v4-pro'), 384000)
+  assert.equal(getOriginalModelMaxTokens('deepseek-v4'), 384000)
   assert.equal(getOriginalModelMaxTokens('deepseek-v3'), 16384)
   assert.equal(getOriginalModelMaxTokens('mimo-v2.5'), 16384)
   assert.equal(getOriginalModelMaxTokens('unknown-custom-model'), 16384)
+})
+
+test('models: authentic factory limits for DeepSeek V4 series (GH #15)', () => {
+  const all = getAllModels([])
+  const v41Flash = all.find((m) => m.id === 'cline-pass/deepseek-v4.1-flash')
+  assert.ok(v41Flash)
+  assert.equal(v41Flash.originalContextLength, 1000000)
+  assert.equal(v41Flash.originalMaxTokens, 384000)
+
+  const v4Pro = all.find((m) => m.id === 'cline-pass/deepseek-v4-pro')
+  assert.ok(v4Pro)
+  assert.equal(v4Pro.originalContextLength, 1000000)
+  assert.equal(v4Pro.originalMaxTokens, 384000)
 })
 
 test('models: wildcard override * applies to all models without specific override (GH #13)', () => {
