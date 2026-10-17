@@ -1,4 +1,4 @@
-function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, t }) {
+function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, showSidebarQuota, onToggleSidebarQuota, t }) {
   const isLowQuota = Boolean(
     (usage?.windows?.weekly && typeof usage.windows.weekly.remainingPercent === 'number' && usage.windows.weekly.remainingPercent <= 10) ||
     (usage?.windows?.monthly && typeof usage.windows.monthly.remainingPercent === 'number' && usage.windows.monthly.remainingPercent <= 10) ||
@@ -88,6 +88,22 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, t }
                   t,
                 })
               : null
+          ),
+          React.createElement(
+            'div',
+            { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+            React.createElement(
+              'div',
+              { style: { display: 'flex', flexDirection: 'column' } },
+              React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: 'var(--dsw-alias-label-primary)' } }, t('sidebar.show_quota')),
+              React.createElement('span', { style: { fontSize: '11px', color: 'var(--dsw-alias-label-tertiary)' } }, t('sidebar.show_quota_hint'))
+            ),
+            React.createElement('input', {
+              type: 'checkbox',
+              style: { cursor: 'pointer', width: '16px', height: '16px' },
+              checked: showSidebarQuota !== false,
+              onChange: (e) => onToggleSidebarQuota && onToggleSidebarQuota(e.target.checked),
+            })
           )
         )
       : null

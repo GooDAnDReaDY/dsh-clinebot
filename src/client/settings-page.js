@@ -444,7 +444,7 @@ function SettingsPage(props) {
     }),
 
     // Quota Warning & Dashboard Card
-    React.createElement(QuotaSection, { keyPresent, status, usage, busy, handleRefreshQuota, t }),
+    React.createElement(QuotaSection, { keyPresent, status, usage, busy, handleRefreshQuota, showSidebarQuota: draft?.showSidebarQuota !== false, onToggleSidebarQuota: (v) => handleConfigPatch({ showSidebarQuota: v }), t }),
 
     // Card 3: Model Picker Management
     React.createElement(ModelsSection, {
