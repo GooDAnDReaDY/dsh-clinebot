@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.29] - 2026-10-17
+
+### Added
+- **Composer Session Cost Widget (`conversation.composer.dock` slot) (Issue #231)**: Added live token & cost indicator pill inside the chat composer dock. Displays real-time estimated dollar cost (`≈ $0.00X`) and token volume (prompt, completion, reasoning) with an interactive popover showing full pricing breakdown.
+- **Local Key Auto-Discovery (`lib/key-discovery.js`) (Issue #232)**: Automatically scans local Cline CLI configuration (`~/.cline/`, `~/.config/cline/`, `~/.cline.json`), VS Code and Cursor extension storage (`saoudrizwan.claude-dev`), and environment variables (`CLINE_API_KEY`, `CLINEPASS_API_KEY`) to discover existing keys.
+- **Discovered Keys API & Import UI (Issue #232)**: Added endpoint `GET /dsh-clinebot/keys/discovered` with secure secret masking and one-click import banner in `AccountsSection` to seamlessly add discovered keys into the DSH credentials and accounts pool.
+
 ## [0.5.28] - 2026-10-17
 
 ### Added
