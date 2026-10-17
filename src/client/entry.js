@@ -149,6 +149,20 @@ function apply(ctx) {
       )
     )
   }
+
+  // Composer Session Cost Dock (conversation.composer.dock slot)
+  registerSlotWhenReady('conversation.composer.dock', () =>
+    ctx.slots.register(
+      {
+        name: 'conversation.composer.dock',
+        id: 'clinebot-cost',
+        order: 10,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(ComposerCostDock, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
 }
 
 module.exports = { apply, inject: ['slots', 'locale', 'configForms'] }

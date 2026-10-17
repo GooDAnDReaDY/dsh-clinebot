@@ -27,6 +27,7 @@ const files = [
   'components/sidebar-quota.js',
   'components/dashboard-overlay.js',
   'components/models-provider-card.js',
+  'components/composer-cost.js',
   'settings-page.js',
   'plugin-card.js',
   'entry.js',

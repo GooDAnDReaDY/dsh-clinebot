@@ -20,6 +20,40 @@ function AccountsSection({
   const [deleteSecret, setDeleteSecret] = React.useState(true)
   const [routeModel, setRouteModel] = React.useState('')
   const [routeAccount, setRouteAccount] = React.useState('')
+  const [discoveredKeys, setDiscoveredKeys] = React.useState([])
+
+  React.useEffect(() => {
+    let active = true
+    fetchWithTimeout(`${ROUTE_PREFIX}/keys/discovered`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (active && data?.ok && Array.isArray(data.discovered)) {
+          setDiscoveredKeys(data.discovered)
+        }
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [])
+
+  async function handleImportDiscovered(item) {
+    let max = 1
+    for (const a of (status.accounts || [])) {
+      const m = String(a.apiKeyEnv || '').match(/^CLINEBOT_API_KEY_(\d+)$/)
+      if (m) {
+        const n = parseInt(m[1], 10)
+        if (n >= max) max = n + 1
+      }
+    }
+    const targetEnv = `CLINEBOT_API_KEY_${max}`
+    if (typeof handleAddAccount === 'function') {
+      await handleAddAccount({
+        label: item.source || targetEnv,
+        apiKeyEnv: targetEnv,
+        apiKey: item.key,
+      })
+      setDiscoveredKeys((prev) => prev.filter((k) => k.key !== item.key))
+    }
+  }
 
   function handleOpenAdd() {
     let max = 1
@@ -81,6 +115,31 @@ function AccountsSection({
         : null
     ),
     React.createElement('div', { className: 'cb-section-desc' }, t('accounts.desc')),
+    discoveredKeys.length > 0
+      ? React.createElement(
+          'div',
+          { className: 'cb-alert-ok', style: { display: 'flex', flexDirection: 'column', gap: '6px', margin: '6px 0' } },
+          React.createElement('div', { style: { fontWeight: 600 } }, `🔍 ${t('discovery.title')}`),
+          discoveredKeys.map((item, idx) =>
+            React.createElement(
+              'div',
+              { key: idx, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+              React.createElement('span', null, `${item.maskedKey} (${item.source})`),
+              React.createElement(
+                'button',
+                {
+                  type: 'button',
+                  className: 'cb-btn',
+                  style: { fontSize: '11px', padding: '2px 8px' },
+                  disabled: !!busy,
+                  onClick: () => handleImportDiscovered(item),
+                },
+                t('discovery.import_btn', { source: item.source })
+              )
+            )
+          )
+        )
+      : null,
     React.createElement(
       'div',
       {
