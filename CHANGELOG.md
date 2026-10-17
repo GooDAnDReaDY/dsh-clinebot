@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.28] - 2026-10-17
+
+### Added
+- **Sidebar Quota Meter (`sidebar.footer.action` slot) (Issue #229)**: Added live subscription quota indicator in DSH sidebar footer right above Settings. Supports collapsed rail mode with 20px dynamic circular ring (`MiniRing`) and wide mode with plan name (`ClinePass Pro`), rolling 5h quota progress bar, and percentage used.
+- **Center-Column Dashboard Overlay (`main` slot) (Issue #229)**: Registered full overlay dashboard under key `clinebot-dashboard`, providing detailed view of 5-hour and weekly quota rolling windows, reset countdown timers, active account pool routing mode, and a close button (`×`) that restores the current chat view without page reload.
+- **Native Models Provider Card (`settings.models.provider-card` slot) (Issue #230)**: Added native provider card registered under `clinebot` and `llm-clinebot` on DSH Settings -> Models page, featuring connection status badges, quick API key input and save into DSH credentials, active model count, and direct navigation to full ClineBot settings.
+- **Sidebar Quota Toggle (`showSidebarQuota`) (Issue #229)**: Added volatile config field and settings toggle (default `true`) allowing users to easily enable or disable the sidebar quota meter.
+
 ## [0.5.27] - 2026-10-17
 
 ### Added
