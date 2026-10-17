@@ -107,6 +107,48 @@ function apply(ctx) {
       (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
     )
   )
+
+  // Sidebar Quota Meter (sidebar.footer.action slot)
+  registerSlotWhenReady('sidebar.footer.action', () =>
+    ctx.slots.register(
+      {
+        name: 'sidebar.footer.action',
+        id: 'clinebot-quota',
+        order: 20,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(SidebarQuota, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
+  // Central Overlay Dashboard (main slot)
+  registerSlotWhenReady('main', () =>
+    ctx.slots.register(
+      {
+        name: 'main',
+        key: 'clinebot-dashboard',
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(DashboardOverlay, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
+  // Settings Models Provider Card (settings.models.provider-card slot)
+  for (const pKey of ['clinebot', 'llm-clinebot']) {
+    registerSlotWhenReady('settings.models.provider-card', () =>
+      ctx.slots.register(
+        {
+          name: 'settings.models.provider-card',
+          key: pKey,
+          locale: NS,
+          inject: () => ({ ctx }),
+        },
+        (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(ModelsProviderCard, { ...props, ctx: (props && props.ctx) || ctx }))
+      )
+    )
+  }
 }
 
 module.exports = { apply, inject: ['slots', 'locale', 'configForms'] }

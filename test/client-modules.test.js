@@ -82,7 +82,14 @@ test("client: apply registers settings.plugin.item exclusively without settings.
   // page (plugins.item), the row seat under both key spellings (the core keys it as
   // `<bundle name>#<row id>`, and the bundle name may be the package or the short
   // name), and the legacy settings.plugin.item card kept as a fallback.
-  assert.deepEqual([...new Set(primaryInjected)], ["plugins.item", "plugins.row.config", "settings.plugin.item"])
+  assert.deepEqual([...new Set(primaryInjected)].sort(), [
+    "main",
+    "plugins.item",
+    "plugins.row.config",
+    "settings.models.provider-card",
+    "settings.plugin.item",
+    "sidebar.footer.action",
+  ].sort())
   const cards = primaryRegistrations.filter((r) => r.name === "plugins.item")
   assert.equal(cards.length, 1)
   assert.equal(cards[0].id, "dsh-clinebot")
@@ -95,6 +102,19 @@ test("client: apply registers settings.plugin.item exclusively without settings.
   assert.equal(legacy.length, 1)
   assert.equal(legacy[0].key, "dsh-clinebot")
   assert.equal(legacy[0].locale, "dsh-clinebot")
+
+  const sidebarCards = primaryRegistrations.filter((r) => r.name === "sidebar.footer.action")
+  assert.equal(sidebarCards.length, 1)
+  assert.equal(sidebarCards[0].id, "clinebot-quota")
+
+  const mainPanels = primaryRegistrations.filter((r) => r.name === "main")
+  assert.equal(mainPanels.length, 1)
+  assert.equal(mainPanels[0].key, "clinebot-dashboard")
+
+  const providerCards = primaryRegistrations.filter((r) => r.name === "settings.models.provider-card")
+  assert.equal(providerCards.length, 2)
+  assert.deepEqual(providerCards.map((r) => r.key).sort(), ["clinebot", "llm-clinebot"].sort())
+
   assert.ok(!primaryRegistrations.some((r) => r.name === "settings.section"), "settings.section must not be registered")
 })
 
