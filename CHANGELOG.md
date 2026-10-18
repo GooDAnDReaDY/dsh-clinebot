@@ -5,6 +5,19 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.30] - 2026-10-18
+
+### Added
+- **Native Web Search Provider (`lib/web-search.js`) (Issue #233)**: Implements `ClineBotSearchProvider` adhering to `ctx.web` interface (`available()`, `search({ query, count, abortSignal })`). Integrates DuckDuckGo Instant Answers API with zero third-party dependencies, controllable via `webSearch` setting.
+- **Multimodal Prompt Cache & Payload Budgeting (`lib/multimodal-budget.js`) (Issue #234)**: Optimizes KV-cache prefix stability by offloading historical/seen images into deterministic markdown placeholders `[Image: <digest> (<mime>)]` prior to the latest assistant turn. Enforces `maxPayloadMb` request budgeting.
+- **First-Class DSH Settings Section (`settings.section`) (Issue #239, GH #16)**: Moved plugin configuration into a first-class DSH Settings section (id: `dsh-clinebot`, order: 30) peer to General/Models/Plugins, retiring legacy Plugins-page accordion.
+- **Quota Modal Dialog (`DashboardDialog`) (Issue #239, GH #16)**: Replaced full center column panel swap with native modal dialog utilizing `@deepseek-ai/dsh-client-ui-primitives` `Modal` (with robust fallback), preserving active chat conversation upon inspection.
+
+### Fixed
+- **Boot-Time Styling for Unopened Plugins (Issue #239, GH #16)**: Synchronously injects CSS stylesheet at the start of `apply()` so `sidebar.footer.action` and composer docks render properly styled on host startup without requiring visiting settings.
+- **Sidebar Quota Toggle (`showSidebarQuota`) (Issue #239, GH #16)**: Fixed `useConfigFormsSnapshot` to return snapshot object instead of status string, allowing users to cleanly hide the sidebar quota meter.
+- **Isolated Footer Stacking Selector (Issue #239, GH #16)**: Scoped footer action flex-direction styling with `:has(.cb-foot), :has(.cb-railButton)` to eliminate cross-plugin host layout interference.
+
 ## [0.5.29] - 2026-10-17
 
 ### Added
