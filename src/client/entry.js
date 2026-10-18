@@ -9,6 +9,12 @@ function ensureSettingsForm(ctx) {
 }
 
 function apply(ctx) {
+  // The stylesheet has to be in the document before any of this plugin's slots
+  // render. `sidebar.footer.action` and `main` mount on boot, so leaving the
+  // injection to the settings page's mount effect renders those seats unstyled
+  // until the user opens the plugin page.
+  ensureCss()
+
   const addLocale = (locale, dictionary) => {
     try {
       return ctx.locale.register(NS, locale, dictionary)
@@ -61,50 +67,31 @@ function apply(ctx) {
     }
   }
 
-  // The seat the Plugins page actually renders as the plugin's own page with the
-  // settings form: a card in the plugin list (`plugins.item`), exactly how
-  // @goodandready-private/dsh-agentrouter does it. `view: 'summary'` is the card's
-  // one-liner, `view: 'page'` is the body of that page.
-  registerSlotWhenReady('plugins.item', () =>
+  // The plugin's configuration is a section of DSH Settings (`settings.section`),
+  // a peer of General/Models/Plugins — not a row in the Plugins list and not a tab
+  // inside the Plugins settings section. The shell owns the modal, the section nav
+  // and the scrolling body, and hands a section `close` as its one affordance; the
+  // section draws its own content. An unregistered id gets the shell's default
+  // settings glyph in the nav.
+  registerSlotWhenReady('settings.section', () =>
     ctx.slots.register(
       {
-        name: 'plugins.item',
+        name: 'settings.section',
         id: NS,
-        order: 60,
-        label: () => 'clinebot',
+        order: 30,
+        label: () => {
+          try {
+            const t = ctx.locale && typeof ctx.locale.bind === 'function' ? ctx.locale.bind(NS) : null
+            const label = t ? t('nav') : ''
+            return label && label !== 'nav' ? label : 'ClineBot'
+          } catch (_) {
+            return 'ClineBot'
+          }
+        },
         locale: NS,
         inject: () => ({ ctx }),
       },
-      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
-    )
-  )
-
-  // Row seat first (the seat the current core renders), legacy seat after it.
-  // The core keys the seat as `<bundle name>#<row id>`; `bundle.name` may be the
-  // package name or the short bundle name depending on the manager's view, so both
-  // spellings are registered — the unused one is inert.
-  // Row seat: key = ROW_CONFIG_KEY ('@goodandready/dsh-clinebot#dsh-clinebot').
-  registerSlotWhenReady('plugins.row.config', () =>
-    ctx.slots.register(
-      {
-        name: 'plugins.row.config',
-        key: ROW_CONFIG_KEY,
-        locale: NS,
-        inject: () => ({ ctx }),
-      },
-      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
-    )
-  )
-
-  registerSlotWhenReady('settings.plugin.item', () =>
-    ctx.slots.register(
-      {
-        name: 'settings.plugin.item',
-        key: NS,
-        locale: NS,
-        inject: () => ({ ctx }),
-      },
-      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(SettingsPage, { ...props, ctx: (props && props.ctx) || ctx }))
     )
   )
 
@@ -122,33 +109,18 @@ function apply(ctx) {
     )
   )
 
-  // Central Overlay Dashboard (main slot)
-  registerSlotWhenReady('main', () =>
-    ctx.slots.register(
-      {
-        name: 'main',
-        key: 'clinebot-dashboard',
-        locale: NS,
-        inject: () => ({ ctx }),
-      },
-      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(DashboardOverlay, { ...props, ctx: (props && props.ctx) || ctx }))
-    )
-  )
+  // The quota & status read-out is a window opened from the sidebar meter, not a
+  // `main`-slot panel: occupying the centre column meant clicking the meter threw
+  // the conversation out of the way to show a status read-out.
 
-  // Settings Models Provider Card (settings.models.provider-card slot)
-  for (const pKey of ['clinebot', 'llm-clinebot']) {
-    registerSlotWhenReady('settings.models.provider-card', () =>
-      ctx.slots.register(
-        {
-          name: 'settings.models.provider-card',
-          key: pKey,
-          locale: NS,
-          inject: () => ({ ctx }),
-        },
-        (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(ModelsProviderCard, { ...props, ctx: (props && props.ctx) || ctx }))
-      )
-    )
-  }
+  // `settings.models.provider-card` is deliberately not registered. The seat is
+  // KEYED and dispatched with `entryKey = <provider settingsNs>` on every provider
+  // row, unconditionally: the models page renders it before the row's own
+  // `open ? editor : null`, and its owner props carry no open state. Anything
+  // registered there therefore shows on the collapsed row and reads as an editor
+  // that opened by itself. The row's 编辑 affordance already opens a provider
+  // editor with the same API-key field, and this plugin's configuration lives in
+  // its own Settings section, so the seat is left free.
 
   // Composer Session Cost Dock (conversation.composer.dock slot)
   registerSlotWhenReady('conversation.composer.dock', () =>

@@ -36,10 +36,14 @@ function MiniRing({ percent, size = 18, warn = false }) {
   )
 }
 
-function SidebarQuota({ ctx, wide, open, t: propT }) {
+function SidebarQuota({ ctx, wide, t: propT }) {
   const t = propT || makeT(en, en)
   const [data, setData] = React.useState(null)
-  const [visible, setVisible] = React.useState(true)
+  const [open, setOpen] = React.useState(false)
+
+  // Check the configForms snapshot for the showSidebarQuota toggle
+  const configSnapshot = useConfigFormsSnapshot(ctx)
+  const show = configSnapshot?.value?.showSidebarQuota !== false
 
   const loadQuota = React.useCallback(async () => {
     try {
@@ -52,7 +56,9 @@ function SidebarQuota({ ctx, wide, open, t: propT }) {
     }
   }, [])
 
+  // Poll only while the meter is on screen — a hidden meter has nothing to refresh.
   React.useEffect(() => {
+    if (!show) return undefined
     let timer = null
     const scheduleNext = () => {
       timer = setTimeout(async () => {
@@ -63,12 +69,9 @@ function SidebarQuota({ ctx, wide, open, t: propT }) {
     loadQuota()
     scheduleNext()
     return () => { if (timer) clearTimeout(timer) }
-  }, [loadQuota])
+  }, [loadQuota, show])
 
-  // Check configForms snapshot for showSidebarQuota toggle
-  const config = useConfigFormsSnapshot(ctx)
-  const show = config?.showSidebarQuota !== false
-  if (!show || !visible) return null
+  if (!show) return null
 
   const fiveHour = data?.windows?.fiveHour
   const weekly = data?.windows?.weekly
@@ -77,63 +80,72 @@ function SidebarQuota({ ctx, wide, open, t: propT }) {
   const isWarn = pct >= 85
   const planName = data?.plan || t('title')
 
-  const handleOpen = () => {
-    if (typeof open === 'function') {
-      open()
-    } else {
-      ctx?.get?.('layout')?.selectPanel?.('clinebot-dashboard')
-    }
-  }
+  // The window is local to the meter: nothing is selected or navigated, so the
+  // conversation stays where it is and closing simply drops the window.
+  const handleOpen = () => setOpen(true)
 
   const tooltip = `${t('sidebar.quota_title')}: ${pct}% ${t('dashboard.used')} (${planName})`
+  const dialog = React.createElement(DashboardDialog, { t, open, onClose: () => setOpen(false) })
 
   if (!wide) {
     return React.createElement(
-      'button',
-      {
-        type: 'button',
-        className: 'cb-railButton',
-        'aria-label': tooltip,
-        title: tooltip,
-        onClick: handleOpen,
-      },
-      React.createElement(MiniRing, { percent: pct, warn: isWarn, size: 20 })
+      React.Fragment,
+      null,
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          className: 'cb-railButton',
+          'aria-label': tooltip,
+          'aria-expanded': open,
+          title: tooltip,
+          onClick: handleOpen,
+        },
+        React.createElement(MiniRing, { percent: pct, warn: isWarn, size: 20 })
+      ),
+      dialog
     )
   }
 
   return React.createElement(
-    'button',
-    {
-      type: 'button',
-      className: 'cb-foot',
-      'aria-label': tooltip,
-      title: tooltip,
-      onClick: handleOpen,
-    },
+    React.Fragment,
+    null,
     React.createElement(
-      'div',
-      { className: 'cb-footTop' },
-      React.createElement(MiniRing, { percent: pct, warn: isWarn, size: 16 }),
-      React.createElement('span', { className: 'cb-footName' }, planName),
-      React.createElement('span', { className: 'cb-footPct', style: { marginLeft: 'auto', fontWeight: 600, color: isWarn ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-secondary)' } }, `${pct}%`)
-    ),
-    React.createElement(
-      'div',
-      { className: 'cb-footRow' },
+      'button',
+      {
+        type: 'button',
+        className: 'cb-foot',
+        'aria-label': tooltip,
+        'aria-expanded': open,
+        title: tooltip,
+        onClick: handleOpen,
+      },
       React.createElement(
         'div',
-        { className: 'cb-footHead' },
-        React.createElement('span', { className: 'cb-footLabel' }, t('dashboard.rolling_window')),
-        React.createElement('span', { className: 'cb-footAmount' }, `${100 - pct}% ${t('dashboard.remaining')}`)
+        { className: 'cb-footTop' },
+        React.createElement(MiniRing, { percent: pct, warn: isWarn, size: 16 }),
+        React.createElement('span', { className: 'cb-footName' }, planName),
+        React.createElement('span', { className: 'cb-footPct', style: { marginLeft: 'auto', fontWeight: 600, color: isWarn ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-secondary)' } }, `${pct}%`)
       ),
       React.createElement(
-        'span',
-        { className: 'cb-footBar' },
-        React.createElement('span', {
-          className: isWarn ? 'cb-footFill cb-footFillWarn' : 'cb-footFill',
-          style: { width: `${Math.min(100, Math.max(2, pct))}%` },
-        })
+        'div',
+        { className: 'cb-footRow' },
+        React.createElement(
+          'div',
+          { className: 'cb-footHead' },
+          React.createElement('span', { className: 'cb-footLabel' }, t('dashboard.rolling_window')),
+          React.createElement('span', { className: 'cb-footAmount' }, `${100 - pct}% ${t('dashboard.remaining')}`)
+        ),
+        React.createElement(
+          'span',
+          { className: 'cb-footBar' },
+          React.createElement('span', {
+            className: isWarn ? 'cb-footFill cb-footFillWarn' : 'cb-footFill',
+            style: { width: `${Math.min(100, Math.max(2, pct))}%` },
+          })
+        )
       )
-    )
+    ),
+    dialog
   )
 }

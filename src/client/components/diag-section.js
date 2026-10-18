@@ -43,25 +43,25 @@ function DiagSection({
         )
       ),
       React.createElement(
-        'label',
-        { style: { display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', whiteSpace: 'nowrap' } },
-        React.createElement('input', {
-          type: 'checkbox',
-          checked: !!proxyMode,
-          disabled: !!busy,
-          onChange: (e) => onToggleProxy && onToggleProxy(e.target.checked),
-        }),
+        'div',
+        { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' } },
         React.createElement(
           'span',
           {
             style: {
-              fontSize: '13px',
-              fontWeight: 500,
+              fontSize: '14px',
+              lineHeight: '20px',
               color: proxyMode ? 'var(--dsw-alias-state-success-primary)' : 'var(--dsw-alias-label-secondary)',
             },
           },
           proxyMode ? t('diag.proxy_enabled') : t('diag.proxy_disabled')
-        )
+        ),
+        React.createElement(BooleanControl, {
+          checked: !!proxyMode,
+          disabled: !!busy,
+          label: t('diag.proxy_title'),
+          onChange: (next) => onToggleProxy && onToggleProxy(next),
+        })
       )
     ),
     React.createElement(

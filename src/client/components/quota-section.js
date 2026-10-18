@@ -91,18 +91,17 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, sho
           ),
           React.createElement(
             'div',
-            { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+            { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', marginTop: '4px', paddingTop: '16px', borderTop: '.5px solid var(--dsw-alias-border-l2)' } },
             React.createElement(
               'div',
-              { style: { display: 'flex', flexDirection: 'column' } },
-              React.createElement('span', { style: { fontSize: '13px', fontWeight: 500, color: 'var(--dsw-alias-label-primary)' } }, t('sidebar.show_quota')),
-              React.createElement('span', { style: { fontSize: '11px', color: 'var(--dsw-alias-label-tertiary)' } }, t('sidebar.show_quota_hint'))
+              { style: { display: 'flex', flexDirection: 'column', minWidth: 0 } },
+              React.createElement('span', { style: { fontSize: '14px', lineHeight: '20px', color: 'var(--dsw-alias-label-primary)' } }, t('sidebar.show_quota')),
+              React.createElement('span', { style: { marginTop: '4px', fontSize: '12px', lineHeight: '18px', color: 'var(--dsw-alias-label-secondary)' } }, t('sidebar.show_quota_hint'))
             ),
-            React.createElement('input', {
-              type: 'checkbox',
-              style: { cursor: 'pointer', width: '16px', height: '16px' },
+            React.createElement(BooleanControl, {
               checked: showSidebarQuota !== false,
-              onChange: (e) => onToggleSidebarQuota && onToggleSidebarQuota(e.target.checked),
+              label: t('sidebar.show_quota'),
+              onChange: (next) => onToggleSidebarQuota && onToggleSidebarQuota(next),
             })
           )
         )
