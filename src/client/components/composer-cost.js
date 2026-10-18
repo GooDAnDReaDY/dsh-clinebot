@@ -111,7 +111,7 @@ function ComposerCostDock(props) {
               background: 'var(--dsw-alias-bg-layer-3)',
               border: '1px solid var(--dsw-alias-border-l2)',
               borderRadius: '8px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              boxShadow: 'var(--dsw-elevation-prominent)',
               zIndex: 100,
               fontSize: '12px',
               color: 'var(--dsw-alias-label-primary)',
