@@ -39,7 +39,10 @@ function MiniRing({ percent, size = 18, warn = false }) {
 function SidebarQuota({ ctx, wide, open, t: propT }) {
   const t = propT || makeT(en, en)
   const [data, setData] = React.useState(null)
-  const [visible, setVisible] = React.useState(true)
+
+  // Check the configForms snapshot for the showSidebarQuota toggle
+  const configSnapshot = useConfigFormsSnapshot(ctx)
+  const show = configSnapshot?.value?.showSidebarQuota !== false
 
   const loadQuota = React.useCallback(async () => {
     try {
@@ -52,7 +55,9 @@ function SidebarQuota({ ctx, wide, open, t: propT }) {
     }
   }, [])
 
+  // Poll only while the meter is on screen — a hidden meter has nothing to refresh.
   React.useEffect(() => {
+    if (!show) return undefined
     let timer = null
     const scheduleNext = () => {
       timer = setTimeout(async () => {
@@ -63,12 +68,9 @@ function SidebarQuota({ ctx, wide, open, t: propT }) {
     loadQuota()
     scheduleNext()
     return () => { if (timer) clearTimeout(timer) }
-  }, [loadQuota])
+  }, [loadQuota, show])
 
-  // Check configForms snapshot for showSidebarQuota toggle
-  const config = useConfigFormsSnapshot(ctx)
-  const show = config?.showSidebarQuota !== false
-  if (!show || !visible) return null
+  if (!show) return null
 
   const fiveHour = data?.windows?.fiveHour
   const weekly = data?.windows?.weekly

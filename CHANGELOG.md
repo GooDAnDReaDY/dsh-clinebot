@@ -5,6 +5,18 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Configuration Moved From the Plugins Page Into DSH Settings**: The plugin's configuration page is now a top-level section of DSH Settings (`settings.section`, id `dsh-clinebot`, order 30), a peer of General/Models/Plugins, instead of a row in the Plugins list and a tab inside the Plugins settings section. The `plugins.item`, `plugins.row.config` and `settings.plugin.item` registrations — and the `PluginCard` accordion that served them — are gone. The section nav label comes from the new `nav` locale key.
+- **Restyled to the DSH Design Language**: the stylesheet was rewritten on DSH design tokens instead of ad-hoc values — settings cards now use `--dsw-alias-settings-card-stroke` / `-fill` with `--dsw-radius-xl`, every hairline is `.5px`, and type follows the native 14/20 title + 12/18 secondary scale. Boolean preferences (`showSidebarQuota`, `filterModelsByPlan`, `proxyMode`) render the shell's `Switch` primitive through a `BooleanControl` wrapper that falls back to a checkbox when the primitive is absent. Decorative emoji were dropped from card titles and buttons (status glyphs such as `✓` / `⚠` stay). The global `[class*="_footArea"] [class*="_footerActions"]{flex-direction:column}` rule — which mutated the host's own sidebar footer container for every plugin — is removed; the meter now fits the host's flex row instead.
+
+### Fixed
+- **Sidebar Footer Rendered Unstyled Until the Plugin Page Was Opened (Issue #229)**: The plugin stylesheet was only injected from the settings page / plugin card mount effect, so every `cb-*` surface that mounts at boot — the sidebar quota meter (`sidebar.footer.action`) and the dashboard overlay (`main`) — rendered without any of its CSS until the user opened the ClineBot plugin page once. In the sidebar footer this collapsed the meter into a single run of text (`Cline Pass (Monthly) ($9.99/mo)10%5 小时滑动窗口 90% 剩余`) with a zero-height progress bar. `ensureCss()` now runs at the top of the client `apply`, before any slot is registered.
+- **Sidebar Quota Toggle (`showSidebarQuota`) Had No Effect**: `useConfigFormsSnapshot()` returned the ConfigForm snapshot's `status` string while its callers treated the return value as the snapshot object, so `showSidebarQuota: false` was never read and the footer meter could not be hidden from Settings. The hook now returns the snapshot itself; consumers read `snapshot?.status` and `snapshot?.value`.
+- **Models Provider Card Never Rendered (Issue #230)**: `settings.models.provider-card` is a *keyed* seat dispatched with `entryKey = <provider settingsNs>` — the loader entry id of the plugin declaring the provider (`ctx.fiber.entry.options.id`), not the provider route id. The registration only covered `clinebot` / `llm-clinebot`, so in any deployment whose provider lives in a shared provider plugin (here `llm-pi-ai`) the key never matched and the card silently rendered nothing. `llm-pi-ai` is now registered too.
+- **Sidebar Meter Polled While Hidden**: `SidebarQuota` kept a `visible` state that nothing ever set, and its 60s `/usage` poll ran even when `showSidebarQuota` was off. The dead state is gone and the effect is gated on the toggle.
+
 ## [0.5.29] - 2026-10-17
 
 ### Added

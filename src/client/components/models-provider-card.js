@@ -72,8 +72,7 @@ function ModelsProviderCard(props) {
       React.createElement(
         'div',
         { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-        React.createElement('span', { style: { fontSize: '18px' } }, '🤖'),
-        React.createElement('span', { style: { fontSize: '15px', fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, t('card.title'))
+        React.createElement('span', { style: { fontSize: '14px', lineHeight: '20px', fontWeight: 500, color: 'var(--dsw-alias-label-primary)' } }, t('card.title'))
       ),
       React.createElement(
         'div',
@@ -81,7 +80,7 @@ function ModelsProviderCard(props) {
         React.createElement(
           'span',
           { className: keyConfigured ? 'cb-badge cb-badge-ok' : 'cb-badge cb-badge-warn' },
-          keyConfigured ? `✓ ${t('card.status_connected')}` : `⚠️ ${t('card.status_no_key')}`
+          keyConfigured ? t('card.status_connected') : t('card.status_no_key')
         ),
         modelsCount > 0
           ? React.createElement(
@@ -144,7 +143,7 @@ function ModelsProviderCard(props) {
           className: 'cb-btn',
           onClick: handleOpenSettings,
         },
-        `⚙️ ${t('card.open_settings')}`
+        t('card.open_settings')
       )
     )
   )

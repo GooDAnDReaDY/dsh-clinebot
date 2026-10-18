@@ -36,7 +36,7 @@ const root = path.resolve(path.dirname(HERE), '..')
 export const MODULES = [
   'src/client/constants.js',
   'src/client/locales.js',
-  'src/client/chevron.js',
+  'src/client/primitives.js',
   'src/client/styles.js',
   'src/client/api.js',
   'src/client/error-boundary.js',
@@ -55,7 +55,6 @@ export const MODULES = [
   'src/client/components/models-provider-card.js',
   'src/client/components/composer-cost.js',
   'src/client/settings-page.js',
-  'src/client/plugin-card.js',
   'src/client/entry.js',
 ]
 

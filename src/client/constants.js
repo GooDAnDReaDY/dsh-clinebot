@@ -1,7 +1,4 @@
 const NS = 'dsh-clinebot'
-// Plugins page row seat (DSH 0.1.6-alpha.2): key = '<package name>#<row id>'.
-const ROW_ID = 'dsh-clinebot'
-const ROW_CONFIG_KEY = '@goodandready/dsh-clinebot#' + ROW_ID
 const ROUTE_PREFIX = '/dsh-clinebot'
 // Stable (frozen) fallback reference: useSyncExternalStore compares snapshots by
 // identity (Object.is), so returning a fresh object literal causes an infinite render loop
@@ -13,6 +10,10 @@ function readConfigForms(ctx) {
   try { return ctx.get('configForms') || undefined } catch { return undefined }
 }
 
+// Returns the namespace's ConfigFormController snapshot — `{ status, value, … }`.
+// `status` is 'loading' | 'ready' | 'unavailable'; `value` is the decoded config
+// object once the namespace is ready. Consumers that only need the status must
+// read `snapshot?.status`, not the snapshot itself.
 function useConfigFormsSnapshot(ctx) {
   const scope = React.useMemo(() => {
     try { return readConfigForms(ctx)?.get?.(NS) || undefined } catch { return undefined }
@@ -23,5 +24,5 @@ function useConfigFormsSnapshot(ctx) {
   const getSnapshot = React.useCallback(() => {
     try { return scope?.getSnapshot?.() || SNAPSHOT_READY } catch { return SNAPSHOT_READY }
   }, [scope])
-  return React.useSyncExternalStore(subscribe, getSnapshot, () => SNAPSHOT_READY)?.status || 'loading'
+  return React.useSyncExternalStore(subscribe, getSnapshot, () => SNAPSHOT_READY) || SNAPSHOT_READY
 }

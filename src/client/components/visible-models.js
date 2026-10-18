@@ -87,17 +87,21 @@ function VisibleModelsSub({
     },
     React.createElement(
       'div',
-      { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' } },
+      { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' } },
       React.createElement(
-        'label',
-        { style: { display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' } },
-        React.createElement('input', {
-          type: 'checkbox',
+        'div',
+        { style: { display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 } },
+        React.createElement(
+          'span',
+          { style: { fontSize: '14px', lineHeight: '20px', color: 'var(--dsw-alias-label-primary)' } },
+          t('models.filter_by_plan')
+        ),
+        React.createElement(BooleanControl, {
           checked: !!filterModelsByPlan,
           disabled: !!busy,
-          onChange: (e) => onConfigUpdate && onConfigUpdate({ filterModelsByPlan: e.target.checked }),
-        }),
-        React.createElement('span', null, t('models.filter_by_plan'))
+          label: t('models.filter_by_plan'),
+          onChange: (next) => onConfigUpdate && onConfigUpdate({ filterModelsByPlan: next }),
+        })
       ),
       React.createElement(
         'div',
