@@ -16,12 +16,10 @@ The plugin consists of two runtime boundaries conforming to DSH authoring standa
 ### 2.2 Client Runtime (`lib/client.js`)
 * Self-registering module via `window.__ModuleLoader__.load({ id: '@goodandready/dsh-clinebot', factory })`.
 * Injects `['slots', 'locale', 'configForms']`. User settings fields are volatile so the host publishes the `dsh-clinebot` namespace; otherwise the page stays on "host namespace is not ready". Nested fields inside those arrays stay plain, and the plugin copies each host volatile reference to a plain value before cloning it. `package.json` `dsh.client.inject` names `@deepseek-ai/dsh-client-ui-slots`, `@deepseek-ai/dsh-client-locale`, and `@deepseek-ai/dsh-client-ui-settings` so those services exist.
-* **Four Registered UI Seats (`src/client/entry.js`)**:
-  1. `plugins.item` (`id: NS, order: 60, label: () => 'clinebot', locale: NS`): Renders inside the DSH Plugins catalog list. Handles `view: 'summary'` (compact one-liner with subtitle) and `view: 'page'` (full embedded settings card).
-  2. `plugins.row.config` (`key: '@goodandready/dsh-clinebot#dsh-clinebot'`): Row configuration seat for current DSH core versions keyed by `<package>#<row-id>`.
-  3. `plugins.row.config` (`key: 'dsh-clinebot#dsh-clinebot'`): Row configuration seat for short bundle name fallback. Both keys are registered safely; the unused key remains inert.
-  4. `settings.plugin.item` (`key: NS, locale: NS`): Standard DSH plugin settings seat for direct plugin configuration display.
-  Standalone top-level `settings.section` registration is intentionally omitted to maintain clean primary navigation in DSH and prevent side-list pollution.
+* **Registered UI Seats (`src/client/entry.js`)**:
+  1. `settings.section` (`id: NS, order: 30, label: () => t('nav') || 'ClineBot', locale: NS`): First-class DSH Settings section alongside General, Models, and Plugins. Renders `SettingsPage` with tabbed or card-based views, account management, and model overrides.
+  2. `sidebar.footer.action` (`id: 'clinebot-quota', order: 20, locale: NS`): Renders `SidebarQuota` mini-meter with rolling 5h quota progress bar and percentage used. Clicking opens `DashboardDialog`.
+  3. `conversation.composer.dock` (`id: 'clinebot-cost', order: 10, locale: NS`): Live token and dollar cost widget inside the chat composer dock, calculating estimated prompt, completion, and reasoning costs.
 * Opens the namespace with `configForms.get('dsh-clinebot')`. The form exposes `getSnapshot`, `subscribe`, and `set`.
 * Registers localized `en` and `zh` dictionaries with duplicate-safe guards (`ctx.locale.register()`), while Russian translation is modularly supplied by `dsh-russian-lang`.
 * The settings card reads `ctx.get('configForms').get('dsh-clinebot')`. It does not call `settingsScope`, `lanSettings`, or `bind`. When `configForms` is not yet available, or when running over non-loopback connections (`persistence === 'memory'`), `getSnapshot` returns the frozen fallback constant `SNAPSHOT_READY`, preventing infinite re-render loops in `useSyncExternalStore` (React error #185) and allowing the page to render via its authenticated HTTP REST endpoints without being blocked behind an "unavailable" banner.
@@ -238,3 +236,18 @@ graph LR
    - Повторная верификация запуска и логирования.
 6. **Обновление витрины**:
    - Актуализация карточки плагина на [goodandready.app](https://goodandready.app/) (версия, описание, ссылки) и деплой сайта.
+
+## 13. Native Web Search Integration (`lib/web-search.js`)
+* Implements `ClineBotSearchProvider` conforming to DSH `ctx.web` WebSearchProvider contract (`available()`, `search({ query, count, abortSignal })`).
+* Uses zero-dependency upstream search routing via DuckDuckGo Instant Answers API with mapping to canonical `WebSearchResult` shape (`title`, `url`, `snippet`).
+* Controlled by volatile config setting `webSearch: true/false`.
+
+## 14. Multimodal Request Budgeting & KV-Cache Image Offload (`lib/multimodal-budget.js`)
+* Implements `optimizePromptCacheAndBudget(messages, { offloadSeenImages, maxPayloadBytes })`:
+  * **Prefix KV-Cache Optimization**: Identifies historical images prior to the latest assistant message and replaces them with deterministic placeholders `[Image: previously analyzed visual attachment retained in context]`, keeping prompt cache prefixes stable across multi-turn chats.
+  * **Payload Ceiling & OOM Guard**: Calculates remaining image payload bytes against `maxPayloadBytes` (configurable via `maxPayloadMb`, default 40 MB), shedding oldest non-essential attachments if the ceiling is exceeded.
+
+## 15. Modal Dashboard Architecture (`src/client/components/dashboard-dialog.js`)
+* Replaces legacy full-panel central column swap (`main` slot `clinebot-dashboard`) with a floating modal dialog.
+* Integrates native `@deepseek-ai/dsh-client-ui-primitives` `Modal` primitive with backdrop, Escape key dismissal, and close affordance, keeping the active LLM conversation context intact.
+* Features a robust CSS fallback (`.cb-dialogFallback`) when primitives are unavailable on streamlined web profiles.

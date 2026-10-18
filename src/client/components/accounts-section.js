@@ -149,7 +149,7 @@ function AccountsSection({
           gap: '8px',
           margin: '8px 0 12px 0',
           fontSize: '12px',
-          color: 'var(--dsw-alias-label-secondary, #888)',
+          color: 'var(--dsw-alias-label-secondary)',
         },
       },
       React.createElement('span', { style: { fontWeight: 500 } }, t('accounts.mode_label') + ':'),

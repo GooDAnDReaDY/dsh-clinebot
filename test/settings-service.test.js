@@ -670,20 +670,30 @@ test("host: native DSH llm-pi-ai adapter accepts provider and populates model ca
     },
   }
 
-  applyNative(ctx, { providers: { get: () => ({ clinebot: provider }) } })
-  const snapshot = adapter.current()
-  const profile = snapshot.profiles.get("clinebot")
-  assert.equal(profile.catalogError, undefined, "Native DSH llm-pi-ai must not report catalogError")
-  const models = await adapter.listModels("clinebot")
-  assert.ok(models.some((m) => m.id === "synthetic-model"))
-
-  let modelError = null
+  const prevKey = process.env.CLINEBOT_API_KEY
+  process.env.CLINEBOT_API_KEY = "mock-audit-key-for-pi-ai"
   try {
-    adapter.modelOf(snapshot, "clinebot", "synthetic-model")
-  } catch (e) {
-    modelError = e
+    applyNative(ctx, { providers: { get: () => ({ clinebot: provider }) } })
+    const snapshot = adapter.current()
+    const profile = snapshot.profiles.get("clinebot")
+    assert.equal(profile.catalogError, undefined, "Native DSH llm-pi-ai must not report catalogError")
+    const models = await adapter.listModels("clinebot")
+    assert.ok(models.some((m) => m.id === "synthetic-model"))
+
+    let modelError = null
+    try {
+      adapter.modelOf(snapshot, "clinebot", "synthetic-model")
+    } catch (e) {
+      modelError = e
+    }
+    assert.equal(modelError, null, "modelOf must resolve model without throwing")
+  } finally {
+    if (prevKey !== undefined) {
+      process.env.CLINEBOT_API_KEY = prevKey
+    } else {
+      delete process.env.CLINEBOT_API_KEY
+    }
   }
-  assert.equal(modelError, null, "modelOf must resolve model without throwing")
 })
 
 test("host: loader/volatile-update resets dynamic catalog and plan synced timestamp on native activeAccount switch (#168)", async () => {
