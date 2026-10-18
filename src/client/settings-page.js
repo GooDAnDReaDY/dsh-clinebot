@@ -1,7 +1,7 @@
 function SettingsPage(props) {
   const ctx = props?.ctx
   const t = props?.t || makeT(en, en)
-  const snapshotStatus = useConfigFormsSnapshot(ctx)
+  const configSnapshot = useConfigFormsSnapshot(ctx)
 
   const [status, setStatus] = React.useState(null)
   const [draft, setDraft] = React.useState(null)
@@ -386,7 +386,7 @@ function SettingsPage(props) {
       React.createElement(
         'div',
         { className: 'cb-page-title' },
-        `🤖 ${t('header.title')}`,
+        t('header.title'),
         React.createElement(
           'span',
           { className: `cb-badge ${healthOk ? 'cb-badge-ok' : 'cb-badge-bad'}` },
@@ -410,7 +410,7 @@ function SettingsPage(props) {
     React.createElement(UpdateBanner, { updateState, handleTriggerUpdate, handleCheckUpdate: checkUpdate, t }),
 
     // Settings host status warning
-    snapshotStatus === 'unavailable'
+    configSnapshot?.status === 'unavailable'
       ? React.createElement('div', { className: 'cb-alert-bad', style: { marginBottom: '12px' } }, t('settings.unavailable'))
       : null,
 
