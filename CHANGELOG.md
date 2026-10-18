@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.31] - 2026-10-18
+
+### Fixed
+- **CI / Host Native Adapter Test (#241)**: Mocked `process.env.CLINEBOT_API_KEY` in `test/settings-service.test.js:638` with guaranteed cleanup, ensuring compatibility with newer `@deepseek-ai/dsh-llm-pi-ai` adapter authentication requirements.
+- **DSH Design Token Compliance (#242)**: Replaced hardcoded `#888` fallback with `var(--dsw-alias-label-secondary)` and `rgba(0,0,0,0.15)` with `var(--dsw-elevation-prominent)` in composer cost dock and accounts section.
+- **Design Contract Synchronization (#243)**: Updated `docs/design/DESIGN.md` with specifications for `DashboardDialog` modal, `settings.section`, native web search `ClineBotSearchProvider`, and multimodal KV-cache prompt budgeting.
+- **Repository Hygiene (#244)**: Pruned obsolete `.tgz` release archives from repository root.
+
 ## [0.5.30] - 2026-10-18
 
 ### Added
