@@ -1,0 +1,168 @@
+function ensureSettingsForm(ctx) {
+  const svc = readConfigForms(ctx)
+  if (!svc || typeof svc.get !== 'function') return
+  try {
+    svc.get(NS)
+  } catch (err) {
+    console.warn('[dsh-clinebot] configForms.get failed:', err)
+  }
+}
+
+function apply(ctx) {
+  const addLocale = (locale, dictionary) => {
+    try {
+      return ctx.locale.register(NS, locale, dictionary)
+    } catch (err) {
+      console.warn(`[dsh-clinebot] Failed to register locale dictionary for ns "${NS}", locale "${locale}":`, err)
+      return () => {}
+    }
+  }
+  if (ctx.locale && ctx.locale.register) {
+    if (typeof ctx.effect === 'function') {
+      ctx.effect(() => {
+        const undo = [addLocale('en', en), addLocale('zh', zh)]
+        return () => { for (const off of undo) off() }
+      }, 'dsh-clinebot: dictionaries')
+    } else {
+      addLocale('en', en)
+      addLocale('zh', zh)
+    }
+  }
+
+  if (typeof ctx.effect === 'function') {
+    ctx.effect(
+      () => { ensureSettingsForm(ctx) },
+      'dsh-clinebot: open the settings form for this namespace',
+    )
+  }
+
+  function registerSlotWhenReady(slotName, registerFn) {
+    if (!ctx.slots) return
+    if (typeof ctx.slots.inject === 'function') {
+      try {
+        ctx.slots.inject(slotName, () => {
+          try {
+            return registerFn()
+          } catch (err) {
+            console.warn('[dsh-clinebot] Error registering slot ' + slotName + ':', err)
+          }
+        })
+        return
+      } catch (err) {
+        console.warn('[dsh-clinebot] Failed to inject slot ' + slotName + ':', err)
+      }
+    }
+    if (typeof ctx.slots.register === 'function') {
+      try {
+        registerFn()
+      } catch (err) {
+        console.warn('[dsh-clinebot] Failed direct registration for ' + slotName + ':', err)
+      }
+    }
+  }
+
+  // The seat the Plugins page actually renders as the plugin's own page with the
+  // settings form: a card in the plugin list (`plugins.item`), exactly how
+  // @goodandready-private/dsh-agentrouter does it. `view: 'summary'` is the card's
+  // one-liner, `view: 'page'` is the body of that page.
+  registerSlotWhenReady('plugins.item', () =>
+    ctx.slots.register(
+      {
+        name: 'plugins.item',
+        id: NS,
+        order: 60,
+        label: () => 'clinebot',
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
+  // Row seat first (the seat the current core renders), legacy seat after it.
+  // The core keys the seat as `<bundle name>#<row id>`; `bundle.name` may be the
+  // package name or the short bundle name depending on the manager's view, so both
+  // spellings are registered — the unused one is inert.
+  // Row seat: key = ROW_CONFIG_KEY ('@goodandready/dsh-clinebot#dsh-clinebot').
+  registerSlotWhenReady('plugins.row.config', () =>
+    ctx.slots.register(
+      {
+        name: 'plugins.row.config',
+        key: ROW_CONFIG_KEY,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
+  registerSlotWhenReady('settings.plugin.item', () =>
+    ctx.slots.register(
+      {
+        name: 'settings.plugin.item',
+        key: NS,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(PluginCard, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
+  // Sidebar Quota Meter (sidebar.footer.action slot)
+  registerSlotWhenReady('sidebar.footer.action', () =>
+    ctx.slots.register(
+      {
+        name: 'sidebar.footer.action',
+        id: 'clinebot-quota',
+        order: 20,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(SidebarQuota, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
+  // Central Overlay Dashboard (main slot)
+  registerSlotWhenReady('main', () =>
+    ctx.slots.register(
+      {
+        name: 'main',
+        key: 'clinebot-dashboard',
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(DashboardOverlay, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+
+  // Settings Models Provider Card (settings.models.provider-card slot)
+  for (const pKey of ['clinebot', 'llm-clinebot']) {
+    registerSlotWhenReady('settings.models.provider-card', () =>
+      ctx.slots.register(
+        {
+          name: 'settings.models.provider-card',
+          key: pKey,
+          locale: NS,
+          inject: () => ({ ctx }),
+        },
+        (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(ModelsProviderCard, { ...props, ctx: (props && props.ctx) || ctx }))
+      )
+    )
+  }
+
+  // Composer Session Cost Dock (conversation.composer.dock slot)
+  registerSlotWhenReady('conversation.composer.dock', () =>
+    ctx.slots.register(
+      {
+        name: 'conversation.composer.dock',
+        id: 'clinebot-cost',
+        order: 10,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(ComposerCostDock, { ...props, ctx: (props && props.ctx) || ctx }))
+    )
+  )
+}
+
+module.exports = { apply, inject: ['slots', 'locale', 'configForms'] }

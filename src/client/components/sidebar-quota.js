@@ -1,0 +1,139 @@
+function MiniRing({ percent, size = 18, warn = false }) {
+  const r = 7
+  const c = 2 * Math.PI * r
+  const pct = Math.max(0, Math.min(100, Number(percent) || 0))
+  const offset = c - (pct / 100) * c
+  const strokeColor = warn ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-brand-primary)'
+
+  return React.createElement(
+    'svg',
+    {
+      className: 'cb-glyph',
+      width: size,
+      height: size,
+      viewBox: '0 0 20 20',
+      fill: 'none',
+    },
+    React.createElement('circle', {
+      cx: 10,
+      cy: 10,
+      r,
+      stroke: 'var(--dsw-alias-bg-layer-2)',
+      strokeWidth: 2.5,
+    }),
+    React.createElement('circle', {
+      cx: 10,
+      cy: 10,
+      r,
+      stroke: strokeColor,
+      strokeWidth: 2.5,
+      strokeDasharray: c,
+      strokeDashoffset: offset,
+      strokeLinecap: 'round',
+      transform: 'rotate(-90 10 10)',
+      style: { transition: 'stroke-dashoffset 0.3s ease' },
+    })
+  )
+}
+
+function SidebarQuota({ ctx, wide, open, t: propT }) {
+  const t = propT || makeT(en, en)
+  const [data, setData] = React.useState(null)
+  const [visible, setVisible] = React.useState(true)
+
+  const loadQuota = React.useCallback(async () => {
+    try {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/usage`, { cache: 'no-store' })
+      if (!res.ok) return
+      const json = await res.json().catch(() => null)
+      if (json && json.ok) setData(json)
+    } catch {
+      // quiet on network fail
+    }
+  }, [])
+
+  React.useEffect(() => {
+    let timer = null
+    const scheduleNext = () => {
+      timer = setTimeout(async () => {
+        await loadQuota()
+        scheduleNext()
+      }, 60000)
+    }
+    loadQuota()
+    scheduleNext()
+    return () => { if (timer) clearTimeout(timer) }
+  }, [loadQuota])
+
+  // Check configForms snapshot for showSidebarQuota toggle
+  const config = useConfigFormsSnapshot(ctx)
+  const show = config?.showSidebarQuota !== false
+  if (!show || !visible) return null
+
+  const fiveHour = data?.windows?.fiveHour
+  const weekly = data?.windows?.weekly
+  const activeWindow = fiveHour || weekly
+  const pct = Math.round(activeWindow?.percentUsed || 0)
+  const isWarn = pct >= 85
+  const planName = data?.plan || t('title')
+
+  const handleOpen = () => {
+    if (typeof open === 'function') {
+      open()
+    } else {
+      ctx?.get?.('layout')?.selectPanel?.('clinebot-dashboard')
+    }
+  }
+
+  const tooltip = `${t('sidebar.quota_title')}: ${pct}% ${t('dashboard.used')} (${planName})`
+
+  if (!wide) {
+    return React.createElement(
+      'button',
+      {
+        type: 'button',
+        className: 'cb-railButton',
+        'aria-label': tooltip,
+        title: tooltip,
+        onClick: handleOpen,
+      },
+      React.createElement(MiniRing, { percent: pct, warn: isWarn, size: 20 })
+    )
+  }
+
+  return React.createElement(
+    'button',
+    {
+      type: 'button',
+      className: 'cb-foot',
+      'aria-label': tooltip,
+      title: tooltip,
+      onClick: handleOpen,
+    },
+    React.createElement(
+      'div',
+      { className: 'cb-footTop' },
+      React.createElement(MiniRing, { percent: pct, warn: isWarn, size: 16 }),
+      React.createElement('span', { className: 'cb-footName' }, planName),
+      React.createElement('span', { className: 'cb-footPct', style: { marginLeft: 'auto', fontWeight: 600, color: isWarn ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-secondary)' } }, `${pct}%`)
+    ),
+    React.createElement(
+      'div',
+      { className: 'cb-footRow' },
+      React.createElement(
+        'div',
+        { className: 'cb-footHead' },
+        React.createElement('span', { className: 'cb-footLabel' }, t('dashboard.rolling_window')),
+        React.createElement('span', { className: 'cb-footAmount' }, `${100 - pct}% ${t('dashboard.remaining')}`)
+      ),
+      React.createElement(
+        'span',
+        { className: 'cb-footBar' },
+        React.createElement('span', {
+          className: isWarn ? 'cb-footFill cb-footFillWarn' : 'cb-footFill',
+          style: { width: `${Math.min(100, Math.max(2, pct))}%` },
+        })
+      )
+    )
+  )
+}
