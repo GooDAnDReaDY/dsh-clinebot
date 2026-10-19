@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.33] - 2026-10-19
+
+### Security
+- **Proxy Token Isolation from Environment & Child Processes (Issue #247)**:
+  - Local proxy bearer authentication token (`CLINEBOT_LOCAL_PROXY_TOKEN`) is now retained strictly in module-private memory and never exported to `process.env`.
+  - Added startup and mutation scrubbing to ensure `process.env[CLINEBOT_LOCAL_PROXY_TOKEN]` is deleted immediately.
+  - Sanitized child process spawn environment in `lib/updater.js` to ensure the token cannot be inherited by sub-processes.
+  - Enforced unified DSH connection authorization gate (`connection.requestRejection`) across `/dsh-clinebot/v1/chat/completions` and `/dsh-clinebot/v1/models` endpoints.
+
 ## [0.5.32] - 2026-10-19
 
 ### Security
