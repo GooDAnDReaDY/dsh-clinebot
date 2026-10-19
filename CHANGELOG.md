@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.32] - 2026-10-19
+
+### Security
+- **API Key Sanitization in Key Auto-Discovery & Import Flow (Issue #246)**:
+  - Eliminated raw secret key exposure from `GET /dsh-clinebot/keys/discovered`. Discovered keys are now cached exclusively on the server with a 15-minute TTL under an opaque UUID `id`.
+  - Added dedicated server-side import route `POST /dsh-clinebot/keys/discovered/import` that consumes the discovered secret by `id` directly on the server and persists it into DSH Credentials (`saveCredentialKey`) without ever passing secret tokens through client memory, devtools, or network logs.
+  - Updated client settings UI to import discovered keys strictly by opaque identifier.
+
 ## [0.5.31] - 2026-10-18
 
 ### Fixed
