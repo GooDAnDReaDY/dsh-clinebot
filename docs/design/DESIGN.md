@@ -140,6 +140,8 @@ graph LR
 | `/dsh-clinebot/models/context` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Настройка размера контекста модели (ручной ввод, дефолт провайдера, оригинальный лимит). |
 | `/dsh-clinebot/key/verify` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; HTTPS enforce | Проверка валидности API-ключа в ClinePass без его сохранения; блокировка небезопасных remote HTTP. |
 | `/dsh-clinebot/save-key` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; allowlist env | Безопасное сохранение API-ключа в хранилище credentials (~/.dsh/.credentials.yaml). |
+| `/dsh-clinebot/keys/discovered` | GET | `isTrustedSettingsRequest` | Loopback / Same-Origin / Same-Site | Обнаружение локальных ключей Cline CLI и расширений. Отдаёт только санитизированный список `{ id, source, maskedKey, path }`, секреты скрыты (Issue #232, #246). |
+| `/dsh-clinebot/keys/discovered/import` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Безопасный серверный импорт обнаруженного ключа по opaque id в DSH Credentials без передачи секрета через браузер (Issue #246). |
 | `/dsh-clinebot/smoke` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Запуск быстрого тестового инференса с замером задержки первого токена и валидацией модели. |
 | `/dsh-clinebot/register` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Декларативная регистрация и обновление провайдера ClineBot в `llm-pi-ai`. |
 | `/dsh-clinebot/unregister` | POST | `isTrustedSettingsRequest` | Loopback / Same-Origin; max 256 KiB | Удаление регистрации провайдера ClineBot из настроек `llm-pi-ai`. |
