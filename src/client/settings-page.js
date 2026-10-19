@@ -254,11 +254,13 @@ function SettingsPage(props) {
     })
   }
 
-  async function handleAddAccount({ label, apiKeyEnv, apiKey }) {
+  async function handleAddAccount({ label, apiKeyEnv, apiKey, id }) {
     await performAction('add-account', async () => {
-      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/accounts`, {
+      const endpoint = id ? `${ROUTE_PREFIX}/keys/discovered/import` : `${ROUTE_PREFIX}/accounts`
+      const payload = id ? { id, label, apiKeyEnv } : { label, apiKeyEnv, apiKey }
+      const res = await fetchWithTimeout(endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label, apiKeyEnv, apiKey }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)

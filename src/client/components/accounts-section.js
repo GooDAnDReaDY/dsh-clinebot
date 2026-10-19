@@ -49,9 +49,9 @@ function AccountsSection({
       await handleAddAccount({
         label: item.source || targetEnv,
         apiKeyEnv: targetEnv,
-        apiKey: item.key,
+        id: item.id,
       })
-      setDiscoveredKeys((prev) => prev.filter((k) => k.key !== item.key))
+      setDiscoveredKeys((prev) => prev.filter((k) => k.id !== item.id))
     }
   }
 
