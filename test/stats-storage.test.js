@@ -21,6 +21,9 @@ import {
 import { resolvePathWithHome } from '../lib/provider-sync.js'
 
 const testStatsPath = path.join(tmpdir(), `clinebot-test-stats-${Date.now()}.json`)
+// The test harness redirects HOME into a sandbox; mirror the resolver's own
+// home preference instead of the OS account home.
+const sandboxHome = process.env.HOME || homedir()
 
 test('stats-storage: recordUsage updates totals and dimensions', () => {
   resetStats(testStatsPath)
@@ -196,22 +199,22 @@ test('stats-storage: apply() cold start loads existing stats and preserves histo
 
 
 test('stats-storage: resolvePath unwraps volatile { get } references and functions (#141, GH #9)', () => {
-  const defaultPath = path.join(homedir(), '.dsh', 'clinebot-stats.json')
+  const defaultPath = path.join(sandboxHome, '.dsh', 'clinebot-stats.json')
 
   // 1. Plain string
-  assert.equal(resolvePath('~/.dsh/my-stats.json'), path.join(homedir(), '.dsh', 'my-stats.json'))
+  assert.equal(resolvePath('~/.dsh/my-stats.json'), path.join(sandboxHome, '.dsh', 'my-stats.json'))
 
   // 2. Volatile { get } object reference
   const volatileRef = { get: () => '~/.dsh/ref-stats.json' }
-  assert.equal(resolvePath(volatileRef), path.join(homedir(), '.dsh', 'ref-stats.json'))
+  assert.equal(resolvePath(volatileRef), path.join(sandboxHome, '.dsh', 'ref-stats.json'))
 
   // 3. Getter function
   const getterFn = () => '~/.dsh/fn-stats.json'
-  assert.equal(resolvePath(getterFn), path.join(homedir(), '.dsh', 'fn-stats.json'))
+  assert.equal(resolvePath(getterFn), path.join(sandboxHome, '.dsh', 'fn-stats.json'))
 
   // 4. Nested getter
   const nestedRef = { get: () => ({ get: () => '~/.dsh/nested-stats.json' }) }
-  assert.equal(resolvePath(nestedRef), path.join(homedir(), '.dsh', 'nested-stats.json'))
+  assert.equal(resolvePath(nestedRef), path.join(sandboxHome, '.dsh', 'nested-stats.json'))
 
   // 5. Non-string inputs fallback safely without throwing
   assert.equal(resolvePath(null), defaultPath)
@@ -244,7 +247,7 @@ test('stats-storage: recordUsage with volatile { get } statsPath persists withou
 test('provider-sync: resolvePathWithHome unwraps volatile references safely (#143)', () => {
   const volatileCache = { get: () => '~/.dsh/models-cache.json' }
   const resolved = resolvePathWithHome(volatileCache)
-  assert.equal(resolved, path.join(homedir(), '.dsh', 'models-cache.json'))
+  assert.equal(resolved, path.join(sandboxHome, '.dsh', 'models-cache.json'))
 
   const nonString = resolvePathWithHome(123)
   assert.equal(nonString, '')

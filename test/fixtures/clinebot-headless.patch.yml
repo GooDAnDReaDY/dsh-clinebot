@@ -1,0 +1,19 @@
+# Local-only headless fixture profile for adapter integration tests.
+- id: agent-default-model
+  config:
+    provider: clinebot
+    model: cline-pass/deepseek-v4.1-flash
+- id: dsh-clinebot
+  config:
+    enabled: true
+    transport: adapter
+    baseUrl: http://127.0.0.1:45999
+    apiKeyEnv: CLINEBOT_API_KEY
+    defaultModel: cline-pass/deepseek-v4.1-flash
+    statsPath: ~/.dsh/profiles/clinebot-headless/clinebot-stats.json
+    modelsCachePath: ~/.dsh/profiles/clinebot-headless/clinebot-models-cache.json
+    proxyMode: false
+    filterModelsByPlan: false
+    accounts: []
+    activeAccount: ""
+    accountMode: least_used

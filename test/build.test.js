@@ -93,15 +93,19 @@ test('every hardcoded version fallback tracks package.json', () => {
   // lib/proxy-token.js carries the version twice as a fallback for when the
   // manifest cannot be read, and the CHANGELOG heading names the release. Both
   // drift silently on a bump, so they are pinned to package.json here.
-  const fallbacks = [...read('lib/proxy-token.js').matchAll(/'(0\.\d+\.\d+)'/g)].map((m) => m[1])
+  const fallbacks = [...read('lib/proxy-token.js').matchAll(/'(0\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)'/g)].map((m) => m[1])
   assert.ok(fallbacks.length > 0, 'expected version fallbacks in lib/proxy-token.js')
   for (const version of fallbacks) {
     assert.equal(version, pkg.version, 'lib/proxy-token.js fallback is out of step with package.json')
   }
 
-  const headings = [...read('CHANGELOG.md').matchAll(/^## \[(\d+\.\d+\.\d+)\]/gm)].map((m) => m[1])
-  assert.equal(headings[0], pkg.version, 'the newest CHANGELOG heading must be the released version')
-  assert.ok(!/^## \[Unreleased\]/m.test(read('CHANGELOG.md')), 'release the Unreleased section on a bump')
+  // A development prerelease intentionally has no released CHANGELOG heading
+  // until the release commit lands.
+  if (!pkg.version.includes('-')) {
+    const headings = [...read('CHANGELOG.md').matchAll(/^## \[(\d+\.\d+\.\d+)\]/gm)].map((m) => m[1])
+    assert.equal(headings[0], pkg.version, 'the newest CHANGELOG heading must be the released version')
+    assert.ok(!/^## \[Unreleased\]/m.test(read('CHANGELOG.md')), 'release the Unreleased section on a bump')
+  }
 })
 
 test('every source module parses on its own', () => {

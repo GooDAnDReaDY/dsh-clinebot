@@ -24,6 +24,7 @@ const STYLE_ID = 'dsh-clinebot-full-css'
 /** Seats the plugin must occupy, and the ones it must no longer. */
 const EXPECTED_SLOTS = [
   'settings.section',
+  'settings.models.provider-card',
   'sidebar.footer.action',
   'conversation.composer.dock',
 ]
@@ -31,9 +32,6 @@ const RETIRED_SLOTS = [
   'plugins.item',
   'plugins.row.config',
   'settings.plugin.item',
-  // Dispatched on every provider row regardless of whether it is open, with no
-  // open state in its props, so anything here reads as an editor that opened itself.
-  'settings.models.provider-card',
   // The quota read-out is a window opened from the meter; taking the centre
   // column for it threw the conversation out of the way.
   'main',
@@ -181,6 +179,8 @@ test('the sidebar meter and composer dock renderers are registered on their seat
   assert.equal(byName('sidebar.footer.action').length, 1)
   assert.equal(byName('sidebar.footer.action')[0].options.id, 'clinebot-quota')
   assert.equal(byName('conversation.composer.dock').length, 1)
+  assert.equal(byName('settings.models.provider-card').length, 1)
+  assert.equal(byName('settings.models.provider-card')[0].options.key, 'dsh-clinebot')
   for (const entry of registrations) {
     assert.equal(typeof entry.render, 'function', `${entry.options.name} needs a renderer`)
   }

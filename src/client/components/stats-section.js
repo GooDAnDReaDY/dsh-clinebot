@@ -35,7 +35,8 @@ function StatsSection({ status, onResetStats, busy, t }) {
             className: 'cb-btn',
             style: { padding: '2px 8px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' },
           },
-          `📥 ${t('stats.export_csv')}`
+          React.createElement(CbIcon, { name: 'download', size: 13 }),
+          ` ${t('stats.export_csv')}`
         ),
         confirmReset
           ? React.createElement(

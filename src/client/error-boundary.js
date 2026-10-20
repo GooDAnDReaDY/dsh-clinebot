@@ -17,7 +17,7 @@ function createErrorBoundary() {
       render() {
         if (this.state.hasError) {
           const t = this.props && typeof this.props.t === 'function' ? this.props.t : null
-          const errorTitle = t ? t('ui.error_title') : '⚠️ ClineBot UI Error: '
+          const errorTitle = t ? t('ui.error_title') : 'ClineBot UI Error: '
           const retryLabel = t ? t('ui.retry') : 'Retry'
           return React.createElement(
             'div',

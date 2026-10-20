@@ -1,5 +1,7 @@
 # Design Contract: `@goodandready/dsh-clinebot`
 
+> **Актуальная спецификация:** см. [TZ.md](./TZ.md). Разделы ниже описывают текущую архитектуру `0.5.x` (`llm-pi-ai` + loopback proxy). Целевая архитектура `0.6.0` — собственный `LlmAdapter` на `ctx.llm` для DSH `0.2.1-rc.2`, без loopback-прокси и без мутации `llm-pi-ai.providers.clinebot`.
+
 ## 1. Executive Summary
 `@goodandready/dsh-clinebot` is a companion plugin for DeepSeek Harness (DSH) enabling native integration of the **ClineBot / ClinePass** subscription provider. While ClinePass returns `404 Not Found` on legacy `GET /v1/models`, the plugin discovers active subscription models dynamically via `GET /api/v1/users/me/plan` alongside a curated baseline catalog. The plugin bridges the provider into DSH: securely resolving credentials, synchronizing the provider registry, maintaining session affinity across key rotations, and providing health, smoke, and telemetry inspection.
 

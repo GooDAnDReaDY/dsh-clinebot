@@ -18,7 +18,7 @@ test('telemetry: llm/stream records real DSH traffic, token usage, latency and m
     effect: (fn) => fn(),
   }
 
-  apply(ctx, { enabled: true })
+  apply(ctx, { enabled: true, transport: 'pi-ai' })
 
   const streamListener = listeners.find((l) => l.evt === 'llm/stream')
   assert.ok(streamListener, 'llm/stream listener must be registered')
@@ -124,6 +124,7 @@ test('telemetry: single request through proxy and llm/stream does not duplicate 
 
   apply(mockCtx, {
     enabled: true,
+    transport: 'pi-ai',
     proxyMode: true,
     apiKeyEnv: 'CLINE_API_KEY',
   })
@@ -223,6 +224,7 @@ test('telemetry: direct mode (proxyMode: false) records persistent stats exactly
 
   apply(mockCtx, {
     enabled: true,
+    transport: 'pi-ai',
     proxyMode: false,
   })
 
@@ -266,6 +268,7 @@ test('telemetry: failover across accounts records single persistent request with
 
   apply(mockCtx, {
     enabled: true,
+    transport: 'pi-ai',
     proxyMode: true,
     accounts: [
       { id: 'acc-1', label: 'Account 1', apiKeyEnv: 'CLINE_API_KEY_1', present: true },

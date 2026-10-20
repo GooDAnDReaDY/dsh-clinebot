@@ -10,9 +10,11 @@ import { Config } from "../lib/config.js"
 
 const indexSource = readFileSync(new URL("../lib/index.js", import.meta.url), "utf8")
 
-test("#119 — the host declares only services that exist in DSH 0.1.7", () => {
+test("#119 — the host declares only services that exist in DSH 0.2.1", () => {
+  assert.ok(Array.isArray(inject))
   assert.ok(!inject.includes("settings"), `inject still asks for the removed settings service: ${inject}`)
-  assert.ok(inject.includes("webServer"), "inject must include webServer")
+  // webServer is optional: the adapter and slash command also run headless.
+  assert.ok(!inject.includes("webServer"), "webServer must be an optional inject, not a hard dependency")
 })
 
 test("#119 — lib/index.js never calls the removed settings.register", () => {

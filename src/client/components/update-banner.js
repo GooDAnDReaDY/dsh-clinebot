@@ -47,7 +47,7 @@ function UpdateBanner({ updateState, handleTriggerUpdate, handleCheckUpdate, t }
               )
             : isCurrent
               ? React.createElement('span', { className: 'cb-badge cb-badge-ok' },
-                  '✓ ' + t('update.up_to_date')
+                  t('update.up_to_date')
                 )
               : isError
                 ? React.createElement('span', { className: 'cb-badge cb-badge-bad' },
@@ -81,7 +81,7 @@ function UpdateBanner({ updateState, handleTriggerUpdate, handleCheckUpdate, t }
             )
           : null
     ),
-    updateState.notice ? React.createElement('div', { className: 'cb-alert-ok' }, '✓ ' + updateState.notice) : null,
+    updateState.notice ? React.createElement('div', { className: 'cb-alert-ok' }, updateState.notice) : null,
     updateState.error ? React.createElement('div', { className: 'cb-alert-err' }, updateState.error) : null
   )
 }

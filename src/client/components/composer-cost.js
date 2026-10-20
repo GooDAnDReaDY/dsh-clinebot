@@ -92,7 +92,6 @@ function ComposerCostDock(props) {
         title: `${t('composer.cost_title')}: ${costDisplay} (${formatTokens(total)} tokens)`,
         onClick: () => setShowPopover(!showPopover),
       },
-      React.createElement('span', { style: { fontSize: '12px' } }, '🪙'),
       React.createElement('span', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, `≈ ${costDisplay}`),
       React.createElement('span', { style: { opacity: 0.7 } }, `· ${formatTokens(total)} tok`)
     ),

@@ -19,6 +19,7 @@ function SettingsPage(props) {
 
   React.useEffect(() => { ensureCss() }, [])
 
+  const pendingRef = React.useRef({})
   const load = React.useCallback(async () => {
     setErr('')
     const [res, statsRes] = await Promise.all([
@@ -30,10 +31,14 @@ function SettingsPage(props) {
     const rawStats = statsRes && statsRes.ok ? await statsRes.json().catch(() => null) : null
     const statsObj = (rawStats && typeof rawStats === 'object' && rawStats.stats) ? rawStats.stats : (rawStats || data.statsSummary || {})
     setStatus({ ...data, statsSummary: statsObj })
-    setDraft(data.config || {})
+    // Preserve unsaved staged fields across an account/model refresh.
+    setDraft({ ...(data.config || {}), ...(pendingRef.current || {}) })
   }, [])
 
   React.useEffect(() => { load().catch((e) => setErr(String(e.message || e))) }, [load])
+
+  const staged = useStagedConfig({ status, draft, setDraft, load, t, pendingRef })
+  const modelSelection = useModelSelection({ status, draft, setDraft, load, setErr })
 
   const checkUpdate = React.useCallback(async () => {
     setUpdateState((s) => ({ ...s, checking: true, status: 'checking', error: '' }))
@@ -121,6 +126,14 @@ function SettingsPage(props) {
       setBusy('')
     }
   }
+
+  const {
+    handlePinAccount,
+    handleAddAccount,
+    handleDeleteAccount,
+    handleRenameAccount,
+    handleClearKey,
+  } = createAccountActions({ performAction, load, t, setMsg })
 
   async function handleSaveKey() {
     const keyVal = String(apiKeyInput || '').trim()
@@ -242,45 +255,6 @@ function SettingsPage(props) {
     window.open('https://app.cline.bot/settings/api-keys', '_blank')
   }
 
-  async function handlePinAccount(accountEnv) {
-    await performAction('pin-account', async () => {
-      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/accounts/active`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ account: accountEnv }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      await load()
-    })
-  }
-
-  async function handleAddAccount({ label, apiKeyEnv, apiKey, id }) {
-    await performAction('add-account', async () => {
-      const endpoint = id ? `${ROUTE_PREFIX}/keys/discovered/import` : `${ROUTE_PREFIX}/accounts`
-      const payload = id ? { id, label, apiKeyEnv } : { label, apiKeyEnv, apiKey }
-      const res = await fetchWithTimeout(endpoint, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      setMsg(t('key.saved_msg', { status: data.validated ? 'OK' : (data.validationError || 'Notice') }))
-      await load()
-    })
-  }
-
-  async function handleDeleteAccount(accountEnv, deleteSecret = true) {
-    await performAction('delete-account', async () => {
-      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/accounts/delete`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKeyEnv: accountEnv, deleteSecret }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      await load()
-    })
-  }
-
   async function handleConfigPatch(patch) {
     setDraft((d) => ({ ...(d || {}), ...(patch || {}) }))
     await performAction('patch-config', async () => {
@@ -301,60 +275,6 @@ function SettingsPage(props) {
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       await load()
     })
-  }
-
-  const debounceTimerRef = typeof React.useRef === 'function' ? React.useRef(null) : { current: null }
-
-  React.useEffect(() => () => { if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current) }, [])
-
-  function debounceSaveDisabledModels(nextDisabled, previousDisabled) {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
-    debounceTimerRef.current = setTimeout(async () => {
-      try {
-        const res = await fetchWithTimeout(`${ROUTE_PREFIX}/models/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ disabledModels: nextDisabled }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
-        await load()
-      } catch (err) {
-        console.warn('[dsh-clinebot] Failed saving disabled models:', err)
-        setErr(String(err?.message || err))
-        setDraft((prev) => {
-          if (!prev) return prev
-          const all = status?.availableModels || []
-          const prevEnabled = all.map((m) => m.id).filter((mId) => !previousDisabled.includes(mId))
-          return { ...prev, disabledModels: previousDisabled, enabledModels: prevEnabled }
-        })
-      }
-    }, 400)
-  }
-
-  function handleToggleModel(id) {
-    const curr = draft?.disabledModels || []
-    const isCurrentlyDisabled = curr.includes(id)
-    const next = isCurrentlyDisabled ? curr.filter((x) => x !== id) : [...curr, id]
-    const all = status?.availableModels || []
-    const enabledIds = all.map((m) => m.id).filter((mId) => !next.includes(mId))
-    setDraft({ ...draft, disabledModels: next, enabledModels: enabledIds })
-    debounceSaveDisabledModels(next, curr)
-  }
-
-  function handleSetModelsFilter(type) {
-    const all = status?.availableModels || []
-    let allowed = new Set()
-    if (type === 'all') allowed = new Set(all.map((m) => m.id))
-    else if (type === 'vision') allowed = new Set(all.filter((m) => m.input?.includes('image') || m.input?.includes('vision')).map((m) => m.id))
-    else if (type === 'coding') allowed = new Set(all.filter((m) => m.category === 'coding').map((m) => m.id))
-    else if (type === 'recommended') allowed = new Set(all.filter((m) => m.recommended).map((m) => m.id))
-
-    const curr = draft?.disabledModels || []
-    const nextDisabled = all.map((m) => m.id).filter((id) => !allowed.has(id))
-    const nextEnabled = Array.from(allowed)
-    setDraft({ ...draft, disabledModels: nextDisabled, enabledModels: nextEnabled })
-    debounceSaveDisabledModels(nextDisabled, curr)
   }
 
   if (!status || !draft) {
@@ -437,7 +357,13 @@ function SettingsPage(props) {
 
     // Accounts Pool Card
     React.createElement(AccountsSection, {
-      status, busy, handlePinAccount, handleAddAccount, handleDeleteAccount,
+      status,
+      busy,
+      handlePinAccount,
+      handleAddAccount,
+      handleDeleteAccount,
+      handleRenameAccount,
+      handleClearKey,
       accountMode: draft?.accountMode || status?.config?.accountMode || 'least_used',
       handleUpdateAccountMode: (mode) => handleConfigPatch({ accountMode: mode }),
       modelRoutes: draft?.modelRoutes || status?.config?.modelRoutes || {},
@@ -446,39 +372,66 @@ function SettingsPage(props) {
     }),
 
     // Quota Warning & Dashboard Card
-    React.createElement(QuotaSection, { keyPresent, status, usage, busy, handleRefreshQuota, showSidebarQuota: draft?.showSidebarQuota !== false, onToggleSidebarQuota: (v) => handleConfigPatch({ showSidebarQuota: v }), t }),
-
-    // Card 3: Model Picker Management
-    React.createElement(ModelsSection, {
-      modelsList,
-      disabledSet,
-      enabledCount,
+    React.createElement(QuotaSection, {
       keyPresent,
+      status,
+      usage,
       busy,
-      handleSyncPlanModels,
-      handleUpdateModelContext,
-      handleSetModelsFilter,
-      handleToggleModel,
-      planSynced: !!(status?.config?.planSynced || (status?.config?.dynamicModels && status.config.dynamicModels.length > 0)),
-      planSyncedAt: status?.config?.planSyncedAt || 0,
-      defaultModelWarning: status?.config?.defaultModelWarning || '',
-      customModels: draft?.customModels || [],
-      modelReasoningDefaults: draft?.modelReasoningDefaults || {},
-      visibleModels: draft?.visibleModels || [],
-      filterModelsByPlan: draft?.filterModelsByPlan !== false,
-      onConfigUpdate: handleConfigPatch,
-      onUpdateReasoningEffort: (modelId, effort) => {
-        const next = { ...(draft?.modelReasoningDefaults || {}) }
-        if (!effort) delete next[modelId]; else next[modelId] = effort
-        handleConfigPatch({ modelReasoningDefaults: next })
-      },
+      handleRefreshQuota,
+      showSidebarQuota: draft?.showSidebarQuota !== false,
+      onToggleSidebarQuota: (value) => staged.stage({ showSidebarQuota: value }),
       t,
     }),
 
-    // Card 4: Session Metrics & Usage Tracking
+    // Models & context: a foldable group keeps the long model table out of the
+    // initial page while preserving the picker controls.
+    React.createElement(
+      CollapsibleGroup,
+      {
+        title: t('settings.models_group'),
+        description: t('settings.models_group_hint'),
+        badge: `${enabledCount}/${modelsList.length}`,
+        divided: true,
+        defaultOpen: false,
+      },
+      React.createElement(ModelsSection, {
+        modelsList,
+        disabledSet,
+        enabledCount,
+        keyPresent,
+        busy,
+        handleSyncPlanModels,
+        handleUpdateModelContext,
+        handleSetModelsFilter: modelSelection.handleSetModelsFilter,
+        handleToggleModel: modelSelection.handleToggleModel,
+        planSynced: !!(status?.config?.planSynced || (status?.config?.dynamicModels && status.config.dynamicModels.length > 0)),
+        planSyncedAt: status?.config?.planSyncedAt || 0,
+        defaultModelWarning: status?.config?.defaultModelWarning || '',
+        customModels: draft?.customModels || [],
+        modelReasoningDefaults: draft?.modelReasoningDefaults || {},
+        visibleModels: draft?.visibleModels || [],
+        filterModelsByPlan: draft?.filterModelsByPlan !== false,
+        onConfigUpdate: staged.stage,
+        onUpdateReasoningEffort: (modelId, effort) => {
+          const next = { ...(draft?.modelReasoningDefaults || {}) }
+          if (!effort) delete next[modelId]; else next[modelId] = effort
+          staged.stage({ modelReasoningDefaults: next })
+        },
+        t,
+      })
+    ),
+
+    // Session Metrics & Usage Tracking
     React.createElement(StatsSection, { status, onResetStats: handleResetStats, busy, t }),
 
-    // Card 5: Diagnostics & Sync with DSH
+    React.createElement(IntegrationsSection, {
+      draft,
+      onStage: staged.stage,
+      transport: draft?.transport || status?.config?.transport || 'adapter',
+      t,
+    }),
+
+    // Diagnostics & Sync with DSH
     React.createElement(DiagSection, {
       keyPresent,
       isRegistered,
@@ -488,7 +441,26 @@ function SettingsPage(props) {
       handleUnregister,
       handleRegister,
       proxyMode: draft?.proxyMode !== false,
-      onToggleProxy: (val) => handleConfigPatch({ proxyMode: val }),
+      onToggleProxy: (value) => staged.stage({ proxyMode: value }),
+      t,
+    }),
+
+    React.createElement(AdvancedSection, {
+      draft,
+      onStage: staged.stage,
+      transport: draft?.transport || status?.config?.transport || 'adapter',
+      t,
+    }),
+
+    React.createElement(SaveBar, {
+      pendingCount: staged.pendingCount,
+      saving: staged.saving,
+      saveState: staged.saveState,
+      saveError: staged.saveError,
+      invalid: staged.invalid,
+      validationError: staged.validationError,
+      onSave: staged.save,
+      onDiscard: staged.discard,
       t,
     })
   )

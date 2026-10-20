@@ -12,7 +12,14 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, sho
       ? React.createElement(
           'div',
           { className: status.quotaWarning.level === 'exhausted' ? 'cb-banner-exhausted' : 'cb-banner-warning' },
-          React.createElement('span', { style: { fontSize: '16px' } }, status.quotaWarning.level === 'exhausted' ? '🚨' : '⚠️'),
+          React.createElement(
+            'span',
+            { className: 'cb-banner-icon' },
+            React.createElement(CbIcon, {
+              name: status.quotaWarning.level === 'exhausted' ? 'error' : 'warning',
+              size: 16,
+            })
+          ),
           React.createElement(
             'div',
             { style: { flex: 1 } },
@@ -30,7 +37,11 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, sho
           ? React.createElement(
               'div',
               { className: 'cb-banner-warning' },
-              React.createElement('span', { style: { fontSize: '16px' } }, '⚠️'),
+              React.createElement(
+                'span',
+                { className: 'cb-banner-icon' },
+                React.createElement(CbIcon, { name: 'warning', size: 16 })
+              ),
               React.createElement('div', { style: { flex: 1 } }, t('quota.warning_low'))
             )
           : null),

@@ -242,7 +242,7 @@ test('updater: installExact holds profile lock until child process exits (#172)'
 })
 
 
-test('updater: process group escalation continues if descendants survive parent exit (#172)', async () => {
+test('updater: process group escalation continues if descendants survive parent exit (#172)', { skip: process.platform === 'win32' }, async () => {
   const child = createMockChild()
   const mockPid = 54321
   child.pid = mockPid

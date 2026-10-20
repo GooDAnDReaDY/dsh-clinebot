@@ -58,12 +58,17 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
       React.createElement(
         'span',
         { style: { fontWeight: 500, fontSize: '13px', color: 'var(--dsw-alias-label-primary)' } },
-        `➕ ${t('models.custom_add_title')} (${customModels.length})`
+        React.createElement(CbIcon, { name: 'plus', size: 13 }),
+        ` ${t('models.custom_add_title')} (${customModels.length})`
       ),
       React.createElement(
         'span',
         { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
-        isExpanded ? '▲' : '▼'
+        React.createElement(CbIcon, {
+          name: 'chevron',
+          size: 13,
+          className: isExpanded ? 'cb-icon cb-icon-chevron-open' : 'cb-icon',
+        })
       )
     ),
     isExpanded

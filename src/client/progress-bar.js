@@ -70,7 +70,14 @@ function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, t }) {
         'span',
         { className: 'cb-progress-label', style: { fontWeight: 500, whiteSpace: 'nowrap' } },
         label,
-        isBad ? React.createElement('span', { style: { marginLeft: '6px', fontSize: '11px', color: 'var(--dsw-alias-state-error-primary)' } }, '⚠️ <10%') : null
+        isBad
+          ? React.createElement(
+              'span',
+              { style: { display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px', fontSize: '11px', color: 'var(--dsw-alias-state-error-primary)' } },
+              React.createElement(CbIcon, { name: 'warning', size: 12 }),
+              '<10%'
+            )
+          : null
       ),
       React.createElement(
         'span',

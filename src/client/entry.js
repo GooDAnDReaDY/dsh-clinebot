@@ -113,14 +113,25 @@ function apply(ctx) {
   // `main`-slot panel: occupying the centre column meant clicking the meter threw
   // the conversation out of the way to show a status read-out.
 
-  // `settings.models.provider-card` is deliberately not registered. The seat is
-  // KEYED and dispatched with `entryKey = <provider settingsNs>` on every provider
-  // row, unconditionally: the models page renders it before the row's own
-  // `open ? editor : null`, and its owner props carry no open state. Anything
-  // registered there therefore shows on the collapsed row and reads as an editor
-  // that opened by itself. The row's 编辑 affordance already opens a provider
-  // editor with the same API-key field, and this plugin's configuration lives in
-  // its own Settings section, so the seat is left free.
+  // Models-page provider card. The seat is keyed by the provider's settings
+  // namespace, which the native adapter registration declares as `dsh-clinebot`
+  // (`settingsNs`). The component returns null for every other provider row, so
+  // it cannot leak onto a sibling's card.
+  registerSlotWhenReady('settings.models.provider-card', () =>
+    ctx.slots.register(
+      {
+        name: 'settings.models.provider-card',
+        key: NS,
+        locale: NS,
+        inject: () => ({ ctx }),
+      },
+      (props) => React.createElement(
+        ErrorBoundary,
+        { t: props && props.t },
+        React.createElement(ProviderCard, { ...props, ctx: (props && props.ctx) || ctx })
+      )
+    )
+  )
 
   // Composer Session Cost Dock (conversation.composer.dock slot)
   registerSlotWhenReady('conversation.composer.dock', () =>

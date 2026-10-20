@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, statSync, existsSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, statSync, existsSync, mkdirSync, renameSync, unlinkSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
@@ -12,16 +12,24 @@ export const MODULES = [
   'src/client/constants.js',
   'src/client/locales.js',
   'src/client/primitives.js',
+  'src/client/icons.js',
   'src/client/styles.js',
   'src/client/api.js',
+  'src/client/settings-draft.js',
+  'src/client/settings-models.js',
+  'src/client/settings-accounts.js',
   'src/client/error-boundary.js',
   'src/client/progress-bar.js',
+  'src/client/components/settings-layout.js',
+  'src/client/components/integrations-section.js',
+  'src/client/components/advanced-section.js',
   'src/client/components/update-banner.js',
   'src/client/components/key-section.js',
   'src/client/components/accounts-section.js',
   'src/client/components/quota-section.js',
   'src/client/components/custom-models.js',
   'src/client/components/visible-models.js',
+  'src/client/components/provider-card.js',
   'src/client/components/models-section.js',
   'src/client/components/stats-section.js',
   'src/client/components/diag-section.js',
@@ -82,7 +90,16 @@ if (isCheck) {
 }
 
 mkdirSync(path.dirname(outFile), { recursive: true })
-writeFileSync(outFile, bundle, 'utf8')
+// Write atomically so a concurrently running test never observes a partially
+// assembled bundle.
+const tempOut = `${outFile}.${process.pid}.${Date.now()}.tmp`
+writeFileSync(tempOut, bundle, 'utf8')
+try {
+  renameSync(tempOut, outFile)
+} catch {
+  writeFileSync(outFile, bundle, 'utf8')
+  try { unlinkSync(tempOut) } catch {}
+}
 const stats = statSync(outFile)
 console.log(`[build-client] Rebuilt lib/client.js: ${stats.size} bytes (< 256 KiB limit)`)
 console.log(`${path.relative(root, outFile) || outFile}: ${MODULES.length} modules, ${bundle.length} bytes`)
@@ -100,16 +117,19 @@ try {
   process.exit(1)
 }
 
-const localEslint = path.join(root, 'node_modules', '.bin', 'eslint')
-const eslintCmd = existsSync(localEslint) ? localEslint : 'eslint'
+const localEslintJs = path.join(root, 'node_modules', 'eslint', 'bin', 'eslint.js')
+const hasLocalEslint = existsSync(localEslintJs)
+const eslintCmd = hasLocalEslint ? process.execPath : 'eslint'
+const eslintArgs = [
+  '--no-config-lookup',
+  '--rule', 'no-undef: 2',
+  '--global', 'window,document,console,fetch,setTimeout,clearTimeout,AbortController,URL',
+  outFile
+]
+if (hasLocalEslint) eslintArgs.unshift(localEslintJs)
 
 try {
-  execFileSync(eslintCmd, [
-    '--no-config-lookup',
-    '--rule', 'no-undef: 2',
-    '--global', 'window,document,console,fetch,setTimeout,clearTimeout,AbortController',
-    outFile
-  ], { stdio: 'inherit' })
+  execFileSync(eslintCmd, eslintArgs, { stdio: 'inherit' })
   console.log('[build-client] no-undef check: OK')
 } catch (err) {
   if (err.code === 'ENOENT') {
