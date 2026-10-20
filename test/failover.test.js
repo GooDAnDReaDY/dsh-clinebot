@@ -328,6 +328,7 @@ test('failover: llm/stream waterfall intercepts 429 error and rotates active acc
       dynamicModels: [],
       enabledModels: ['cline-pass/deepseek-v4-pro'],
       proxyMode: false,
+      transport: 'pi-ai',
     }),
     replace: async (next) => {
       currentActive = next.activeAccount

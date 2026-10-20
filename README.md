@@ -4,11 +4,13 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
+<p><b>0.6.0</b> moves chat onto a native <code>ctx.llm</code> adapter. Requires DSH <code>0.2.1-rc.2</code>. The legacy <code>llm-pi-ai</code> + loopback-proxy path remains available behind <code>transport: "pi-ai"</code> for one release.</p>
+
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/GooDAnDReaDY/dsh-clinebot.svg?style=for-the-badge&color=10b981&labelColor=064e3b" alt="license"></a>
   <a href="https://github.com/topics/dsh-plugin"><img src="https://img.shields.io/badge/DSH-Plugin-8b5cf6.svg?style=for-the-badge&labelColor=2e1065" alt="DSH Plugin"></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node-20%2B-f59e0b.svg?style=for-the-badge&labelColor=451a03" alt="Node version"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/Node-22%2B-f59e0b.svg?style=for-the-badge&labelColor=451a03" alt="Node version"></a>
 </p>
 
 <!-- Author Showcase Link -->
@@ -66,59 +68,73 @@ Integrating ClinePass into DeepSeek Harness (DSH) natively poses key challenges:
 ```mermaid
 graph LR
     subgraph UI [DSH Web Interface]
-        Page["Dedicated Page (Settings -> ClineBot)"]
-        QuotaBar["5-Hour & Weekly Progress Bars & Warning Banner"]
-        KeyInput["Direct Key Paste & Save"]
-        ModelPick["Dynamic Model Sync & Picker Controls"]
-        StatsCard["Session Metrics Telemetry"]
+        Settings["Settings -> ClineBot"]
+        Dashboard["Quota / Analytics panel"]
+        Composer["Composer cost read-out"]
+        Picker["Model picker"]
     end
 
-    subgraph PluginHost [dsh-clinebot Host Runtime]
-        HttpEndpoints["API: /dsh-clinebot/*"]
-        ClientCore["lib/cline-client.js"]
-        ModelCatalog["lib/models.js (Curated + Dynamic Plan)"]
-        SlashCmd["Command: /cline"]
+    subgraph PluginHost [dsh-clinebot Runtime]
+        Routes["HTTP: /dsh-clinebot/*"]
+        Adapter["lib/adapter.js (ctx.llm LlmAdapter)"]
+        Transport["lib/transport/cline-transport.js"]
+        Pool["account-pool + session-router"]
+        Stats["stats-storage v2 + model-prices"]
+        TUI["dsh-TUI settings section"]
     end
 
-    subgraph DSHCore [DeepSeek Harness Services]
-        Credentials["Credentials Service (~/.dsh/.credentials.yaml)"]
-        PiAi["Settings: llm-pi-ai.providers.clinebot"]
+    subgraph DSHCore [DeepSeek Harness 0.2.1-rc.2]
+        Llm["ctx.llm"]
+        Credentials["ctx.credentials"]
+        Web["ctx.web / settings / commands"]
     end
 
-    subgraph Upstream [Cline Cloud]
-        ClinePass["api.cline.bot/api/v1/chat/completions"]
-        ClineQuota["api.cline.bot/api/v1/users/me/plan/usage-limits"]
-        ClinePlan["api.cline.bot/api/v1/users/me/plan"]
+    subgraph Upstream [ClinePass]
+        Chat["api.cline.bot/api/v1/chat/completions"]
+        Quota["users/me/plan/usage-limits"]
+        Plan["users/me/plan"]
     end
 
-    Page -->|GET /status & /usage| HttpEndpoints
-    KeyInput -->|POST /save-key| HttpEndpoints
-    ModelPick -->|POST /models/sync| HttpEndpoints
-    HttpEndpoints --> Credentials
-    HttpEndpoints --> ClientCore
-    ClientCore --> ModelCatalog
-    HttpEndpoints -->|Atomic Mutate| PiAi
-    ClientCore -->|Chat| ClinePass
-    ClientCore -->|Usage Limits| ClineQuota
-    ClientCore -->|Plan Features| ClinePlan
+    Settings --> Routes
+    Dashboard --> Routes
+    Composer --> Routes
+    Picker --> Llm
+    Llm --> Adapter
+    Adapter --> Pool
+    Adapter --> Transport
+    Transport --> Chat
+    Adapter --> Stats
+    Routes --> Stats
+    Routes --> Credentials
+    TUI --> Routes
+    Adapter --> Quota
+    Adapter --> Plan
 ```
 
 ---
 
 ## ✨ Features & Module Breakdown
 
+* **`lib/adapter.js`**:
+  Registers the `ClineBotAdapter` directly on `ctx.llm`: streaming, model catalogue, reasoning effort, pre-first-token account failover, retry policy, usage accounting and provider metadata.
+* **`lib/transport/cline-transport.js`**:
+  OpenAI-compatible SSE transport with connect/idle timeouts, abort handling and upstream error classification. The legacy proxy imports the same parser.
 * **`lib/models.js`**:
-  Manages the dynamic subscription catalog and fallback models with full reasoning effort mappings (`off: null`, `low`, `medium`, `high`, `max`), upstream 200k context limit declarations, user-defined custom models, and dynamic subscription plan model parsing (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
+  Dynamic subscription catalogue, curated fallback properties, reasoning efforts, custom models and plan parsing (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
+* **`lib/model-prices.js`**:
+  Explicit local cost estimates with per-model overrides. Unknown models stay `unpriced` instead of being reported as $0.
+* **`lib/stats-storage.js`**:
+  Persistent JSON telemetry v2: cache buckets, estimated cost, TTFT/latency, sessions and day/month/model/account aggregates. v1 files upgrade on read.
+* **`lib/account-pool.js` / `lib/session-router.js`**:
+  Credential discovery, usage-aware least-used and round-robin rotation, sticky sessions and cooldown recovery.
 * **`lib/cline-client.js`**:
-  * `fetchUsageLimits`: queries `GET /users/me/plan/usage-limits`, `GET /users/me/plan`, and `GET /users/me` with in-memory caching.
-  * `sessionStats` / `recordSessionRequest`: in-memory telemetry recording requests count, tokens, latency, and timestamps.
-  * `saveCredentialKey`: writes credentials directly into `~/.dsh/.credentials.yaml`.
-  * `smokeChat`: tests latency via non-streaming ping and updates session metrics.
-  * `buildPiAiProvider`: builds the DSH `llm-pi-ai` structure (`api: 'openai-completions'`) with full reasoning effort protocol compliance (`compat.supportsReasoningEffort: true`).
+  `fetchUsageLimits`, credential save, smoke test, model cache and the legacy `llm-pi-ai` provider builder used only by `transport: "pi-ai"`.
 * **`lib/index.js`**:
-  Cordis service module managing routes (including `POST /dsh-clinebot/models/sync`), quota warnings threshold evaluation, credentials, and registering the `/cline` slash command.
+  Cordis lifecycle: adapter registration, optional HTTP routes, quota warnings, `/cline` command, migration of the legacy provider and TUI section registration.
+* **`lib/tui-settings.js`**:
+  `dsh-TUI` section for key, base URL, model filters, active account, context window and output cap.
 * **`lib/client.js`**:
-  Configuration page on the plugin row (`plugins.row.config`) with live quota bars, an exhaustion warning, session metrics, one-click plan sync, and a fallback plugins card (`settings.plugin.item`). There is no `settings.section` sidebar entry.
+  Native `settings.section` plus provider card, sidebar meter, center-column quota/analytics panel (modal fallback) and composer cost read-out. No emojis, no full-page panel swap.
 
 ---
 
@@ -128,7 +144,18 @@ graph LR
 dsh plugin --profile web add @goodandready/dsh-clinebot
 ```
 
+Requires **DSH `0.2.1-rc.2`** and Node 22+. New installs use `transport: "adapter"` and register directly with `ctx.llm`. Set `transport: "pi-ai"` only if you still need the legacy `llm-pi-ai` provider and loopback proxy for one release.
+
 Restart your DeepSeek Harness instance and refresh the browser.
+
+### 0.6.0 endpoints
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /dsh-clinebot/analytics?groupBy=model\|day\|session&from=&to=` | Aggregated requests, tokens, estimated cost, success rate and TTFT |
+| `GET /dsh-clinebot/prices` | Local price table used by the composer read-out |
+| `GET /dsh-clinebot/accounts/usage` | Per-account quota snapshot |
+| `GET /dsh-clinebot/stats/export?detailed=1` | CSV with cache, cost, TTFT and latency columns |
 
 ---
 

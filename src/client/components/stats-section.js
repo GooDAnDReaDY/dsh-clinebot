@@ -8,6 +8,7 @@ function StatsSection({ status, onResetStats, busy, t }) {
   const requests = typeof totals.requests === 'number' ? totals.requests : (typeof s.requests === 'number' ? s.requests : 0)
   const totalTokens = typeof totals.totalTokens === 'number' ? totals.totalTokens : (typeof s.totalTokens === 'number' ? s.totalTokens : 0)
   const errors429 = typeof totals.rateLimited429 === 'number' ? totals.rateLimited429 : (typeof s.errors429 === 'number' ? s.errors429 : (typeof totals.failed === 'number' ? totals.failed : 0))
+  const reasoning = Number(totals.reasoningTokens || sess.reasoningTokensEst || 0)
 
   const topModels = Object.entries(s.byModel || {})
     .sort((a, b) => {
@@ -18,24 +19,24 @@ function StatsSection({ status, onResetStats, busy, t }) {
     .slice(0, 5)
 
   return React.createElement(
-    'div',
+    'section',
     { className: 'cb-section-card' },
     React.createElement(
       'div',
-      { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' } },
+      { className: 'cb-section-head' },
       React.createElement('div', { className: 'cb-section-title' }, t('stats.title')),
       React.createElement(
         'div',
-        { style: { display: 'flex', gap: '6px', alignItems: 'center' } },
+        { className: 'cb-section-actions' },
         React.createElement(
           'a',
           {
             href: '/dsh-clinebot/stats/export',
             download: 'clinebot-stats.csv',
-            className: 'cb-btn',
-            style: { padding: '2px 8px', fontSize: '11px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' },
+            className: 'cb-btn cb-btn-link',
           },
-          `📥 ${t('stats.export_csv')}`
+          React.createElement(CbIcon, { name: 'download', size: 13 }),
+          ` ${t('stats.export_csv')}`
         ),
         confirmReset
           ? React.createElement(
@@ -46,7 +47,6 @@ function StatsSection({ status, onResetStats, busy, t }) {
                 {
                   type: 'button',
                   className: 'cb-btn cb-btn-warn',
-                  style: { padding: '2px 8px', fontSize: '11px', marginRight: '6px' },
                   disabled: !!busy,
                   onClick: () => {
                     setConfirmReset(false)
@@ -57,12 +57,7 @@ function StatsSection({ status, onResetStats, busy, t }) {
               ),
               React.createElement(
                 'button',
-                {
-                  type: 'button',
-                  className: 'cb-btn',
-                  style: { padding: '2px 8px', fontSize: '11px' },
-                  onClick: () => setConfirmReset(false),
-                },
+                { type: 'button', className: 'cb-btn', onClick: () => setConfirmReset(false) },
                 t('stats.cancel_reset')
               )
             )
@@ -71,7 +66,6 @@ function StatsSection({ status, onResetStats, busy, t }) {
               {
                 type: 'button',
                 className: 'cb-btn',
-                style: { padding: '2px 8px', fontSize: '11px' },
                 disabled: !!busy,
                 onClick: () => setConfirmReset(true),
               },
@@ -82,7 +76,7 @@ function StatsSection({ status, onResetStats, busy, t }) {
     React.createElement('div', { className: 'cb-section-desc' }, t('stats.desc')),
     React.createElement(
       'div',
-      { className: 'cb-grid-2', style: { marginTop: '12px' } },
+      { className: 'cb-stats-grid' },
       React.createElement(
         'div',
         { className: 'cb-stat-box' },
@@ -92,16 +86,12 @@ function StatsSection({ status, onResetStats, busy, t }) {
       React.createElement(
         'div',
         { className: 'cb-stat-box' },
-        React.createElement(
-          'div',
-          { className: 'cb-stat-val' },
-          `${Number(totalTokens).toLocaleString()}`
-        ),
+        React.createElement('div', { className: 'cb-stat-val' }, Number(totalTokens).toLocaleString()),
         React.createElement(
           'div',
           { className: 'cb-stat-lbl' },
-          totals.reasoningTokens || sess.reasoningTokensEst
-            ? `${t('stats.tokens')} (${Number(totals.reasoningTokens || sess.reasoningTokensEst).toLocaleString()} reasoning)`
+          reasoning > 0
+            ? `${t('stats.tokens')} (${reasoning.toLocaleString()} reasoning)`
             : t('stats.tokens')
         )
       ),
@@ -121,30 +111,18 @@ function StatsSection({ status, onResetStats, busy, t }) {
     topModels.length > 0
       ? React.createElement(
           'div',
-          { style: { marginTop: '14px' } },
-          React.createElement('div', { style: { fontSize: '12px', fontWeight: 500, marginBottom: '6px', color: 'var(--dsw-alias-label-secondary)' } }, t('stats.top_models')),
-          React.createElement(
+          { className: 'cb-model-list' },
+          React.createElement('div', { className: 'cb-model-list-title' }, t('stats.top_models')),
+          topModels.map(([modelId, data]) => React.createElement(
             'div',
-            { style: { display: 'flex', flexDirection: 'column', gap: '4px' } },
-            topModels.map(([modId, data]) =>
-              React.createElement(
-                'div',
-                {
-                  key: modId,
-                  style: {
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: '11px',
-                    padding: '4px 8px',
-                    background: 'var(--dsw-alias-bg-layer-2)',
-                    borderRadius: '4px',
-                  },
-                },
-                React.createElement('span', { style: { fontFamily: 'monospace' } }, modId),
-                React.createElement('span', null, `${data.requests || 0} reqs · ${Number(data.totalTokens ?? data.tokens ?? 0).toLocaleString()} tok${data.reasoningTokens ? ` (${Number(data.reasoningTokens).toLocaleString()} thk)` : ''}`)
-              )
+            { className: 'cb-model-row', key: modelId },
+            React.createElement('span', { className: 'cb-mono' }, modelId),
+            React.createElement(
+              'span',
+              { className: 'cb-muted' },
+              `${data.requests || 0} reqs · ${Number(data.totalTokens ?? data.tokens ?? 0).toLocaleString()} tok${data.reasoningTokens ? ` (${Number(data.reasoningTokens).toLocaleString()} reasoning)` : ''}`
             )
-          )
+          ))
         )
       : null
   )

@@ -13,6 +13,7 @@ credentials.yaml
 dist/
 coverage/
 .worktrees/
+.commandcode/
 
 # Internal service and agent workflow files (dhs-plugin-release-workflow denylist)
 AGENTS.md

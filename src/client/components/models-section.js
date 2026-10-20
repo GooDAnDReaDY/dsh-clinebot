@@ -63,9 +63,7 @@ function ModelsSection({
   return React.createElement(
     'div',
     { className: 'cb-section-card' },
-    defaultModelWarning
-      ? React.createElement('div', { className: 'cb-alert-bad', style: { marginBottom: '12px' } }, `⚠️ ${defaultModelWarning}`)
-      : null,
+    defaultModelWarning ? React.createElement('div', { className: 'cb-alert-bad cb-inline-alert', style: { marginBottom: '12px' } }, React.createElement(CbIcon, { name: 'warning', size: 14 }), ` ${defaultModelWarning}`) : null,
     React.createElement(VisibleModelsSub, {
       modelsList,
       visibleModels,
@@ -426,7 +424,7 @@ function ModelsSection({
                           setEditingModelId(m.id)
                         },
                       },
-                      '✎'
+                      React.createElement(CbIcon, { name: 'edit', size: 13 })
                     )
                   )
             ),

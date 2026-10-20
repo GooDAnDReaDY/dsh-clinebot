@@ -1,185 +1,198 @@
+/**
+ * Accounts pool: one calm row per account, with live quota, status dot and a
+ * compact action menu. Account mutations commit immediately; the rest of the
+ * settings page uses the staged save bar.
+ */
 function AccountsSection({
   status,
   busy,
   handlePinAccount,
   handleAddAccount,
   handleDeleteAccount,
+  handleRenameAccount,
+  handleClearKey,
   accountMode,
   handleUpdateAccountMode,
   modelRoutes = {},
   onUpdateModelRoutes,
   t,
 }) {
-  if (!status.accounts || !status.accounts.length) return null
-
   const [showAdd, setShowAdd] = React.useState(false)
   const [newLabel, setNewLabel] = React.useState('')
   const [newEnv, setNewEnv] = React.useState('')
   const [newKey, setNewKey] = React.useState('')
   const [showKey, setShowKey] = React.useState(false)
-  const [deleteSecret, setDeleteSecret] = React.useState(true)
+  const [discoveredKeys, setDiscoveredKeys] = React.useState([])
+  const [usageByAccount, setUsageByAccount] = React.useState({})
+  const [menuFor, setMenuFor] = React.useState('')
+  const [renameFor, setRenameFor] = React.useState('')
+  const [renameValue, setRenameValue] = React.useState('')
+  const [confirmAction, setConfirmAction] = React.useState(null)
   const [routeModel, setRouteModel] = React.useState('')
   const [routeAccount, setRouteAccount] = React.useState('')
-  const [discoveredKeys, setDiscoveredKeys] = React.useState([])
 
   React.useEffect(() => {
     let active = true
     fetchWithTimeout(`${ROUTE_PREFIX}/keys/discovered`, { cache: 'no-store' })
-      .then((r) => r.json())
+      .then((response) => response.json())
       .then((data) => {
-        if (active && data?.ok && Array.isArray(data.discovered)) {
-          setDiscoveredKeys(data.discovered)
-        }
+        if (active && data?.ok && Array.isArray(data.discovered)) setDiscoveredKeys(data.discovered)
       })
       .catch(() => {})
     return () => { active = false }
   }, [])
 
-  async function handleImportDiscovered(item) {
-    let max = 1
-    for (const a of (status.accounts || [])) {
-      const m = String(a.apiKeyEnv || '').match(/^CLINEBOT_API_KEY_(\d+)$/)
-      if (m) {
-        const n = parseInt(m[1], 10)
-        if (n >= max) max = n + 1
-      }
-    }
-    const targetEnv = `CLINEBOT_API_KEY_${max}`
-    if (typeof handleAddAccount === 'function') {
-      await handleAddAccount({
-        label: item.source || targetEnv,
-        apiKeyEnv: targetEnv,
-        id: item.id,
+  const accountSignature = (status?.accounts || []).map((account) => account.apiKeyEnv || account.id).join('|')
+  React.useEffect(() => {
+    let active = true
+    fetchWithTimeout(`${ROUTE_PREFIX}/accounts/usage`, { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active || !data?.ok || !Array.isArray(data.accounts)) return
+        const next = {}
+        for (const entry of data.accounts) next[entry.apiKeyEnv] = entry
+        setUsageByAccount(next)
       })
-      setDiscoveredKeys((prev) => prev.filter((k) => k.id !== item.id))
+      .catch(() => {})
+    return () => { active = false }
+  }, [accountSignature, status?.activeAccount, busy])
+
+  function nextEnvName() {
+    let max = 1
+    for (const account of status.accounts || []) {
+      const match = String(account.apiKeyEnv || '').match(/^CLINEBOT_API_KEY_(\d+)$/)
+      if (match) max = Math.max(max, Number(match[1]) + 1)
     }
+    return `CLINEBOT_API_KEY_${max}`
   }
 
-  function handleOpenAdd() {
-    let max = 1
-    for (const a of (status.accounts || [])) {
-      const m = String(a.apiKeyEnv || '').match(/^CLINEBOT_API_KEY_(\d+)$/)
-      if (m) {
-        const n = parseInt(m[1], 10)
-        if (n >= max) max = n + 1
-      }
-    }
-    setNewEnv(`CLINEBOT_API_KEY_${max}`)
+  function openAdd() {
+    setNewEnv(nextEnvName())
     setShowAdd(true)
   }
 
-  async function onSubmitAdd(e) {
-    if (e && e.preventDefault) e.preventDefault()
-    if (!newKey.trim()) return
-    if (typeof handleAddAccount === 'function') {
-      await handleAddAccount({
-        label: newLabel.trim() || newEnv.trim(),
-        apiKeyEnv: newEnv.trim(),
-        apiKey: newKey.trim(),
-      })
-    }
+  async function submitAdd(event) {
+    if (event?.preventDefault) event.preventDefault()
+    if (!newKey.trim() || typeof handleAddAccount !== 'function') return
+    await handleAddAccount({
+      label: newLabel.trim() || newEnv.trim(),
+      apiKeyEnv: newEnv.trim(),
+      apiKey: newKey.trim(),
+    })
     setNewLabel('')
     setNewEnv('')
     setNewKey('')
     setShowAdd(false)
   }
 
-  async function onDeleteAccount(envName) {
-    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-      if (!window.confirm(t('accounts.delete_confirm', { label: envName }))) return
-    }
-    if (typeof handleDeleteAccount === 'function') {
-      await handleDeleteAccount(envName, deleteSecret)
-    }
+  async function importDiscovered(item) {
+    if (typeof handleAddAccount !== 'function') return
+    await handleAddAccount({
+      label: item.source || nextEnvName(),
+      apiKeyEnv: nextEnvName(),
+      id: item.id,
+    })
+    setDiscoveredKeys((previous) => previous.filter((entry) => entry.id !== item.id))
   }
 
+  function openRename(account) {
+    setMenuFor('')
+    setRenameFor(account.apiKeyEnv)
+    setRenameValue(account.label || '')
+  }
+
+  async function submitRename(account) {
+    if (typeof handleRenameAccount === 'function') {
+      await handleRenameAccount(account.apiKeyEnv, renameValue.trim() || account.apiKeyEnv)
+    }
+    setRenameFor('')
+    setRenameValue('')
+  }
+
+  async function runConfirm() {
+    if (!confirmAction) return
+    if (confirmAction.type === 'delete' && typeof handleDeleteAccount === 'function') {
+      await handleDeleteAccount(confirmAction.env, true)
+    }
+    if (confirmAction.type === 'clear' && typeof handleClearKey === 'function') {
+      await handleClearKey(confirmAction.env)
+    }
+    setConfirmAction(null)
+  }
+
+  function dotClass(account, live) {
+    if (!account.present) return 'cb-status-dot cb-status-dot-warn'
+    if (live?.error) return 'cb-status-dot cb-status-dot-bad'
+    const percent = live?.usage?.windows?.fiveHour?.percentUsed
+    if (typeof percent === 'number' && percent >= 95) return 'cb-status-dot cb-status-dot-bad'
+    if (account.isPinned || status.activeAccount === account.apiKeyEnv) return 'cb-status-dot cb-status-dot-ok'
+    return 'cb-status-dot cb-status-dot-idle'
+  }
+
+  const accounts = status.accounts || []
+
   return React.createElement(
-    'div',
-    { className: 'cb-section-card' },
+    'section',
+    { className: 'cb-section-card cb-accounts' },
     React.createElement(
       'div',
-      { className: 'cb-section-title', style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-      React.createElement('span', null, t('accounts.title')),
+      { className: 'cb-section-head' },
+      React.createElement('div', { className: 'cb-section-title' }, t('accounts.title')),
       !showAdd
         ? React.createElement(
             'button',
-            {
-              type: 'button',
-              className: 'cb-btn',
-              style: { fontSize: '11px', padding: '4px 10px' },
-              onClick: handleOpenAdd,
-              disabled: !!busy,
-            },
-            t('accounts.add_btn')
+            { type: 'button', className: 'cb-btn cb-btn-primary', disabled: !!busy, onClick: openAdd },
+            React.createElement(CbIcon, { name: 'plus', size: 13 }),
+            ` ${t('accounts.add_btn')}`
           )
         : null
     ),
     React.createElement('div', { className: 'cb-section-desc' }, t('accounts.desc')),
+
     discoveredKeys.length > 0
       ? React.createElement(
           'div',
-          { className: 'cb-alert-ok', style: { display: 'flex', flexDirection: 'column', gap: '6px', margin: '6px 0' } },
-          React.createElement('div', { style: { fontWeight: 600 } }, `🔍 ${t('discovery.title')}`),
-          discoveredKeys.map((item, idx) =>
+          { className: 'cb-discovered' },
+          React.createElement(
+            'div',
+            { className: 'cb-discovered-head' },
+            React.createElement(CbIcon, { name: 'key', size: 14 }),
+            ` ${t('discovery.title')}`
+          ),
+          discoveredKeys.map((item) => React.createElement(
+            'div',
+            { className: 'cb-discovered-row', key: item.id },
+            React.createElement('span', { className: 'cb-mono' }, item.maskedKey || item.source),
+            React.createElement('span', { className: 'cb-muted' }, item.source || ''),
             React.createElement(
-              'div',
-              { key: idx, style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-              React.createElement('span', null, `${item.maskedKey} (${item.source})`),
-              React.createElement(
-                'button',
-                {
-                  type: 'button',
-                  className: 'cb-btn',
-                  style: { fontSize: '11px', padding: '2px 8px' },
-                  disabled: !!busy,
-                  onClick: () => handleImportDiscovered(item),
-                },
-                t('discovery.import_btn', { source: item.source })
-              )
+              'button',
+              {
+                type: 'button',
+                className: 'cb-btn',
+                disabled: !!busy,
+                onClick: () => importDiscovered(item),
+              },
+              React.createElement(CbIcon, { name: 'download', size: 12 }),
+              ` ${t('discovery.import_btn', { source: item.source || '' })}`
             )
-          )
+          ))
         )
       : null,
+
     React.createElement(
       'div',
-      {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          margin: '8px 0 12px 0',
-          fontSize: '12px',
-          color: 'var(--dsw-alias-label-secondary)',
-        },
-      },
-      React.createElement('span', { style: { fontWeight: 500 } }, t('accounts.mode_label') + ':'),
+      { className: 'cb-account-mode' },
+      React.createElement('span', { className: 'cb-muted' }, t('accounts.mode_label')),
       React.createElement(
         'div',
-        {
-          style: {
-            display: 'inline-flex',
-            borderRadius: '6px',
-            border: '1px solid var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 12%, transparent))',
-            overflow: 'hidden',
-          },
-        },
+        { className: 'cb-seg' },
         React.createElement(
           'button',
           {
             type: 'button',
-            className: 'cb-btn',
-            style: {
-              borderRadius: 0,
-              fontSize: '11px',
-              padding: '3px 9px',
-              border: 'none',
-              background: (accountMode || 'least_used') === 'least_used'
-                ? 'var(--dsw-alias-interactive-bg-active, color-mix(in srgb, currentColor 14%, transparent))'
-                : 'transparent',
-              fontWeight: (accountMode || 'least_used') === 'least_used' ? 600 : 400,
-            },
-            onClick: () => typeof handleUpdateAccountMode === 'function' && handleUpdateAccountMode('least_used'),
+            className: (accountMode || 'least_used') === 'least_used' ? 'cb-seg-item cb-seg-item-active' : 'cb-seg-item',
             disabled: !!busy,
+            onClick: () => handleUpdateAccountMode && handleUpdateAccountMode('least_used'),
           },
           t('accounts.mode_least_used')
         ),
@@ -187,20 +200,9 @@ function AccountsSection({
           'button',
           {
             type: 'button',
-            className: 'cb-btn',
-            style: {
-              borderRadius: 0,
-              fontSize: '11px',
-              padding: '3px 9px',
-              border: 'none',
-              borderLeft: '1px solid var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 12%, transparent))',
-              background: accountMode === 'round_robin'
-                ? 'var(--dsw-alias-interactive-bg-active, color-mix(in srgb, currentColor 14%, transparent))'
-                : 'transparent',
-              fontWeight: accountMode === 'round_robin' ? 600 : 400,
-            },
-            onClick: () => typeof handleUpdateAccountMode === 'function' && handleUpdateAccountMode('round_robin'),
+            className: accountMode === 'round_robin' ? 'cb-seg-item cb-seg-item-active' : 'cb-seg-item',
             disabled: !!busy,
+            onClick: () => handleUpdateAccountMode && handleUpdateAccountMode('round_robin'),
           },
           t('accounts.mode_round_robin')
         )
@@ -210,72 +212,47 @@ function AccountsSection({
     showAdd
       ? React.createElement(
           'form',
-          {
-            onSubmit: onSubmitAdd,
-            style: {
-              background: 'var(--dsw-alias-interactive-bg-hover, color-mix(in srgb, currentColor 4%, transparent))',
-              border: '1px solid var(--dsw-alias-border-l2, color-mix(in srgb, currentColor 12%, transparent))',
-              borderRadius: '8px',
-              padding: '12px',
-              marginBottom: '14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            },
-          },
+          { className: 'cb-account-add', onSubmit: submitAdd },
           React.createElement(
             'div',
-            { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+            { className: 'cb-account-add-row' },
             React.createElement('input', {
               type: 'text',
               className: 'cb-input',
-              style: { flex: '1 1 180px' },
               placeholder: t('accounts.label_placeholder'),
               value: newLabel,
-              onChange: (e) => setNewLabel(e.target.value),
+              onChange: (event) => setNewLabel(event.target.value),
             }),
             React.createElement('input', {
               type: 'text',
               className: 'cb-input',
-              style: { flex: '1 1 180px' },
               placeholder: t('accounts.env_placeholder'),
               value: newEnv,
-              onChange: (e) => setNewEnv(e.target.value),
+              onChange: (event) => setNewEnv(event.target.value),
             })
           ),
           React.createElement(
             'div',
-            { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
+            { className: 'cb-account-add-row' },
             React.createElement('input', {
               type: showKey ? 'text' : 'password',
               className: 'cb-input',
-              style: { flex: '1' },
               placeholder: t('key.placeholder_empty'),
               value: newKey,
-              onChange: (e) => setNewKey(e.target.value),
+              onChange: (event) => setNewKey(event.target.value),
             }),
             React.createElement(
               'button',
-              {
-                type: 'button',
-                className: 'cb-btn',
-                style: { padding: '4px 8px', fontSize: '11px' },
-                onClick: () => setShowKey(!showKey),
-              },
+              { type: 'button', className: 'cb-btn', onClick: () => setShowKey((value) => !value) },
               showKey ? t('key.hide') : t('key.show')
             )
           ),
           React.createElement(
             'div',
-            { style: { display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' } },
+            { className: 'cb-account-add-actions' },
             React.createElement(
               'button',
-              {
-                type: 'button',
-                className: 'cb-btn',
-                style: { padding: '4px 10px', fontSize: '12px' },
-                onClick: () => setShowAdd(false),
-              },
+              { type: 'button', className: 'cb-btn', onClick: () => setShowAdd(false) },
               t('accounts.cancel_btn')
             ),
             React.createElement(
@@ -283,7 +260,6 @@ function AccountsSection({
               {
                 type: 'submit',
                 className: 'cb-btn cb-btn-primary',
-                style: { padding: '4px 12px', fontSize: '12px' },
                 disabled: !newKey.trim() || !!busy,
               },
               busy === 'add-account' ? t('key.saving') : t('accounts.save_btn')
@@ -292,147 +268,186 @@ function AccountsSection({
         )
       : null,
 
-    React.createElement(
-      'table',
-      { className: 'cb-table' },
-      React.createElement(
-        'thead',
-        null,
-        React.createElement(
-          'tr',
-          null,
-          React.createElement('th', null, 'Account'),
-          React.createElement('th', null, 'Credential Ref'),
-          React.createElement('th', null, 'Status'),
-          React.createElement('th', { style: { textAlign: 'right' } }, 'Action')
-        )
-      ),
-      React.createElement(
-        'tbody',
-        null,
-        status.accounts.map((acc) => {
-          const envName = typeof acc.apiKeyEnv === 'string' ? acc.apiKeyEnv : ''
-          const label = typeof acc.label === 'string' ? acc.label : ''
-          const isActive = status.activeAccount === envName || (!status.activeAccount && acc.id === 'default')
-          const isPrimary = acc.id === 'default' || envName === status.config?.apiKeyEnv
-          return React.createElement(
-            'tr',
-            { key: acc.id || envName },
-            React.createElement('td', null, React.createElement('strong', null, label)),
-            React.createElement('td', null, React.createElement('code', null, envName)),
-            React.createElement(
-              'td',
-              null,
-              acc.present
-                ? React.createElement('span', { className: 'cb-badge cb-badge-ok' }, `Configured (${acc.source})`)
-                : React.createElement('span', { className: 'cb-badge cb-badge-warn' }, 'Missing Key'),
-              isActive
-                ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: '6px' } }, t('accounts.active_badge'))
-                : null,
-              acc.isPinned && !isActive
-                ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: '6px', opacity: 0.85 } }, t('accounts.pinned_badge'))
-                : null,
-              typeof acc.percentUsed === 'number'
-                ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: '6px' } }, t('accounts.quota_used', { pct: acc.percentUsed }))
-                : null
-            ),
-            React.createElement(
-              'td',
-              { style: { textAlign: 'right' } },
-              !isActive && acc.present
+    accounts.length === 0
+      ? React.createElement('div', { className: 'cb-empty' }, t('accounts.no_accounts'))
+      : React.createElement(
+          'div',
+          { className: 'cb-account-list' },
+          accounts.map((account) => {
+            const envName = account.apiKeyEnv || account.id || ''
+            const live = usageByAccount[envName]
+            const isActive = status.activeAccount === envName || (!status.activeAccount && account.id === 'default')
+            const isPrimary = account.id === 'default' || envName === status.config?.apiKeyEnv
+            const five = live?.usage?.windows?.fiveHour
+            const percent = typeof five?.percentUsed === 'number'
+              ? five.percentUsed
+              : (typeof account.percentUsed === 'number' ? account.percentUsed : null)
+            const plan = live?.usage?.plan || ''
+            const email = live?.usage?.user?.email || ''
+            return React.createElement(
+              'div',
+              { className: 'cb-account-item', key: envName || account.id },
+              React.createElement(
+                'div',
+                { className: 'cb-account-row' },
+                React.createElement('span', { className: dotClass(account, live), 'aria-hidden': 'true' }),
+                React.createElement(
+                  'div',
+                  { className: 'cb-account-main' },
+                  React.createElement(
+                    'div',
+                    { className: 'cb-account-name' },
+                    account.label || envName,
+                    React.createElement('span', { className: 'cb-account-env cb-mono' }, envName)
+                  ),
+                  React.createElement(
+                    'div',
+                    { className: 'cb-account-meta' },
+                    [plan, email].filter(Boolean).join(' · ') || t('accounts.source', { source: account.source || '—' })
+                  )
+                ),
+                React.createElement(
+                  'div',
+                  { className: 'cb-account-badges' },
+                  isActive ? React.createElement('span', { className: 'cb-badge cb-badge-ok' }, t('accounts.active_badge')) : null,
+                  account.isPinned ? React.createElement('span', { className: 'cb-badge' }, t('accounts.pinned_badge')) : null,
+                  account.present
+                    ? React.createElement('span', { className: 'cb-badge' }, t('accounts.configured'))
+                    : React.createElement('span', { className: 'cb-badge cb-badge-warn' }, t('accounts.missing_key'))
+                ),
+                React.createElement(
+                  'div',
+                  { className: 'cb-account-quota' },
+                  percent === null
+                    ? null
+                    : React.createElement(
+                        React.Fragment,
+                        null,
+                        React.createElement('span', { className: 'cb-muted' }, t('accounts.quota_5h', { pct: Math.round(percent) })),
+                        React.createElement(
+                          'span',
+                          { className: 'cb-meter' },
+                          React.createElement('span', {
+                            className: percent >= 95 ? 'cb-meter-fill cb-meter-fill-warn' : 'cb-meter-fill',
+                            style: { width: `${Math.max(0, Math.min(100, percent))}%` },
+                          })
+                        )
+                      )
+                ),
+                React.createElement(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'cb-icon-btn',
+                    'aria-label': t('accounts.actions'),
+                    'aria-expanded': menuFor === envName,
+                    disabled: !!busy,
+                    onClick: () => setMenuFor((current) => (current === envName ? '' : envName)),
+                  },
+                  React.createElement(CbIcon, { name: 'kebab', size: 16 })
+                )
+              ),
+
+              menuFor === envName
                 ? React.createElement(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'cb-btn',
-                      style: { padding: '4px 8px', fontSize: '11px' },
-                      disabled: !!busy,
-                      onClick: () => handlePinAccount(envName),
-                    },
-                    t('accounts.pin_btn')
+                    'div',
+                    { className: 'cb-account-menu' },
+                    isActive
+                      ? React.createElement('button', { type: 'button', className: 'cb-menu-item', onClick: () => { setMenuFor(''); handlePinAccount('') } }, t('accounts.unpin'))
+                      : account.present
+                        ? React.createElement('button', { type: 'button', className: 'cb-menu-item', onClick: () => { setMenuFor(''); handlePinAccount(envName) } }, t('accounts.pin_btn'))
+                        : null,
+                    !isPrimary
+                      ? React.createElement('button', { type: 'button', className: 'cb-menu-item', onClick: () => openRename(account) }, t('accounts.rename'))
+                      : null,
+                    account.present
+                      ? React.createElement('button', { type: 'button', className: 'cb-menu-item', onClick: () => { setMenuFor(''); setConfirmAction({ type: 'clear', env: envName }) } }, t('accounts.clear_key'))
+                      : null,
+                    !isPrimary
+                      ? React.createElement('button', { type: 'button', className: 'cb-menu-item cb-menu-item-danger', onClick: () => { setMenuFor(''); setConfirmAction({ type: 'delete', env: envName }) } }, t('accounts.delete_btn'))
+                      : null
                   )
                 : null,
-              !isPrimary
+
+              renameFor === envName
                 ? React.createElement(
-                    'button',
-                    {
-                      type: 'button',
-                      className: 'cb-btn cb-btn-danger',
-                      style: { padding: '4px 8px', fontSize: '11px', marginLeft: '6px' },
-                      disabled: !!busy,
-                      onClick: () => onDeleteAccount(envName),
-                    },
-                    t('accounts.delete_btn')
+                    'div',
+                    { className: 'cb-account-inline' },
+                    React.createElement('input', {
+                      type: 'text',
+                      className: 'cb-input',
+                      value: renameValue,
+                      onChange: (event) => setRenameValue(event.target.value),
+                      placeholder: t('accounts.rename_placeholder'),
+                    }),
+                    React.createElement('button', { type: 'button', className: 'cb-btn cb-btn-primary', disabled: !!busy, onClick: () => submitRename(account) }, t('accounts.rename_save')),
+                    React.createElement('button', { type: 'button', className: 'cb-btn', onClick: () => setRenameFor('') }, t('accounts.cancel'))
+                  )
+                : null,
+
+              confirmAction && confirmAction.env === envName
+                ? React.createElement(
+                    'div',
+                    { className: 'cb-account-inline cb-account-danger' },
+                    React.createElement(
+                      'span',
+                      { className: 'cb-account-danger-text' },
+                      confirmAction.type === 'delete'
+                        ? t('accounts.remove_confirm', { name: account.label || envName })
+                        : t('accounts.clear_confirm', { name: account.label || envName })
+                    ),
+                    React.createElement('button', { type: 'button', className: 'cb-btn cb-btn-danger', disabled: !!busy, onClick: runConfirm }, t('accounts.confirm')),
+                    React.createElement('button', { type: 'button', className: 'cb-btn', onClick: () => setConfirmAction(null) }, t('accounts.cancel'))
                   )
                 : null
             )
-          )
-        })
-      )
-    ),
-    status.lastRotation
-      ? React.createElement(
-          'div',
-          { className: 'cb-rotation-info', style: { marginTop: '10px', fontSize: '12px', opacity: 0.85 } },
-          t('accounts.last_failover', {
-            from: status.lastRotation.from,
-            to: status.lastRotation.to,
-            reason: status.lastRotation.reason,
           })
-        )
-      : null,
+        ),
+
     React.createElement(
       'div',
-      { style: { marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--dsw-alias-border-l2)' } },
+      { className: 'cb-account-routes' },
       React.createElement(
         'div',
-        { style: { fontSize: '12px', fontWeight: 600, color: 'var(--dsw-alias-label-primary)', marginBottom: '4px' } },
-        t('accounts.routes_title')
+        { className: 'cb-account-routes-head' },
+        React.createElement(CbIcon, { name: 'route', size: 14 }),
+        ` ${t('accounts.routes_title')}`
       ),
+      React.createElement('div', { className: 'cb-section-desc' }, t('accounts.routes_desc')),
       React.createElement(
         'div',
-        { style: { fontSize: '11px', color: 'var(--dsw-alias-label-secondary)', marginBottom: '8px' } },
-        t('accounts.routes_desc')
-      ),
-      React.createElement(
-        'div',
-        { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' } },
+        { className: 'cb-account-route-add' },
         React.createElement('input', {
           type: 'text',
           className: 'cb-input',
-          style: { flex: '2 1 140px', height: '26px', fontSize: '11px', padding: '0 6px' },
           placeholder: t('accounts.route_model_placeholder'),
           value: routeModel,
-          onChange: (e) => setRouteModel(e.target.value),
+          onChange: (event) => setRouteModel(event.target.value),
         }),
         React.createElement(
           'select',
           {
             className: 'cb-select',
-            style: { flex: '1 1 120px', height: '26px', fontSize: '11px', padding: '0 4px' },
             value: routeAccount,
-            onChange: (e) => setRouteAccount(e.target.value),
+            onChange: (event) => setRouteAccount(event.target.value),
           },
           React.createElement('option', { value: '' }, t('accounts.route_account_placeholder')),
-          (status.accounts || []).map((acc) => {
-            const keyName = acc.apiKeyEnv || acc.id
-            return React.createElement('option', { key: keyName, value: keyName }, `${acc.label || keyName} (${keyName})`)
+          accounts.map((account) => {
+            const key = account.apiKeyEnv || account.id
+            return React.createElement('option', { key, value: key }, `${account.label || key} (${key})`)
           })
         ),
         React.createElement(
           'button',
           {
             type: 'button',
-            className: 'cb-btn cb-btn-primary',
-            style: { padding: '3px 8px', fontSize: '11px' },
+            className: 'cb-btn',
             disabled: !routeModel.trim() || !routeAccount.trim() || !!busy,
             onClick: () => {
-              if (typeof onUpdateModelRoutes === 'function') {
-                const next = { ...(modelRoutes || {}), [routeModel.trim()]: routeAccount.trim() }
-                onUpdateModelRoutes(next)
-                setRouteModel('')
-                setRouteAccount('')
-              }
+              if (typeof onUpdateModelRoutes !== 'function') return
+              onUpdateModelRoutes({ ...(modelRoutes || {}), [routeModel.trim()]: routeAccount.trim() })
+              setRouteModel('')
+              setRouteAccount('')
             },
           },
           t('accounts.route_btn_add')
@@ -441,48 +456,30 @@ function AccountsSection({
       Object.keys(modelRoutes || {}).length > 0
         ? React.createElement(
             'div',
-            { style: { display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' } },
-            Object.entries(modelRoutes || {}).map(([mId, accKey]) =>
+            { className: 'cb-account-route-list' },
+            Object.entries(modelRoutes || {}).map(([modelId, accountKey]) => React.createElement(
+              'div',
+              { className: 'cb-account-route-row', key: modelId },
+              React.createElement('span', { className: 'cb-mono' }, modelId),
+              React.createElement(CbIcon, { name: 'chevron', size: 12 }),
+              React.createElement('strong', null, accountKey),
               React.createElement(
-                'div',
+                'button',
                 {
-                  key: mId,
-                  style: {
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '3px 8px',
-                    fontSize: '11px',
-                    background: 'var(--dsw-alias-bg-layer-2)',
-                    borderRadius: '4px',
+                  type: 'button',
+                  className: 'cb-icon-btn',
+                  'aria-label': t('accounts.route_remove'),
+                  disabled: !!busy,
+                  onClick: () => {
+                    if (typeof onUpdateModelRoutes !== 'function') return
+                    const next = { ...(modelRoutes || {}) }
+                    delete next[modelId]
+                    onUpdateModelRoutes(next)
                   },
                 },
-                React.createElement(
-                  'span',
-                  null,
-                  React.createElement('code', null, mId),
-                  ' ➔ ',
-                  React.createElement('strong', null, accKey)
-                ),
-                React.createElement(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'cb-btn cb-btn-danger',
-                    style: { padding: '1px 6px', fontSize: '10px' },
-                    disabled: !!busy,
-                    onClick: () => {
-                      if (typeof onUpdateModelRoutes === 'function') {
-                        const next = { ...(modelRoutes || {}) }
-                        delete next[mId]
-                        onUpdateModelRoutes(next)
-                      }
-                    },
-                  },
-                  '✕'
-                )
+                React.createElement(CbIcon, { name: 'close', size: 13 })
               )
-            )
+            ))
           )
         : null
     )

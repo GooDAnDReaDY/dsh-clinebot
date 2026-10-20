@@ -24,19 +24,17 @@ const STYLE_ID = 'dsh-clinebot-full-css'
 /** Seats the plugin must occupy, and the ones it must no longer. */
 const EXPECTED_SLOTS = [
   'settings.section',
+  'settings.models.provider-card',
   'sidebar.footer.action',
   'conversation.composer.dock',
+  // The quota & usage dashboard, matching the Command Code / OpenCode
+  // providers. The configuration page itself stays in Settings.
+  'main',
 ]
 const RETIRED_SLOTS = [
   'plugins.item',
   'plugins.row.config',
   'settings.plugin.item',
-  // Dispatched on every provider row regardless of whether it is open, with no
-  // open state in its props, so anything here reads as an editor that opened itself.
-  'settings.models.provider-card',
-  // The quota read-out is a window opened from the meter; taking the centre
-  // column for it threw the conversation out of the way.
-  'main',
 ]
 
 /** React stand-in: the factory only needs the module to exist at load time. */
@@ -181,23 +179,32 @@ test('the sidebar meter and composer dock renderers are registered on their seat
   assert.equal(byName('sidebar.footer.action').length, 1)
   assert.equal(byName('sidebar.footer.action')[0].options.id, 'clinebot-quota')
   assert.equal(byName('conversation.composer.dock').length, 1)
+  assert.equal(byName('settings.models.provider-card').length, 1)
+  assert.equal(byName('settings.models.provider-card')[0].options.key, 'dsh-clinebot')
+  assert.equal(byName('main').length, 1)
+  assert.equal(byName('main')[0].options.key, 'clinebot-panel')
   for (const entry of registrations) {
     assert.equal(typeof entry.render, 'function', `${entry.options.name} needs a renderer`)
   }
 })
 
-test('the quota read-out is a window, not a panel', () => {
+test('the quota read-out opens the center-column panel with a modal fallback', () => {
   const source = fs.readFileSync(path.join(root, 'src/client/components/sidebar-quota.js'), 'utf8')
   const dialog = fs.readFileSync(path.join(root, 'src/client/components/dashboard-dialog.js'), 'utf8')
 
-  // The meter opens a dialog and never navigates the centre column.
-  assert.match(source, /DashboardDialog/)
-  assert.ok(!/selectPanel/.test(source), 'the meter must not select a panel')
+  // The meter calls the injected layout action and only falls back to the
+  // local Modal when no panel can be selected.
+  assert.match(source, /open: openPanel/)
+  assert.match(source, /typeof openPanel === 'function'/)
+  assert.match(source, /setOpen\(true\)/)
 
-  // And the dialog is the shell's own window when the primitive is there.
+  // The same component renders the panel when the layout mounts it.
+  assert.match(dialog, /const panel = props\?\.panel === true/)
+  assert.match(dialog, /if \(panel\) return panelBody/)
+  assert.match(dialog, /cb-panel-head/)
   assert.match(dialog, /if \(Modal\)/)
   assert.match(dialog, /React\.createElement\(Modal, \{/)
-  assert.ok(!/cb-mainOverlay/.test(dialog), 'the old full-bleed panel is gone')
+  assert.ok(!/cb-mainOverlay/.test(dialog), 'the old full-bleed overlay is gone')
 })
 
 test('the plugin declares the services its client half reads', () => {

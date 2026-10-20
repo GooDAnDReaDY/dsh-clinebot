@@ -42,68 +42,36 @@ function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, t }) {
 
   return React.createElement(
     'div',
-    {
-      className: 'cb-progress-card cb-bar-container',
-      style: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        padding: '12px 14px',
-        borderRadius: '8px',
-        border: isBad ? '1px solid var(--dsw-alias-state-error-primary)' : '1px solid var(--dsw-alias-border-l2)',
-        background: 'var(--dsw-alias-bg-layer-2)',
-      },
-    },
+    { className: isBad ? 'cb-progress-card cb-progress-card-bad' : 'cb-progress-card' },
     React.createElement(
       'div',
-      {
-        className: 'cb-progress-head cb-bar-head',
-        style: {
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          gap: '16px',
-          width: '100%',
-        },
-      },
+      { className: 'cb-progress-head' },
       React.createElement(
         'span',
-        { className: 'cb-progress-label', style: { fontWeight: 500, whiteSpace: 'nowrap' } },
+        { className: 'cb-progress-label' },
         label,
-        isBad ? React.createElement('span', { style: { marginLeft: '6px', fontSize: '11px', color: 'var(--dsw-alias-state-error-primary)' } }, '⚠️ <10%') : null
+        isBad
+          ? React.createElement(
+              'span',
+              { className: 'cb-progress-low' },
+              React.createElement(CbIcon, { name: 'warning', size: 12 }),
+              '<10%'
+            )
+          : null
       ),
       React.createElement(
         'span',
-        {
-          className: 'cb-progress-meta cb-bar-meta',
-          style: {
-            fontSize: '12px',
-            color: isBad ? 'var(--dsw-alias-state-error-primary)' : 'var(--dsw-alias-label-secondary)',
-            whiteSpace: 'nowrap',
-            marginLeft: 'auto',
-          },
-        },
+        { className: isBad ? 'cb-progress-meta cb-progress-meta-bad' : 'cb-progress-meta' },
         t('quota.used', { pct }),
-        resetCountdown ? ` · ${resetCountdown === 'resetting' ? (t('quota.resetting') || '正在重置') : t('quota.countdown', { time: resetCountdown })}` : (resetClock ? ` · ${t('quota.reset_at', { time: resetClock })}` : '')
+        resetCountdown
+          ? ` · ${resetCountdown === 'resetting' ? (t('quota.resetting') || '正在重置') : t('quota.countdown', { time: resetCountdown })}`
+          : (resetClock ? ` · ${t('quota.reset_at', { time: resetClock })}` : '')
       )
     ),
     React.createElement(
       'div',
-      {
-        className: 'cb-progress-track cb-bar-track',
-        style: {
-          width: '100%',
-          height: '8px',
-          borderRadius: '999px',
-          background: 'var(--dsw-alias-bg-layer-1)',
-          overflow: 'hidden',
-          border: '1px solid var(--dsw-alias-border-l2)',
-        },
-      },
-      React.createElement('div', {
-        className: barClass,
-        style: { width: `${pct}%`, height: '100%', borderRadius: '999px' },
-      })
+      { className: 'cb-progress-track' },
+      React.createElement('div', { className: barClass, style: { width: `${pct}%` } })
     )
   )
 }

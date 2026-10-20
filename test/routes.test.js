@@ -13,6 +13,7 @@ import { registerModelsRoutes } from '../lib/routes/models.js'
 import { registerAuthRoutes } from '../lib/routes/auth.js'
 import { registerSlashCommand } from '../lib/slash-command.js'
 import { plainConfig } from '../lib/config.js'
+import { clearUsageCache } from '../lib/cline-client.js'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 
@@ -159,6 +160,9 @@ test('routes: behavioral verification of all registered routes kind and prefix',
     '/dsh-clinebot/models/toggle',
     '/dsh-clinebot/accounts',
     '/dsh-clinebot/accounts/delete',
+    '/dsh-clinebot/accounts/usage',
+    '/dsh-clinebot/accounts/rename',
+    '/dsh-clinebot/accounts/key/clear',
     '/dsh-clinebot/usage',
     '/dsh-clinebot/key/verify',
     '/dsh-clinebot/smoke',
@@ -177,6 +181,8 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     { path: '/dsh-clinebot/accounts/active', allowedMethod: 'POST', badBody: null, goodBody: { account: 'CLINEBOT_API_KEY_WORK' } },
     { path: '/dsh-clinebot/accounts', allowedMethod: 'POST', badBody: { apiKey: '' }, goodBody: { label: 'New Acc', apiKeyEnv: 'CLINEBOT_API_KEY_2', apiKey: 'test-key' } },
     { path: '/dsh-clinebot/accounts/delete', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } },
+    { path: '/dsh-clinebot/accounts/rename', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK', label: 'Renamed' } },
+    { path: '/dsh-clinebot/accounts/key/clear', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } },
     { path: '/dsh-clinebot/register', allowedMethod: 'POST', badBody: null, goodBody: {} },
     { path: '/dsh-clinebot/unregister', allowedMethod: 'POST', badBody: null, goodBody: {} },
     { path: '/dsh-clinebot/smoke', allowedMethod: 'POST', badBody: null, goodBody: { model: 'cline-pass/deepseek-v4-flash' } },
@@ -208,7 +214,7 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
   }
 
   // 4. Settings service unavailable (503) for settings-dependent write endpoints
-  const settingsDependent = ['/dsh-clinebot/models/toggle', '/dsh-clinebot/models/context', '/dsh-clinebot/models/visible', '/dsh-clinebot/accounts/active', '/dsh-clinebot/accounts', '/dsh-clinebot/accounts/delete', '/dsh-clinebot/config']
+  const settingsDependent = ['/dsh-clinebot/models/toggle', '/dsh-clinebot/models/context', '/dsh-clinebot/models/visible', '/dsh-clinebot/accounts/active', '/dsh-clinebot/accounts', '/dsh-clinebot/accounts/delete', '/dsh-clinebot/accounts/rename', '/dsh-clinebot/config']
   for (const p of settingsDependent) {
     const { getHandler } = setupRouter({ settingsAvailable: false })
     const handler = getHandler(p)
@@ -1058,4 +1064,55 @@ test('routes (#222): settings and accounts routes enforce connection.requestReje
   await statusHandler(createMockReq('GET', '/dsh-clinebot/status'), resStatusAdmit)
   assert.equal(resStatusAdmit.getStatus(), 200)
   assert.equal(resStatusAdmit.getBody().ok, true)
+})
+
+test('routes: accounts usage, rename and clear-key endpoints', async () => {
+  const { getHandler, getReplacedConfig, getUnsetCalledWith } = setupRouter()
+  const originalFetch = global.fetch
+  global.fetch = async (url) => {
+    const href = String(url)
+    const json = (body) => new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+    if (href.includes('/plan/usage-limits')) {
+      return json({ data: { limits: [{ type: '5-hour', percentUsed: 40, resetsAt: '2030-01-01T00:00:00.000Z' }] } })
+    }
+    if (href.includes('/users/me/plan')) return json({ data: { plan: { displayName: 'Fixture Plan' } } })
+    if (href.includes('/users/me')) return json({ data: { email: 'fixture@example.test' } })
+    return json({})
+  }
+
+  try {
+    clearUsageCache()
+    const usageHandler = getHandler('/dsh-clinebot/accounts/usage')
+    const usageOut = createRes()
+    await usageHandler(createReq({ method: 'GET' }), usageOut.res)
+    assert.equal(usageOut.read().status, 200)
+    const usageBody = usageOut.read().body
+    assert.equal(usageBody.ok, true)
+    assert.ok(Array.isArray(usageBody.accounts))
+    assert.equal(usageBody.accounts[0].usage.windows.fiveHour.percentUsed, 40)
+  } finally {
+    global.fetch = originalFetch
+  }
+
+  const renameHandler = getHandler('/dsh-clinebot/accounts/rename')
+  const renameOut = createRes()
+  await renameHandler(createReq({
+    method: 'POST',
+    body: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK', label: 'Renamed' },
+  }), renameOut.res)
+  assert.equal(renameOut.read().status, 200)
+  const renamed = plainConfig(getReplacedConfig()).accounts.find((account) => account.apiKeyEnv === 'CLINEBOT_API_KEY_WORK')
+  assert.equal(renamed.label, 'Renamed')
+
+  const clearHandler = getHandler('/dsh-clinebot/accounts/key/clear')
+  const clearOut = createRes()
+  await clearHandler(createReq({
+    method: 'POST',
+    body: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' },
+  }), clearOut.res)
+  assert.equal(clearOut.read().status, 200)
+  assert.ok(getUnsetCalledWith())
 })

@@ -745,9 +745,12 @@ test('proxy: pi-ai client forwards session affinity headers and sticky router pr
         end: (finalChunk) => {
           if (finalChunk) chunks.push(finalChunk.toString('utf8'))
         },
+        setHeader: (key, value) => { resHeaders[key] = value },
+        flushHeaders: () => {},
         on: (evt, cb) => {},
         removeListener: () => {},
         get statusCode() { return statusCode },
+        set statusCode(value) { statusCode = value },
         get headers() { return resHeaders },
         get output() { return chunks.join('') }
       }

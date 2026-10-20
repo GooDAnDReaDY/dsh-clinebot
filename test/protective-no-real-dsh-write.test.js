@@ -33,7 +33,8 @@ test('protective: tests must never touch or modify real ~/.dsh files (#146)', ()
   // Execute storage resolution and write without passing custom path
   const defaultResolved = resolvePath()
   assert.ok(defaultResolved.startsWith(process.env.HOME) || defaultResolved.startsWith(process.env.DSH_HOME))
-  assert.ok(!defaultResolved.startsWith(realHome), `defaultResolved (${defaultResolved}) must not point to real home (${realHome})`)
+  const realDshDir = path.join(realHome, '.dsh') + path.sep
+  assert.ok(!defaultResolved.startsWith(realDshDir), `defaultResolved (${defaultResolved}) must not point to real ~/.dsh (${realDshDir})`)
 
   const resolvedHomePath = resolvePathWithHome('~/.dsh/clinebot-models-cache.json')
   assert.ok(resolvedHomePath.startsWith(process.env.HOME))

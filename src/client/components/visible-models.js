@@ -151,7 +151,12 @@ function VisibleModelsSub({
             style: { padding: '4px 10px', fontSize: '12px' },
             onClick: () => setOpen(!open),
           },
-          open ? '▲ ' + t('models.models_selected', { selected: count, total: modelsList.length }) : '▼ ' + t('models.models_selected', { selected: count, total: modelsList.length })
+          React.createElement(CbIcon, {
+            name: 'chevron',
+            size: 12,
+            className: open ? 'cb-icon cb-icon-chevron-open' : 'cb-icon',
+          }),
+          ` ${t('models.models_selected', { selected: count, total: modelsList.length })}`
         )
       )
     ),
@@ -238,7 +243,7 @@ function VisibleModelsSub({
                     ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { fontSize: '10px', padding: '1px 6px' } }, t('models.in_plan'))
                     : React.createElement('span', { className: 'cb-badge', style: { fontSize: '10px', padding: '1px 6px', color: 'var(--dsw-alias-label-secondary)' } }, t('models.out_of_plan')),
                   !m.isContextOverridden
-                    ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { fontSize: '10px', padding: '1px 5px' } }, '原厂')
+                    ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { fontSize: '10px', padding: '1px 5px' } }, t('models.ctx_tag_original'))
                     : null
                 )
               )
