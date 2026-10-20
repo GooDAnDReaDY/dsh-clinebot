@@ -67,6 +67,24 @@ function apply(ctx) {
     }
   }
 
+  function selectLayoutPanel(id) {
+    try {
+      const layout = typeof ctx.get === 'function' ? ctx.get('layout') : ctx.layout
+      if (!layout || typeof layout.selectPanel !== 'function') return false
+      layout.selectPanel(id)
+      return true
+    } catch (err) {
+      console.warn('[dsh-clinebot] layout.selectPanel failed:', err)
+      return false
+    }
+  }
+
+  const openPanel = () => selectLayoutPanel('clinebot-panel')
+  const closePanel = () => {
+    if (selectLayoutPanel(null)) return
+    selectLayoutPanel('conversation')
+  }
+
   // The plugin's configuration is a section of DSH Settings (`settings.section`),
   // a peer of General/Models/Plugins — not a row in the Plugins list and not a tab
   // inside the Plugins settings section. The shell owns the modal, the section nav
@@ -103,15 +121,37 @@ function apply(ctx) {
         id: 'clinebot-quota',
         order: 20,
         locale: NS,
-        inject: () => ({ ctx }),
+        inject: () => ({ ctx, open: openPanel }),
       },
       (props) => React.createElement(ErrorBoundary, { t: props && props.t }, React.createElement(SidebarQuota, { ...props, ctx: (props && props.ctx) || ctx }))
     )
   )
 
-  // The quota & status read-out is a window opened from the sidebar meter, not a
-  // `main`-slot panel: occupying the centre column meant clicking the meter threw
-  // the conversation out of the way to show a status read-out.
+  // The quota & usage dashboard opens in the layout's center column, matching
+  // the Command Code / OpenCode provider surfaces. The sidebar card selects it
+  // through `layout.selectPanel`; the panel's Close button selects the
+  // conversation again. When no layout service is available the card falls back
+  // to its local Modal.
+  registerSlotWhenReady('main', () =>
+    ctx.slots.register(
+      {
+        name: 'main',
+        key: 'clinebot-panel',
+        locale: NS,
+        inject: () => ({ ctx, open: openPanel, close: closePanel }),
+      },
+      (props) => React.createElement(
+        ErrorBoundary,
+        { t: props && props.t },
+        React.createElement(DashboardDialog, {
+          ...props,
+          panel: true,
+          ctx: (props && props.ctx) || ctx,
+          onClose: (props && props.close) || closePanel,
+        })
+      )
+    )
+  )
 
   // Models-page provider card. The seat is keyed by the provider's settings
   // namespace, which the native adapter registration declares as `dsh-clinebot`

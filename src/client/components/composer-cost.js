@@ -5,43 +5,84 @@ function formatTokens(count) {
   return String(n)
 }
 
-function calculateCost(tokens, modelId = '') {
-  const isPremium = String(modelId).includes('claude') || String(modelId).includes('pro')
-  // Rates per 1M tokens
-  const promptRate = isPremium ? 3.0 : 0.15
-  const completionRate = isPremium ? 15.0 : 0.60
-  const reasoningRate = isPremium ? 15.0 : 0.60
+function findPrice(modelId, prices) {
+  if (!modelId || !Array.isArray(prices)) return null
+  const exact = prices.find((entry) => entry && entry.id === modelId)
+  if (exact) return exact
+  return prices.find((entry) => entry && entry.id && (modelId === entry.id || modelId.endsWith(`/${entry.id}`) || modelId.includes(entry.id))) || null
+}
 
+function calculateCost(tokens, modelId, prices) {
   const pTok = Number(tokens?.promptTokens || tokens?.inputTokens || 0)
   const cTok = Number(tokens?.completionTokens || tokens?.outputTokens || 0)
   const rTok = Number(tokens?.reasoningTokens || 0)
-
-  const cost = (pTok * promptRate + cTok * completionRate + rTok * reasoningRate) / 1000000
-  return { cost, pTok, cTok, rTok, total: pTok + cTok + rTok }
+  const cacheRead = Number(tokens?.cacheReadTokens || tokens?.cacheRead || 0)
+  const cacheWrite = Number(tokens?.cacheWriteTokens || tokens?.cacheWrite || 0)
+  const total = pTok + cTok + rTok
+  const price = findPrice(modelId, prices)
+  if (!price) return { cost: 0, priced: false, source: null, pTok, cTok, rTok, cacheRead, cacheWrite, total }
+  const uncachedInput = Math.max(0, pTok - cacheRead - cacheWrite)
+  const cost = (
+    uncachedInput * Number(price.input || 0) +
+    cTok * Number(price.output || 0) +
+    cacheRead * Number(price.cacheRead || 0) +
+    cacheWrite * Number(price.cacheWrite || 0)
+  ) / 1000000
+  return { cost, priced: true, source: price.source || 'estimate', pTok, cTok, rTok, cacheRead, cacheWrite, total }
 }
 
-function ComposerCostDock(props) {
-  const t = props?.t || makeT(en, en)
-  const [stats, setStats] = React.useState(null)
-  const [showPopover, setShowPopover] = React.useState(false)
+const COST_ANCHOR = '[data-slot="conversation.composer.dock"]'
+const STATS_ROOT = '[data-composer-stats]'
+const STATS_USAGE = '[data-composer-stat="usage"]'
+const STATS_ANY = '[data-composer-stat]'
+const DIALOG_TRIGGER = 'button[aria-haspopup="dialog"]'
+const MISSES_BEFORE_WARNING = 3
 
-  // Use projection hook if passed by DSH composer dock, or poll session stats
-  const projectedTokens = typeof props?.useProjection === 'function' ? props.useProjection('tokenUsage') : null
-  const projectedModel = typeof props?.useProjection === 'function' ? props.useProjection('modelSelection') : null
+/**
+ * Inject the session cost into the native token-usage pill instead of drawing a
+ * second pill. The composer's `conversation.composer.dock` entry is still the
+ * only way to read the session projection; the rendered node is a hidden anchor
+ * the injection locates its own composer from.
+ */
+function ComposerCostDock(props) {
+  if (typeof props?.useProjection !== 'function') return null
+  return React.createElement(ComposerCostEntry, props)
+}
+
+function ComposerCostEntry(props) {
+  const t = props?.t || makeT(en, en)
+  const configSnapshot = useConfigFormsSnapshot(props?.ctx)
+  const [stats, setStats] = React.useState(null)
+  const [prices, setPrices] = React.useState([])
+  const markerRef = React.useRef(null)
+
+  const projectedTokens = props.useProjection('tokenUsage')
+  const selection = props.useProjection('modelSelection')
+  const priceOverridesKey = JSON.stringify(configSnapshot?.value?.priceOverrides || {})
 
   React.useEffect(() => {
-    if (projectedTokens) return
+    let active = true
+    fetchWithTimeout(`${ROUTE_PREFIX}/prices`, { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (active && data?.ok && Array.isArray(data.models)) setPrices(data.models)
+      })
+      .catch(() => {})
+    return () => { active = false }
+  }, [priceOverridesKey])
+
+  React.useEffect(() => {
+    if (projectedTokens) return undefined
     let active = true
     const loadStats = async () => {
       try {
         const res = await fetchWithTimeout(`${ROUTE_PREFIX}/stats`, { cache: 'no-store' })
         if (!res.ok) return
         const data = await res.json().catch(() => null)
-        if (active && data?.stats?.summary) {
-          setStats(data.stats.summary)
-        }
+        const totals = data?.stats?.totals || data?.stats?.summary || null
+        if (active && totals) setStats(totals)
       } catch {
-        // quiet
+        /* quiet */
       }
     }
     loadStats()
@@ -49,108 +90,120 @@ function ComposerCostDock(props) {
     return () => { active = false; clearTimeout(timer) }
   }, [projectedTokens])
 
-  const tokens = projectedTokens || {
+  const selected = selection?.lastUsed
+    ?? selection?.next
+    ?? (selection?.provider || selection?.model ? selection : null)
+  const provider = String(selected?.provider || '')
+  const modelId = String(selected?.model || selected?.id || '')
+  const isClineBot = (provider === '' || provider === 'clinebot' || provider === 'llm-clinebot')
+    && (provider === 'clinebot' || provider === 'llm-clinebot' || modelId.startsWith('cline-pass/'))
+
+  const rawTokens = projectedTokens || {
     promptTokens: stats?.promptTokens || 0,
     completionTokens: stats?.completionTokens || 0,
     reasoningTokens: stats?.reasoningTokens || 0,
+    cacheReadTokens: stats?.cacheReadTokens || 0,
+    cacheWriteTokens: stats?.cacheWriteTokens || 0,
   }
-
-  const modelId = projectedModel?.id || ''
-  const { cost, pTok, cTok, rTok, total } = calculateCost(tokens, modelId)
-
-  if (total === 0 && !stats) {
-    return null
+  const cacheRead = Number(rawTokens.cacheReadTokens || 0)
+  const cacheWrite = Number(rawTokens.cacheWriteTokens || 0)
+  const uncachedInput = Number(rawTokens.uncachedInputTokens)
+  const promptTokens = Number.isFinite(uncachedInput)
+    ? uncachedInput + cacheRead + cacheWrite
+    : Number(rawTokens.promptTokens || rawTokens.inputTokens || 0)
+  const tokens = {
+    promptTokens,
+    completionTokens: Number(rawTokens.completionTokens || rawTokens.outputTokens || 0),
+    reasoningTokens: Number(rawTokens.reasoningTokens || 0),
+    cacheReadTokens: cacheRead,
+    cacheWriteTokens: cacheWrite,
   }
+  const { cost, priced, source, pTok, cTok, rTok, total } = calculateCost(tokens, modelId, prices)
 
-  const costDisplay = cost < 0.001 && cost > 0 ? '< $0.001' : `$${cost.toFixed(3)}`
+  const costValue = priced ? (cost < 0.0001 && cost > 0 ? '< $0.0001' : `$${cost.toFixed(4)}`) : t('composer.unpriced')
+  const costDisplay = priced && source === 'estimate' ? `≈ ${costValue}` : costValue
+  const title = [
+    `${t('composer.cost_title')} ${costDisplay}`,
+    `${t('composer.prompt_tok')} ${formatTokens(pTok)}`,
+    `${t('composer.completion_tok')} ${formatTokens(cTok)}`,
+    ...(rTok > 0 ? [`${t('composer.reasoning_tok')} ${formatTokens(rTok)}`] : []),
+    ...(cacheRead > 0 ? [`${t('composer.cache_read')} ${formatTokens(cacheRead)}`] : []),
+    ...(cacheWrite > 0 ? [`${t('composer.cache_write')} ${formatTokens(cacheWrite)}`] : []),
+    ...(priced ? [`${t('composer.price_source')} ${source === 'override' ? t('composer.price_override') : t('composer.price_estimate')}`] : []),
+  ].join(' · ')
+  const inject = isClineBot && priced && total > 0
 
-  return React.createElement(
-    'div',
-    {
-      className: 'cb-composer-cost-dock',
-      'data-composer-session-cost': 'true',
-      style: { position: 'relative', display: 'inline-flex', alignItems: 'center' },
-    },
-    React.createElement(
-      'button',
-      {
-        type: 'button',
-        className: 'cb-btn',
-        style: {
-          padding: '2px 8px',
-          fontSize: '11px',
-          height: '24px',
-          borderRadius: '999px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '4px',
-          color: 'var(--dsw-alias-label-secondary)',
-          background: 'var(--dsw-alias-bg-layer-2)',
-          border: '1px solid var(--dsw-alias-border-l2)',
-          cursor: 'pointer',
-        },
-        title: `${t('composer.cost_title')}: ${costDisplay} (${formatTokens(total)} tokens)`,
-        onClick: () => setShowPopover(!showPopover),
-      },
-      React.createElement('span', { style: { fontWeight: 600, color: 'var(--dsw-alias-label-primary)' } }, `≈ ${costDisplay}`),
-      React.createElement('span', { style: { opacity: 0.7 } }, `· ${formatTokens(total)} tok`)
-    ),
-    showPopover
-      ? React.createElement(
-          'div',
-          {
-            className: 'cb-popover',
-            style: {
-              position: 'absolute',
-              bottom: '100%',
-              left: 0,
-              marginBottom: '6px',
-              minWidth: '200px',
-              padding: '10px 12px',
-              background: 'var(--dsw-alias-bg-layer-3)',
-              border: '1px solid var(--dsw-alias-border-l2)',
-              borderRadius: '8px',
-              boxShadow: 'var(--dsw-elevation-prominent)',
-              zIndex: 100,
-              fontSize: '12px',
-              color: 'var(--dsw-alias-label-primary)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '6px',
-            },
-          },
-          React.createElement(
-            'div',
-            { style: { fontWeight: 600, borderBottom: '1px solid var(--dsw-alias-border-l2)', paddingBottom: '4px' } },
-            t('composer.cost_breakdown')
-          ),
-          React.createElement(
-            'div',
-            { style: { display: 'flex', justifyContent: 'space-between' } },
-            React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)' } }, t('composer.prompt_tok')),
-            React.createElement('span', { style: { fontVariantNumeric: 'tabular-nums' } }, formatTokens(pTok))
-          ),
-          React.createElement(
-            'div',
-            { style: { display: 'flex', justifyContent: 'space-between' } },
-            React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)' } }, t('composer.completion_tok')),
-            React.createElement('span', { style: { fontVariantNumeric: 'tabular-nums' } }, formatTokens(cTok))
-          ),
-          rTok > 0
-            ? React.createElement(
-                'div',
-                { style: { display: 'flex', justifyContent: 'space-between' } },
-                React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)' } }, t('composer.reasoning_tok')),
-                React.createElement('span', { style: { fontVariantNumeric: 'tabular-nums' } }, formatTokens(rTok))
-              )
-            : null,
-          React.createElement(
-            'div',
-            { style: { display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--dsw-alias-border-l2)', paddingTop: '4px', fontWeight: 600 } },
-            React.createElement('span', null, t('composer.est_cost')),
-            React.createElement('span', { style: { color: 'var(--dsw-alias-brand-primary)' } }, `≈ ${costDisplay}`)
-          )
-        )
+  React.useEffect(() => {
+    if (!inject || typeof document === 'undefined') return undefined
+    const marker = markerRef.current
+    if (!marker) return undefined
+    const scope = marker.closest(COST_ANCHOR)
+    if (!scope) return undefined
+
+    let host = null
+    let root = null
+    let valueNode = null
+    let misses = 0
+
+    const apply = () => {
+      if (!root || root.parentNode === null) {
+        const usageAnchor = scope.querySelector(STATS_USAGE) || scope.querySelector(STATS_ANY)
+        const statsRoot = usageAnchor || scope.querySelector(STATS_ROOT) || scope
+        const triggers = statsRoot.querySelectorAll(DIALOG_TRIGGER)
+        const button = triggers[triggers.length - 1] || usageAnchor
+        if (!button) {
+          misses += 1
+          if (misses === MISSES_BEFORE_WARNING) {
+            console.warn('[dsh-clinebot] no native token-usage pill found for the session cost')
+          }
+          return
+        }
+        misses = 0
+        host = button
+        root = document.createElement('span')
+        root.setAttribute('data-clinebot-session-cost', '')
+        root.style.display = 'inline-flex'
+        root.style.alignItems = 'center'
+        const separator = document.createElement('span')
+        separator.textContent = '·'
+        separator.setAttribute('aria-hidden', 'true')
+        separator.style.color = 'var(--dsw-alias-separator-primary)'
+        separator.style.margin = '0 6px 0 0'
+        valueNode = document.createElement('span')
+        valueNode.style.fontWeight = '500'
+        root.appendChild(separator)
+        root.appendChild(valueNode)
+        button.appendChild(root)
+      }
+      if (root.parentNode !== host) host.appendChild(root)
+      if (valueNode.textContent !== costDisplay) valueNode.textContent = costDisplay
+      if (root.title !== title) root.title = title
+    }
+
+    apply()
+    const observer = typeof window !== 'undefined' && typeof window.MutationObserver === 'function'
+      ? new window.MutationObserver(apply)
       : null
-  )
+    observer?.observe(document.body, { childList: true })
+    let timer = null
+    const tick = () => {
+      apply()
+      timer = setTimeout(tick, 2000)
+    }
+    timer = setTimeout(tick, 2000)
+    return () => {
+      observer?.disconnect()
+      if (timer) clearTimeout(timer)
+      if (root?.parentNode) root.parentNode.removeChild(root)
+    }
+  }, [inject, costDisplay, title])
+
+  if (configSnapshot?.value?.showComposerCost === false) return null
+  if (total === 0 && !stats) return null
+  if (!inject) return null
+  return React.createElement('span', {
+    ref: markerRef,
+    style: { display: 'none' },
+    'data-clinebot-cost-anchor': '',
+  })
 }

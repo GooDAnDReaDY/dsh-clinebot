@@ -11,6 +11,7 @@ const defaultOut = path.join(root, OUT)
 export const MODULES = [
   'src/client/constants.js',
   'src/client/locales.js',
+  'src/client/locales-zh.js',
   'src/client/primitives.js',
   'src/client/icons.js',
   'src/client/styles.js',
@@ -34,6 +35,9 @@ export const MODULES = [
   'src/client/components/stats-section.js',
   'src/client/components/diag-section.js',
   'src/client/components/sidebar-quota.js',
+  'src/client/components/price-section.js',
+  'src/client/components/analytics-heatmap.js',
+  'src/client/components/quota-panel-view.js',
   'src/client/components/dashboard-dialog.js',
   'src/client/components/composer-cost.js',
   'src/client/settings-page.js',

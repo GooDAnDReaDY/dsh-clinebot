@@ -5,6 +5,28 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-10-20
+
+### Added
+- **Native `ctx.llm` adapter**: `ClineBotAdapter` now owns streaming, model metadata, reasoning effort, pre-first-token account failover, retry policy and provider status. The legacy `llm-pi-ai` provider + loopback proxy is no longer required for chat.
+- **Quota panel**: the sidebar opens a center-column `Quota / Analytics` panel through `layout.selectPanel`, with header refresh/close, account tabs, 120s auto-refresh and explicit `no key` / `endpoint unreachable` / `not registered` states. A modal fallback is used when the host panel API is unavailable.
+- **Three fixed quota rows**: the sidebar always shows `5-Hour`, `Weekly` and `Monthly` limits with reset countdowns, `—` for unavailable windows and the active account in the tooltip.
+- **Analytics v2**: persistent stats now track cache read/write tokens, estimated cost, TTFT, latency and bounded per-session buckets. The panel adds 7/30/90-day ranges, a weekday×hour request heatmap, peak-hour summary, by-hour strip and model filter; `GET /dsh-clinebot/analytics` exposes the aggregates and the store keeps 95 days with best-effort backfill.
+- **Native composer cost**: the session estimate is appended to the host token-usage pill (`N tok · Cache hit X% · ≈ $...` / `Free`) instead of a second dock pill; its tooltip breaks down input, output, cache and reasoning tokens. The cost read-out is scoped to ClineBot model selections so OpenCode sessions keep their own provider estimate.
+- **Local price table**: `lib/model-prices.js` resolves per-model estimates with user overrides and `estimate` / `override` provenance; `GET /dsh-clinebot/prices` feeds the composer. Unknown models display `unpriced` instead of `$0`.
+- **dsh-TUI settings**: `ClineBot` section for API key, base URL, plan filtering, web search, sidebar quota, active account, context window and output cap.
+- **Account surface**: live per-account usage, inline rename, clear key, pin/unpin and delete with inline confirmation; `GET /dsh-clinebot/accounts/usage`, `POST /accounts/rename`, `POST /accounts/key/clear`.
+- **Calm settings UI**: staged single-save configuration, collapsible groups, SVG stroke icons and native primitives; no emojis in the client bundle. Neutral surfaces, compact tables and 8px progress bars follow the OpenCode provider visual language.
+- **Coverage**: 240 tests total (238 pass, 2 platform skips, 0 failures); client bundle 251.8 KB, below the 256 KiB DSH Store limit.
+
+### Changed
+- Retargeted to **DSH `0.2.1-rc.2`** (`engines.dsh`) with peer dependencies on `dsh-llm`, `dsh-attachment`, `dsh-credentials`, `dsh-settings`, `dsh-commands` and `dsh-web`.
+- New installs default to `transport: "adapter"`. Settings, models and account actions are grouped; model and account ops stay immediate.
+- Composer cost now reads the live price endpoint and respects `showComposerCost`; `/stats/export?detailed=1` adds cache, cost, TTFT and latency columns.
+
+### Deprecated
+- `transport: "pi-ai"`, `proxyMode`, `lib/proxy-server.js`, `lib/proxy-token.js`, `lib/routes/proxy.js` and the `llm/stream` hook remain for one release as a compatibility fallback. They will be removed in 0.7.0.
+
 ## [0.5.33] - 2026-10-19
 
 ### Security

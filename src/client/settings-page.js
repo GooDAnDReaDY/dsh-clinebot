@@ -418,6 +418,12 @@ function SettingsPage(props) {
           staged.stage({ modelReasoningDefaults: next })
         },
         t,
+      }),
+      React.createElement(PriceSection, {
+        modelsList,
+        priceOverrides: draft?.priceOverrides || {},
+        onConfigUpdate: staged.stage,
+        t,
       })
     ),
 
