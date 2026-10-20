@@ -22,12 +22,16 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, sho
           ),
           React.createElement(
             'div',
-            { style: { flex: 1 } },
-            React.createElement('div', null, (status.quotaWarning.code && t(status.quotaWarning.code, status.quotaWarning.params)) || status.quotaWarning.message),
+            { className: 'cb-banner-body' },
+            React.createElement(
+              'div',
+              null,
+              (status.quotaWarning.code && t(status.quotaWarning.code, status.quotaWarning.params)) || status.quotaWarning.message
+            ),
             status.quotaWarning.resetsAt
               ? React.createElement(
                   'div',
-                  { style: { fontSize: '11px', opacity: 0.9, marginTop: '2px' } },
+                  { className: 'cb-banner-sub' },
                   t('quota.reset_at', { time: new Date(status.quotaWarning.resetsAt).toLocaleTimeString() })
                 )
               : null
@@ -42,25 +46,20 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, sho
                 { className: 'cb-banner-icon' },
                 React.createElement(CbIcon, { name: 'warning', size: 16 })
               ),
-              React.createElement('div', { style: { flex: 1 } }, t('quota.warning_low'))
+              React.createElement('div', { className: 'cb-banner-body' }, t('quota.warning_low'))
             )
           : null),
     keyPresent
       ? React.createElement(
-          'div',
+          'section',
           { className: 'cb-section-card' },
           React.createElement(
             'div',
-            { className: 'cb-section-title' },
-            t('quota.title'),
+            { className: 'cb-section-head' },
+            React.createElement('div', { className: 'cb-section-title' }, t('quota.title')),
             React.createElement(
               'button',
-              {
-                type: 'button',
-                className: 'cb-btn',
-                disabled: !!busy,
-                onClick: handleRefreshQuota,
-              },
+              { type: 'button', className: 'cb-btn', disabled: !!busy, onClick: handleRefreshQuota },
               busy === 'refresh-quota' ? t('quota.refreshing') : t('quota.refresh')
             )
           ),
@@ -73,7 +72,7 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, sho
           ),
           React.createElement(
             'div',
-            { className: 'cb-grid-2', style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' } },
+            { className: 'cb-quota-grid' },
             usage?.windows?.fiveHour
               ? React.createElement(ProgressBar, {
                   label: t('quota.window_5h'),
@@ -100,21 +99,15 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, sho
                 })
               : null
           ),
-          React.createElement(
-            'div',
-            { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px', marginTop: '4px', paddingTop: '16px', borderTop: '.5px solid var(--dsw-alias-border-l2)' } },
-            React.createElement(
-              'div',
-              { style: { display: 'flex', flexDirection: 'column', minWidth: 0 } },
-              React.createElement('span', { style: { fontSize: '14px', lineHeight: '20px', color: 'var(--dsw-alias-label-primary)' } }, t('sidebar.show_quota')),
-              React.createElement('span', { style: { marginTop: '4px', fontSize: '12px', lineHeight: '18px', color: 'var(--dsw-alias-label-secondary)' } }, t('sidebar.show_quota_hint'))
-            ),
-            React.createElement(BooleanControl, {
+          React.createElement(SettingRow, {
+            title: t('sidebar.show_quota'),
+            description: t('sidebar.show_quota_hint'),
+            control: React.createElement(BooleanControl, {
               checked: showSidebarQuota !== false,
               label: t('sidebar.show_quota'),
               onChange: (next) => onToggleSidebarQuota && onToggleSidebarQuota(next),
-            })
-          )
+            }),
+          })
         )
       : null
   )

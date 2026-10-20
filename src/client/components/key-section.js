@@ -1,6 +1,6 @@
 function KeySection({ keyPresent, apiKeyInput, setApiKeyInput, showKey, setShowKey, busy, draft, handleSaveKey, handleFastLogin, verifyStatus, t }) {
   return React.createElement(
-    'div',
+    'section',
     { className: 'cb-section-card' },
     React.createElement('div', { className: 'cb-section-title' }, t('key.title')),
     React.createElement('div', { className: 'cb-section-desc' }, t('key.desc')),
@@ -12,15 +12,11 @@ function KeySection({ keyPresent, apiKeyInput, setApiKeyInput, showKey, setShowK
         type: showKey ? 'text' : 'password',
         placeholder: keyPresent ? t('key.placeholder_has') : t('key.placeholder_empty'),
         value: apiKeyInput,
-        onChange: (e) => setApiKeyInput(e.target.value),
+        onChange: (event) => setApiKeyInput(event.target.value),
       }),
       React.createElement(
         'button',
-        {
-          type: 'button',
-          className: 'cb-btn',
-          onClick: () => setShowKey((v) => !v),
-        },
+        { type: 'button', className: 'cb-btn', onClick: () => setShowKey((value) => !value) },
         showKey ? t('key.hide') : t('key.show')
       ),
       React.createElement(
@@ -35,37 +31,32 @@ function KeySection({ keyPresent, apiKeyInput, setApiKeyInput, showKey, setShowK
       ),
       React.createElement(
         'button',
-        {
-          type: 'button',
-          className: 'cb-btn',
-          disabled: !!busy,
-          onClick: handleFastLogin,
-        },
+        { type: 'button', className: 'cb-btn', disabled: !!busy, onClick: handleFastLogin },
         t('key.login_fast')
       )
     ),
     verifyStatus && verifyStatus.state === 'verifying'
-      ? React.createElement('div', { style: { marginTop: '8px', fontSize: '13px', color: 'var(--dsw-alias-label-secondary)' } }, t('key.verifying'))
+      ? React.createElement('div', { className: 'cb-hint' }, t('key.verifying'))
       : null,
     verifyStatus && verifyStatus.state === 'valid'
-      ? React.createElement('div', { className: 'cb-alert-ok', style: { marginTop: '8px', fontSize: '13px' } }, t('key.verified', { email: verifyStatus.email, plan: verifyStatus.plan }))
+      ? React.createElement('div', { className: 'cb-alert-ok cb-key-status' }, t('key.verified', { email: verifyStatus.email, plan: verifyStatus.plan }))
       : null,
     verifyStatus && verifyStatus.state === 'invalid'
-      ? React.createElement('div', { className: 'cb-alert-bad', style: { marginTop: '8px', fontSize: '13px' } }, t('key.invalid', { error: verifyStatus.error }))
+      ? React.createElement('div', { className: 'cb-alert-bad cb-key-status' }, t('key.invalid', { error: verifyStatus.error }))
       : null,
     React.createElement(
       'div',
-      { className: 'cb-row', style: { fontSize: '13px', marginTop: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+      { className: 'cb-key-meta' },
       React.createElement('span', null, t('key.env_label')),
-      React.createElement('code', null, draft.apiKeyEnv || 'CLINEBOT_API_KEY'),
-      React.createElement('span', null, ' · '),
+      React.createElement('code', { className: 'cb-mono' }, draft.apiKeyEnv || 'CLINEBOT_API_KEY'),
+      React.createElement('span', { className: 'cb-muted' }, '·'),
       React.createElement(
         'a',
         {
           href: 'https://app.cline.bot/settings/api-keys',
           target: '_blank',
           rel: 'noreferrer',
-          style: { color: 'var(--dsw-alias-brand-primary)' },
+          className: 'cb-link',
         },
         t('key.get_key')
       )
