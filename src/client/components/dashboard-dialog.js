@@ -269,6 +269,20 @@ function DashboardDialog(props) {
         )
       )
     ),
+    React.createElement(
+      'div',
+      { className: 'cb-row', style: { gap: '6px', marginBottom: '8px' } },
+      React.createElement(
+        'a',
+        { href: '/dsh-clinebot/stats/export?format=json', download: 'clinebot-stats.json', className: 'cb-btn cb-btn-link' },
+        t('stats.export_json')
+      ),
+      React.createElement(
+        'a',
+        { href: '/dsh-clinebot/stats/export', download: 'clinebot-stats.csv', className: 'cb-btn cb-btn-link' },
+        t('stats.export_csv')
+      )
+    ),
     analytics?.totals
       ? React.createElement(
           'div',
