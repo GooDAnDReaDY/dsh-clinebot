@@ -31,6 +31,7 @@ test('http: isTrustedSettingsRequest security rules', () => {
       host: '127.0.0.1:3000',
       origin: 'https://dsh.internal.domain:8443',
     },
+    socket: { remoteAddress: '127.0.0.1' },
   }), true)
 
   // 4. Mismatched origin (CSRF attempt)
@@ -71,6 +72,22 @@ test('http: isTrustedSettingsRequest security rules', () => {
   // 8. Remote non-loopback without headers
   assert.equal(isTrustedSettingsRequest({
     headers: {},
+    socket: { remoteAddress: '10.0.0.5' },
+  }), false)
+
+  // 9. Remote client must not spoof the browser-only Sec-Fetch-Site signal
+  assert.equal(isTrustedSettingsRequest({
+    headers: { 'sec-fetch-site': 'same-origin' },
+    socket: { remoteAddress: '10.0.0.5' },
+  }), false)
+
+  // 10. Remote client must not spoof X-Forwarded-Host
+  assert.equal(isTrustedSettingsRequest({
+    headers: {
+      'sec-fetch-site': 'same-origin',
+      'x-forwarded-host': 'evil.example',
+      origin: 'https://evil.example',
+    },
     socket: { remoteAddress: '10.0.0.5' },
   }), false)
 })

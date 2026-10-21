@@ -6,29 +6,25 @@ import path from 'node:path'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 
-test('decomposition: all server modules are <= 600 lines', () => {
-  const libFiles = [
-    'lib/access.js',
-    'lib/account-pool.js',
-    'lib/cline-client.js',
-    'lib/config.js',
-    'lib/credential-refs.js',
-    'lib/http.js',
-    'lib/index.js',
-    'lib/models.js',
-    'lib/provider-sync.js',
-    'lib/session-router.js',
-    'lib/slash-command.js',
-    'lib/stats-storage.js',
-    'lib/updater.js',
-    'lib/routes/accounts.js',
-    'lib/routes/auth.js',
-    'lib/routes/models.js',
-    'lib/routes/settings.js',
-  ]
+function getJsFiles(dir) {
+  let results = []
+  for (const file of readdirSync(dir)) {
+    const full = path.join(dir, file)
+    const stat = statSync(full)
+    if (stat && stat.isDirectory()) results = results.concat(getJsFiles(full))
+    else if (file.endsWith('.js')) results.push(full)
+  }
+  return results
+}
 
-  for (const rel of libFiles) {
-    const content = readFileSync(path.join(root, rel), 'utf8')
+test('decomposition: all server modules are <= 600 lines', () => {
+  const libFiles = getJsFiles(path.join(root, 'lib'))
+    .filter((full) => path.basename(full) !== 'client.js')
+  assert.ok(libFiles.length >= 20, 'Expected at least 20 server modules')
+
+  for (const full of libFiles) {
+    const rel = path.relative(root, full)
+    const content = readFileSync(full, 'utf8')
     const lineCount = content.split('\n').length
     assert.ok(
       lineCount <= 600,
@@ -38,21 +34,6 @@ test('decomposition: all server modules are <= 600 lines', () => {
 })
 
 test('decomposition: all client source files in src/client are <= 500 lines', () => {
-  function getJsFiles(dir) {
-    let results = []
-    const list = readdirSync(dir)
-    for (const file of list) {
-      const full = path.join(dir, file)
-      const stat = statSync(full)
-      if (stat && stat.isDirectory()) {
-        results = results.concat(getJsFiles(full))
-      } else if (file.endsWith('.js')) {
-        results.push(full)
-      }
-    }
-    return results
-  }
-
   const clientFiles = getJsFiles(path.join(root, 'src', 'client'))
   assert.ok(clientFiles.length >= 10, 'Expected at least 10 modular client source files')
 

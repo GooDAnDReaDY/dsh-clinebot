@@ -3,9 +3,7 @@ import assert from 'node:assert/strict'
 import { Readable } from 'node:stream'
 import {
   discoverLocalClineKeys,
-  getDiscoveredKey,
   consumeDiscoveredKey,
-  clearDiscoveredKeysCache,
   maskApiKey,
 } from '../lib/key-discovery.js'
 import { registerAccountsRoutes } from '../lib/routes/accounts.js'
@@ -88,7 +86,6 @@ function setupMockAccountsApp() {
 
 test('key-discovery: detects environment variable without leaking raw secret in output (#246)', () => {
   const origEnv = process.env.CLINE_API_KEY
-  clearDiscoveredKeysCache()
   try {
     const rawSecret = 'cline_test_1234567890abcdef'
     process.env.CLINE_API_KEY = rawSecret
@@ -106,12 +103,10 @@ test('key-discovery: detects environment variable without leaking raw secret in 
     const serialized = JSON.stringify(discovered)
     assert.ok(!serialized.includes(rawSecret), 'Raw secret must never appear in serialized JSON')
 
-    // Secret must be accessible via getDiscoveredKey and consumeDiscoveredKey
-    assert.equal(getDiscoveredKey(envHit.id), rawSecret)
+    // Secret must be consumed by id and never returned in the public list.
     assert.equal(consumeDiscoveredKey(envHit.id), rawSecret)
     assert.equal(consumeDiscoveredKey(envHit.id), null, 'Key must be consumed only once')
   } finally {
-    clearDiscoveredKeysCache()
     if (origEnv !== undefined) {
       process.env.CLINE_API_KEY = origEnv
     } else {
@@ -121,7 +116,6 @@ test('key-discovery: detects environment variable without leaking raw secret in 
 })
 
 test('key-discovery: returns clean array without crashing on non-existent directories', () => {
-  clearDiscoveredKeysCache()
   const discovered = discoverLocalClineKeys()
   assert.ok(Array.isArray(discovered))
   for (const item of discovered) {
@@ -134,7 +128,6 @@ test('key-discovery: returns clean array without crashing on non-existent direct
 
 test('key-discovery: route GET /keys/discovered does not leak raw secrets (#246)', async () => {
   const origEnv = process.env.CLINE_API_KEY
-  clearDiscoveredKeysCache()
   try {
     const rawSecret = 'cline_top_secret_discovery_key_9999'
     process.env.CLINE_API_KEY = rawSecret
@@ -160,8 +153,7 @@ test('key-discovery: route GET /keys/discovered does not leak raw secrets (#246)
     const rawResponse = JSON.stringify(body)
     assert.ok(!rawResponse.includes(rawSecret), 'HTTP response body must not contain the raw secret')
   } finally {
-    clearDiscoveredKeysCache()
-    if (origEnv !== undefined) {
+      if (origEnv !== undefined) {
       process.env.CLINE_API_KEY = origEnv
     } else {
       delete process.env.CLINE_API_KEY
@@ -171,7 +163,6 @@ test('key-discovery: route GET /keys/discovered does not leak raw secrets (#246)
 
 test('key-discovery: route POST /keys/discovered/import safely imports key by id (#246)', async () => {
   const origEnv = process.env.CLINE_API_KEY
-  clearDiscoveredKeysCache()
   try {
     const rawSecret = 'cline_importable_secret_key_8888'
     process.env.CLINE_API_KEY = rawSecret
@@ -221,8 +212,7 @@ test('key-discovery: route POST /keys/discovered/import safely imports key by id
     await importHandler(retryReq, retryRes.res)
     assert.equal(retryRes.read().status, 404)
   } finally {
-    clearDiscoveredKeysCache()
-    if (origEnv !== undefined) {
+      if (origEnv !== undefined) {
       process.env.CLINE_API_KEY = origEnv
     } else {
       delete process.env.CLINE_API_KEY
