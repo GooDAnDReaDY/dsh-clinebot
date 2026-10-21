@@ -156,6 +156,8 @@ test('tui: section exposes the connection, model and advanced fields', () => {
     'activeAccount',
     'contextWindow',
     'maxOutputTokens',
+    'dailyBudgetUsd',
+    'monthlyBudgetUsd',
   ])
   const apiKey = section.fields.find((field) => field.path[0] === 'apiKey')
   assert.equal(apiKey.secret.ref, 'CLINEBOT_API_KEY')
@@ -182,7 +184,7 @@ test('tui: applyTuiSettings registers the section and disposes it', () => {
   }
   applyTuiSettings(ctx, { live: () => ({}) })
   assert.equal(registered.ns, 'dsh-clinebot')
-  assert.equal(registered.fields.length, 8)
+  assert.equal(registered.fields.length, 10)
   assert.equal(disposed, true)
 })
 

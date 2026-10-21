@@ -187,7 +187,14 @@ function SidebarQuota({ ctx, wide, t: propT, open: openPanel }) {
               className: warn ? 'cb-footFill cb-footFillWarn' : 'cb-footFill',
               style: { width: hasData ? `${Math.min(100, Math.max(2, value))}%` : '0%' },
             })
-          )
+          ),
+          hasData
+            ? React.createElement(
+                'span',
+                { className: 'cb-footForecast' },
+                quotaForecast(window.value, window.key === 'fiveHour' ? 5 * 60 * 60 * 1000 : window.key === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000, t)
+              )
+            : null
         )
       }),
       rows.some((window) => windowPct(window) !== null)
