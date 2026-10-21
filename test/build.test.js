@@ -82,6 +82,11 @@ test('the bundle declares the shell factory wrapper', () => {
   assert.ok(bundle.endsWith('    return module.exports\n  },\n})\n'))
 })
 
+test('the minified client bundle keeps the 220 KiB budget', () => {
+  const size = fs.statSync(path.join(root, OUT)).size
+  assert.ok(size <= 220 * 1024, `lib/client.js is ${size} bytes; keep it under 220 KiB`)
+})
+
 test('the published package never ships the sources or the tests', () => {
   assert.ok(pkg.files.includes('lib/'))
   for (const entry of pkg.files) {

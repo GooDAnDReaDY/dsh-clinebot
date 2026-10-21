@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync, statSync, existsSync, mkdirSync, renameSyn
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
+import { transformSync } from 'esbuild'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const srcDir = path.join(root, 'src', 'client')
@@ -66,7 +67,16 @@ window.__ModuleLoader__.load({
     const file = path.join(repoRoot, rel)
     if (!existsSync(file)) throw new Error(`missing client module: ${rel}`)
     const body = readFileSync(file, 'utf8').replace(/\r\n/g, '\n').trim()
-    out += `// --- ${rel} ---\n${body}\n\n`
+    const { code } = transformSync(body, {
+      loader: 'js',
+      target: 'es2020',
+      minifyWhitespace: true,
+      minifySyntax: false,
+      minifyIdentifiers: false,
+      legalComments: 'none',
+      sourcefile: rel,
+    })
+    out += `// --- ${rel} ---\n${code.trim()}\n\n`
   }
   return out + epilogue
 }
