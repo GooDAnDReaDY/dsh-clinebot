@@ -17,6 +17,9 @@ function StatsSection({ status, onResetStats, busy, t }) {
       return bTokens - aTokens
     })
     .slice(0, 5)
+  const topAccounts = Object.entries(s.byAccount || {})
+    .sort((a, b) => Number(b[1]?.totalTokens || 0) - Number(a[1]?.totalTokens || 0))
+    .slice(0, 5)
 
   return React.createElement(
     'section',
@@ -134,6 +137,26 @@ function StatsSection({ status, onResetStats, busy, t }) {
             )
           ))
         )
+      : null,
+    topAccounts.length > 0
+      ? React.createElement(
+          'div',
+          { className: 'cb-model-list' },
+          React.createElement('div', { className: 'cb-model-list-title' }, t('stats.top_accounts')),
+          topAccounts.map(([accountId, data]) => React.createElement(
+            'div',
+            { className: 'cb-model-row', key: accountId },
+            React.createElement('span', { className: 'cb-mono' }, accountId),
+            React.createElement(
+              'span',
+              { className: 'cb-muted' },
+              `${data.requests || 0} reqs · ${Number(data.totalTokens || 0).toLocaleString()} tok · ≈ $${Number(data.costUsd || 0).toFixed(4)}`
+            )
+          ))
+        )
+      : null,
+    Number(totals.cacheSavingsUsd || 0) > 0
+      ? React.createElement('div', { className: 'cb-hint' }, t('stats.cache_saved', { amount: Number(totals.cacheSavingsUsd || 0).toFixed(4) }))
       : null
   )
 }

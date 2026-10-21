@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.9</b> добавляет опциональную синхронизацию публичных цен из models.dev с локальным кэшем; ручные overrides всегда важнее. Чат работает через нативный адаптер <code>ctx.llm</code>, требуется DSH <code>0.2.1-rc.2</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
+<p><b>0.6.10</b> добавляет аналитику по аккаунтам и учёт экономии на cache read поверх синхронизации публичных цен. Чат работает через нативный адаптер <code>ctx.llm</code>, требуется DSH <code>0.2.1-rc.2</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

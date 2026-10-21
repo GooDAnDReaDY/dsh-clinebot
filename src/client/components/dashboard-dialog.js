@@ -195,6 +195,7 @@ function DashboardDialog(props) {
         [t('analytics.reasoning'), fmtTokens(totals.reasoningTokens)],
         [t('analytics.cache_read'), fmtTokens(totals.cacheReadTokens)],
         [t('analytics.cache_write'), fmtTokens(totals.cacheWriteTokens)],
+        [t('analytics.cache_saved'), `≈ ${fmtCost(totals.cacheSavingsUsd)}`],
         [t('analytics.avg_ttft'), fmtMs(totals.avgTtftMs)],
         [t('analytics.avg_latency'), fmtMs(totals.avgLatencyMs)],
         [t('analytics.p50_latency'), fmtMs(totals.p50LatencyMs)],
@@ -256,7 +257,7 @@ function DashboardDialog(props) {
         React.createElement(
           'div',
           { className: 'cb-seg' },
-          ['model', 'day', 'session'].map((group) => React.createElement(
+          ['model', 'day', 'account', 'session'].map((group) => React.createElement(
             'button',
             {
               key: group,
