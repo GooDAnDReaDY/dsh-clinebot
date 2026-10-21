@@ -100,6 +100,7 @@ const zh = {
       'models.visible_models_hint': '选择在 DSH 聊天选择器中显示的模型（为空时显示全部可用模型）。',
       'models.in_plan': '套餐内',
       'models.out_of_plan': '套餐外',
+      'models.group_plan': '套餐内模型', 'models.group_other': '其他模型', 'models.group_custom': '自定义模型',
       'models.plan_only': '仅套餐模型',
       'models.show_all': '显示全部',
       'models.clean_stale': '清理过期 ({count})',

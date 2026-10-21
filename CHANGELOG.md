@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.5] - 2026-10-21
+
+### Added
+- **Grouped model table**: Settings now separates `Included in plan`, `Other models` and `Custom models` with per-group counts.
+- **Extended `/cline`**: `/cline cost` (`/cline budget`) reports estimated UTC day/month spend and guard state; `/cline usage` falls through to the quota report, which now includes the monthly window.
+
+### Changed
+- Headless/web fixture profiles no longer carry the removed `transport` and `proxyMode` fields.
+
 ## [0.6.4] - 2026-10-21
 
 ### Added
