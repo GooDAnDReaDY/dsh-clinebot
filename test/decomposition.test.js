@@ -16,8 +16,6 @@ test('decomposition: all server modules are <= 600 lines', () => {
     'lib/http.js',
     'lib/index.js',
     'lib/models.js',
-    'lib/proxy-server.js',
-    'lib/proxy-token.js',
     'lib/provider-sync.js',
     'lib/session-router.js',
     'lib/slash-command.js',
@@ -26,7 +24,6 @@ test('decomposition: all server modules are <= 600 lines', () => {
     'lib/routes/accounts.js',
     'lib/routes/auth.js',
     'lib/routes/models.js',
-    'lib/routes/proxy.js',
     'lib/routes/settings.js',
   ]
 
@@ -106,8 +103,6 @@ test('decomposition: exported domain functions and objects exist', async () => {
 
   const syncSource = readFileSync(path.join(root, 'lib', 'provider-sync.js'), 'utf8')
   assert.ok(syncSource.includes('export async function buildStatus'), 'buildStatus must be exported')
-  assert.ok(syncSource.includes('export async function upsertPiAiProvider'), 'upsertPiAiProvider must be exported')
-  assert.ok(syncSource.includes('export async function removePiAiProvider'), 'removePiAiProvider must be exported')
 
   const settingsRoutes = readFileSync(path.join(root, 'lib', 'routes', 'settings.js'), 'utf8')
   assert.ok(settingsRoutes.includes('export function registerSettingsRoutes'), 'registerSettingsRoutes must be exported')
@@ -121,17 +116,8 @@ test('decomposition: exported domain functions and objects exist', async () => {
   const authRoutes = readFileSync(path.join(root, 'lib', 'routes', 'auth.js'), 'utf8')
   assert.ok(authRoutes.includes('export function registerAuthRoutes'), 'registerAuthRoutes must be exported')
 
-  const proxyRoutes = readFileSync(path.join(root, 'lib', 'routes', 'proxy.js'), 'utf8')
-  assert.ok(proxyRoutes.includes('export function registerProxyRoutes'), 'registerProxyRoutes must be exported')
-
   const slash = readFileSync(path.join(root, 'lib', 'slash-command.js'), 'utf8')
   assert.ok(slash.includes('export function registerSlashCommand'), 'registerSlashCommand must be exported')
-
-  const proxyServer = await import('../lib/proxy-server.js')
-  assert.equal(typeof proxyServer.startLoopbackProxyServer, 'function')
-  assert.equal(typeof proxyServer.stopLoopbackProxyServer, 'function')
-  assert.equal(typeof proxyServer.getProxyPort, 'function')
-  assert.equal(typeof proxyServer.detectHostWebServerFence, 'function')
 })
 
 

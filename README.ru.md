@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.0</b> переводит чат на нативный адаптер <code>ctx.llm</code>. Требуется DSH <code>0.2.1-rc.2</code>. Старый путь <code>llm-pi-ai</code> + loopback-прокси остаётся за флагом <code>transport: "pi-ai"</code> на один релиз.</p>
+<p><b>0.6.2</b> работает только через нативный адаптер <code>ctx.llm</code> и требует DSH <code>0.2.1-rc.2</code>. Старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -84,7 +84,6 @@ graph LR
 
     subgraph DSHCore [Сервисы DSH]
         Credentials["Сервис credentials (~/.dsh/.credentials.yaml)"]
-        PiAi["Настройки: llm-pi-ai.providers.clinebot"]
     end
 
     subgraph Upstream [Сервер Cline]
@@ -99,7 +98,6 @@ graph LR
     HttpEndpoints --> Credentials
     HttpEndpoints --> ClientCore
     ClientCore --> ModelCatalog
-    HttpEndpoints -->|Атомарная мутация| PiAi
     ClientCore -->|Чат| ClinePass
     ClientCore -->|Квоты| ClineQuota
     ClientCore -->|Тарифный план| ClinePlan
@@ -115,7 +113,6 @@ graph LR
   * `sessionStats` / `recordSessionRequest`: счетчики сессии (запросы, токены, задержка, время).
   * `saveCredentialKey`: атомарная запись ключей в `~/.dsh/.credentials.yaml`.
   * `smokeChat`: замер задержки и тестовый пинг с фиксацией статистики.
-  * `buildPiAiProvider`: генерация конфигурации провайдера для `llm-pi-ai` (`api: 'openai-completions'`).
 * **`lib/index.js`**: сервис Cordis, регистрация системных маршрутов (включая `/dsh-clinebot/models/sync`), расчет порогов предупреждения квоты и слэш-команды `/cline`.
 * **`lib/client.js`**: страница конфигурации строки плагина (`plugins.row.config`) с предупреждениями, статистикой сессии, синхронизацией моделей и запасной карточкой (`settings.plugin.item`). Пункта `settings.section` в боковом меню нет.
 
@@ -163,7 +160,6 @@ dsh-clinebot:
   baseUrl: https://api.cline.bot/api/v1
   apiKeyEnv: CLINEBOT_API_KEY
   defaultModel: your-default-model
-  proxyMode: true
   disabledModels: []
   customModels: []
   modelReasoningDefaults:
@@ -190,7 +186,6 @@ dsh-clinebot:
 | `customModels` | `array` | `[]` | Пользовательские модели шлюза (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | Значения thinking effort по умолчанию для моделей (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | Пользовательские переопределения размера контекста и лимита токенов |
-| `proxyMode` | `boolean` | `true` | Включение локального прозрачного loopback-прокси с сессионным роутингом и failover |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Путь к файлу персистентной аналитики использования токенов |
 | `accounts` | `array` | `[]` | Дополнительные аккаунты для ротации квоты и failover (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | Принудительно закреплённый аккаунт (пусто для автоматического выбора least-used) |
@@ -204,7 +199,7 @@ dsh-clinebot:
 
 ## 🌐 Маршруты HTTP API
 
-Все маршруты регистрируются с префиксом `/dsh-clinebot/*` и защищены от межсайтовых запросов (разрешены same-origin и loopback). Управляющие эндпоинты ограничены лимитом 256 КиБ; прокси-эндпоинт поддерживает до 64 МиБ полезной нагрузки (`MAX_PROXY_BODY_BYTES`):
+Все маршруты регистрируются с префиксом `/dsh-clinebot/*` и защищены от межсайтовых запросов (разрешены same-origin и loopback). Управляющие эндпоинты ограничены лимитом 256 КиБ:
 
 ### Управляющие эндпоинты (макс. 256 КиБ)
 * `GET /dsh-clinebot/status` — Текущее состояние провайдера, активный аккаунт, квоты и статистика сессий.
@@ -223,12 +218,6 @@ dsh-clinebot:
 * `POST /dsh-clinebot/smoke` — Выполнение тестового пинга задержки.
 * `GET /dsh-clinebot/update/status` — Проверка наличия обновлений плагина.
 * `POST /dsh-clinebot/update/apply` — Обновление плагина с корректным завершением групп процессов и блокировками профиля.
-
-### OpenAI-совместимый loopback-прокси (макс. 64 МиБ)
-* `POST /dsh-clinebot/v1/chat/completions` — Прозрачный локальный прокси с поддержкой SSE и нестриминговых ответов, Bearer-аутентификацией, сессионной липкостью и least-used распределением квот, контролем дедлайнов (`streamIdleTimeoutMs`) и автоматическим 429 failover.
-* `GET /dsh-clinebot/v1/models` — Каталог моделей в стандарте OpenAI API.
-
-> **DSH Desktop 2.x и автономные окружения**: Прокси поднимает изолированный выделенный HTTP-сервер на `127.0.0.1` (эфемеридный порт), полностью обходя сетевые экраны `DesktopWebServer` (`x-dsh-desktop-renderer`). Встроенный детектор защитных экранов (`detectHostWebServerFence`) автоматически переключает провайдер на прямое соединение с upstream при ограничении loopback-порта, а режим прокси можно переключать напрямую в карточке «Диагностика» в UI.
 
 ---
 

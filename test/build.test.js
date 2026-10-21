@@ -90,13 +90,13 @@ test('the published package never ships the sources or the tests', () => {
 })
 
 test('every hardcoded version fallback tracks package.json', () => {
-  // lib/proxy-token.js carries the version twice as a fallback for when the
-  // manifest cannot be read, and the CHANGELOG heading names the release. Both
-  // drift silently on a bump, so they are pinned to package.json here.
-  const fallbacks = [...read('lib/proxy-token.js').matchAll(/'(0\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)'/g)].map((m) => m[1])
-  assert.ok(fallbacks.length > 0, 'expected version fallbacks in lib/proxy-token.js')
+  // The transport carries a version fallback for when the manifest cannot be
+  // read, and the CHANGELOG heading names the release. Both drift silently on a
+  // bump, so they are pinned to package.json here.
+  const fallbacks = [...read('lib/transport/cline-transport.js').matchAll(/'(0\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)'/g)].map((m) => m[1])
+  assert.ok(fallbacks.length > 0, 'expected version fallbacks in lib/transport/cline-transport.js')
   for (const version of fallbacks) {
-    assert.equal(version, pkg.version, 'lib/proxy-token.js fallback is out of step with package.json')
+    assert.equal(version, pkg.version, 'lib/transport/cline-transport.js fallback is out of step with package.json')
   }
 
   // A development prerelease intentionally has no released CHANGELOG heading

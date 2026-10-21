@@ -12,7 +12,7 @@ function IntegrationToggle({ id, label, hint, checked, onChange }) {
   })
 }
 
-function IntegrationsSection({ draft, onStage, transport, t }) {
+function IntegrationsSection({ draft, onStage, t }) {
   const current = draft || {}
   return React.createElement(
     SettingsGroup,
@@ -41,15 +41,6 @@ function IntegrationsSection({ draft, onStage, transport, t }) {
       hint: t('settings.composer_cost_hint'),
       checked: current.showComposerCost !== false,
       onChange: (value) => onStage({ showComposerCost: value }),
-    }),
-    transport === 'pi-ai'
-      ? React.createElement(IntegrationToggle, {
-        id: 'cb-proxy-mode',
-        label: t('settings.proxy_mode'),
-        hint: t('settings.proxy_mode_hint'),
-        checked: current.proxyMode !== false,
-        onChange: (value) => onStage({ proxyMode: value }),
-      })
-      : null
+    })
   )
 }

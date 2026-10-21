@@ -14,7 +14,7 @@ function AdvancedField({ id, label, hint, value, type, onChange }) {
   })
 }
 
-function AdvancedSection({ draft, onStage, transport, t }) {
+function AdvancedSection({ draft, onStage, t }) {
   const current = draft || {}
   const numeric = (key, minimum) => (raw) => {
     if (raw === '') return
@@ -81,22 +81,6 @@ function AdvancedSection({ draft, onStage, transport, t }) {
       hint: t('settings.models_cache_path_hint'),
       value: current.modelsCachePath,
       onChange: (value) => onStage({ modelsCachePath: value }),
-    }),
-    React.createElement(SettingRow, {
-      title: t('settings.transport'),
-      description: t('settings.transport_hint'),
-      htmlFor: 'cb-transport',
-      control: React.createElement(
-        'select',
-        {
-          id: 'cb-transport',
-          className: 'cb-select',
-          value: current.transport === 'pi-ai' ? 'pi-ai' : 'adapter',
-          onChange: (event) => onStage({ transport: event.target.value }),
-        },
-        React.createElement('option', { value: 'adapter' }, 'Native adapter'),
-        React.createElement('option', { value: 'pi-ai' }, 'Legacy llm-pi-ai + proxy')
-      ),
     })
   )
 }

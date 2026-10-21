@@ -154,8 +154,6 @@ test('routes: behavioral verification of all registered routes kind and prefix',
     '/dsh-clinebot/config',
     '/dsh-clinebot/save-key',
     '/dsh-clinebot/accounts/active',
-    '/dsh-clinebot/register',
-    '/dsh-clinebot/unregister',
     '/dsh-clinebot/models/sync',
     '/dsh-clinebot/models/toggle',
     '/dsh-clinebot/accounts',
@@ -185,8 +183,6 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     { path: '/dsh-clinebot/accounts/delete', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } },
     { path: '/dsh-clinebot/accounts/rename', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK', label: 'Renamed' } },
     { path: '/dsh-clinebot/accounts/key/clear', allowedMethod: 'POST', badBody: { apiKeyEnv: '' }, goodBody: { apiKeyEnv: 'CLINEBOT_API_KEY_WORK' } },
-    { path: '/dsh-clinebot/register', allowedMethod: 'POST', badBody: null, goodBody: {} },
-    { path: '/dsh-clinebot/unregister', allowedMethod: 'POST', badBody: null, goodBody: {} },
     { path: '/dsh-clinebot/smoke', allowedMethod: 'POST', badBody: null, goodBody: { model: 'cline-pass/deepseek-v4-flash' } },
     { path: '/dsh-clinebot/key/verify', allowedMethod: 'POST', badBody: { key: '' }, goodBody: { key: 'candidate-key' } },
     { path: '/dsh-clinebot/config', allowedMethod: 'PUT', badBody: { unknownField: 'bad' }, goodBody: { defaultModel: 'cline-pass/deepseek-v4-flash' } },
@@ -380,21 +376,6 @@ test('routes: behavioral tests for all write endpoints (405, 403, and functional
     assert.equal(outDelViaDeleteMethod.read().body.removed, 'CLINEBOT_API_KEY_3')
   }
 
-  // 8. Successful write execution: /unregister and /register
-  {
-    const { getHandler } = setupRouter()
-    const unregHandler = getHandler('/dsh-clinebot/unregister')
-    const outUnreg = createRes()
-    await unregHandler(createReq({ method: 'POST' }), outUnreg.res)
-    assert.equal(outUnreg.read().status, 200)
-    assert.equal(outUnreg.read().body.ok, true)
-
-    const regHandler = getHandler('/dsh-clinebot/register')
-    const outReg = createRes()
-    await regHandler(createReq({ method: 'POST', body: { models: ['cline-pass/deepseek-v4-flash'] } }), outReg.res)
-    assert.equal(outReg.read().status, 200)
-    assert.equal(outReg.read().body.ok, true)
-  }
 })
 
 test('routes: client.js bundle executes and exports valid DSH plugin module', () => {
