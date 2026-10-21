@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.0</b> 将聊天迁移到原生 <code>ctx.llm</code> 适配器。需要 DSH <code>0.2.1-rc.2</code>。旧的 <code>llm-pi-ai</code> + 回环代理路径保留一个版本，通过 <code>transport: "pi-ai"</code> 启用。</p>
+<p><b>0.6.2</b> 仅使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>。旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -84,7 +84,6 @@ graph LR
 
     subgraph DSHCore [DSH 核心系统服务]
         Credentials["凭据存储服务 (~/.dsh/.credentials.yaml)"]
-        PiAi["模型注册: llm-pi-ai.providers.clinebot"]
     end
 
     subgraph Upstream [Cline 官方云端]
@@ -99,7 +98,6 @@ graph LR
     HttpEndpoints --> Credentials
     HttpEndpoints --> ClientCore
     ClientCore --> ModelCatalog
-    HttpEndpoints -->|原子级写入| PiAi
     ClientCore -->|模型对话| ClinePass
     ClientCore -->|额度查询| ClineQuota
     ClientCore -->|套餐信息| ClinePlan
@@ -115,7 +113,6 @@ graph LR
   * `sessionStats` / `recordSessionRequest`：内存级会话度量记录器（请求次数、Token 估算、延迟、时间戳）。
   * `saveCredentialKey`：将密钥安全写入 `~/.dsh/.credentials.yaml`。
   * `smokeChat`：毫秒级网络探活与非流式延迟测试，并记录会话指标。
-  * `buildPiAiProvider`：构建 DSH `llm-pi-ai` 兼容的服务商定义 (`api: 'openai-completions'`)。
 * **`lib/index.js`**：Cordis 插件主生命周期服务，注册后端 REST API 路由（含 `/dsh-clinebot/models/sync`）、额度预警计算与 `/cline` 聊天斜杠指令。
 * **`lib/client.js`**：插件行配置页（`plugins.row.config`），含预警横幅、会话指标、一键模型同步，以及后备插件卡片（`settings.plugin.item`）。没有 `settings.section` 侧边栏项。
 
@@ -165,7 +162,6 @@ dsh-clinebot:
   baseUrl: https://api.cline.bot/api/v1
   apiKeyEnv: CLINEBOT_API_KEY
   defaultModel: your-default-model
-  proxyMode: true
   disabledModels: []
   customModels: []
   modelReasoningDefaults:
@@ -192,7 +188,6 @@ dsh-clinebot:
 | `customModels` | `array` | `[]` | 用户自定义网关模型 (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | 各模型默认思考强度配置 (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | 用户自定义模型上下文窗口与最大 Token 数量覆盖 |
-| `proxyMode` | `boolean` | `true` | 启用透明本地环回代理以支持会话粘性路由与 429 自动故障转移 |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | 本地持久化 Token 用量统计文件路径 |
 | `accounts` | `array` | `[]` | 额外轮转账号池 (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | 手动指定的主账号（为空时自动按最低配额消耗优先路由） |
@@ -206,7 +201,7 @@ dsh-clinebot:
 
 ## 🌐 HTTP API 接口说明
 
-所有接口挂载于 `/dsh-clinebot/*` 路径，并受到跨站请求防护（仅放行同源或环回请求）。管理接口限制请求体上限 256 KiB；环回推理代理接口支持最高 64 MiB 有效载荷 (`MAX_PROXY_BODY_BYTES`)：
+所有接口挂载于 `/dsh-clinebot/*` 路径，并受到跨站请求防护（仅放行同源或环回请求）。管理接口限制请求体上限 256 KiB：
 
 ### 管理与控制接口（上限 256 KiB）
 * `GET /dsh-clinebot/status` — 服务运行状态，包括健康探活、当前凭据名称、配额限制及会话统计。
@@ -225,12 +220,6 @@ dsh-clinebot:
 * `POST /dsh-clinebot/smoke` — 发起快速探测并返回实时延迟。
 * `GET /dsh-clinebot/update/status` — 查询插件版本更新状态。
 * `POST /dsh-clinebot/update/apply` — 应用版本更新（支持进程树完全清理与锁文件保护）。
-
-### OpenAI 兼容环回代理接口（上限 64 MiB）
-* `POST /dsh-clinebot/v1/chat/completions` — 本地透明代理，支持 SSE 流式与完整响应、会话粘性路由、最低用量负载均衡、响应体超时防护 (`streamIdleTimeoutMs`) 以及 429 自动故障转移。
-* `GET /dsh-clinebot/v1/models` — 符合 OpenAI API 规范的模型列表。
-
-> **DSH Desktop 2.x 与无界面环境**：环回代理在 `127.0.0.1` 绑定独立的专用 HTTP 服务（临时端口），彻底绕过桌面端路由防护 (`DesktopWebServer` 的 `x-dsh-desktop-renderer` 限制）。内置防护检测机制 (`detectHostWebServerFence`) 在环回端口受限时自动回退为直连模式，用户亦可在设置页的“诊断”模块中直接切换代理模式。
 
 ---
 

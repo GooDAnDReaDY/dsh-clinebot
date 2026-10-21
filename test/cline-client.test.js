@@ -4,7 +4,6 @@ import {
   normalizeBaseUrl,
   resolveApiKey,
   smokeChat,
-  buildPiAiProvider,
   fetchUsageLimits,
   saveCredentialKey,
   clearUsageCache,
@@ -44,68 +43,6 @@ test('cline-client: resolveApiKey', () => {
 
   const missing = resolveApiKey('OTHER_KEY', env)
   assert.equal(missing.value, '')
-})
-
-test('cline-client: buildPiAiProvider with custom models and reasoningEfforts schema', () => {
-  const customModels = [
-    {
-      id: 'cline-pass/deepseek-v4-moe',
-      name: 'DeepSeek V4 MoE',
-      input: ['text', 'vision'],
-      reasoningEfforts: ['low', 'medium', 'high', 'invalid_effort'],
-    },
-    {
-      id: 'cline-pass/empty-efforts',
-      name: 'Empty Efforts',
-      reasoningEfforts: [],
-    },
-    {
-      id: 'cline-pass/object-efforts',
-      name: 'Object Efforts',
-      reasoningEfforts: { low: 'Low Effort', max: 'Maximum Effort' },
-    },
-  ]
-  const provider = buildPiAiProvider({
-    baseUrl: 'https://api.cline.bot/api/v1',
-    apiKeyEnv: 'MY_KEY',
-    models: ['cline-pass/deepseek-v4-moe', 'cline-pass/empty-efforts', 'cline-pass/object-efforts', 'cline-pass/kimi-k2.7-code'],
-    customModels,
-  })
-
-  assert.equal(provider.api, 'openai-completions')
-  assert.equal(provider.baseURL, 'https://api.cline.bot/api/v1')
-  assert.equal(provider.apiKeyEnv, 'MY_KEY')
-  assert.deepEqual(provider.compat, {
-    supportsReasoningEffort: true,
-    supportsLongCacheRetention: true,
-  })
-  assert.equal(provider.cacheRetention, 'long')
-  assert.equal(provider.models.length, 4)
-  assert.equal(provider.models[0].id, 'cline-pass/deepseek-v4-moe')
-  assert.equal(provider.models[0].provider, PROVIDER_ID)
-  // GitHub #1 / Gitea #35 / Gitea #59: reasoningEfforts must include off: null for wire protocol
-  assert.deepEqual(provider.models[0].reasoningEfforts, {
-    off: null,
-    low: 'low',
-    medium: 'medium',
-    high: 'high',
-  })
-  assert.deepEqual(provider.models[0].compat, {
-    supportsReasoningEffort: true,
-  })
-  assert.equal(provider.models[1].reasoningEfforts, false)
-  assert.equal(provider.models[1].compat, undefined)
-  assert.deepEqual(provider.models[2].reasoningEfforts, {
-    off: null,
-    low: 'Low Effort',
-    max: 'Maximum Effort',
-  })
-  assert.deepEqual(provider.models[2].compat, {
-    supportsReasoningEffort: true,
-  })
-  // Model without reasoningEfforts defined defaults to false
-  assert.equal(provider.models[3].reasoningEfforts, false)
-  assert.equal(provider.models[3].compat, undefined)
 })
 
 test('cline-client: fetchUsageLimits parsing and caching', async () => {
@@ -462,44 +399,6 @@ test('cline-client: fetchUsageLimits does not sleep/retry on aborted signal (Iss
 
   assert.equal(res.ok, false)
   assert.equal(attempts, 1, 'Should fail immediately without retrying on AbortError')
-})
-
-test('cline-client: buildPiAiProvider preserves custom overridden contextWindow and maxTokens', () => {
-  const models = [
-    {
-      id: 'cline-pass/kimi-k3',
-      name: 'Kimi K3',
-      contextLength: 2000000,
-      maxTokens: 16384,
-      isContextOverridden: true,
-    },
-    {
-      id: 'cline-pass/qwen3.7-max',
-      name: 'Qwen 3.7 Max',
-      contextLength: 200000,
-      maxTokens: 8192,
-      isContextOverridden: false,
-    },
-  ]
-  const existingModels = [
-    { id: 'cline-pass/qwen3.7-max', contextWindow: 123456, maxTokens: 65432 },
-  ]
-  const provider = buildPiAiProvider({
-    baseUrl: 'https://api.cline.bot/api/v1',
-    apiKeyEnv: 'MY_KEY',
-    models,
-    existingModels,
-  })
-
-  const kimi = provider.models.find((m) => m.id === 'cline-pass/kimi-k3')
-  assert.ok(kimi)
-  assert.equal(kimi.contextWindow, 2000000)
-  assert.equal(kimi.maxTokens, 16384)
-
-  const qwen = provider.models.find((m) => m.id === 'cline-pass/qwen3.7-max')
-  assert.ok(qwen)
-  assert.equal(qwen.contextWindow, 123456, 'Preserves manual contextWindow from existing provider models')
-  assert.equal(qwen.maxTokens, 65432, 'Preserves manual maxTokens from existing provider models')
 })
 
 test('cline-client: retryWithBackoff cancels response body on rejected HTTP 429/502/503/504 before retry (#167)', async () => {

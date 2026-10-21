@@ -203,65 +203,6 @@ test("routes: /models/toggle and /accounts/active unwrap volatile live getters w
   assert.equal(toggleRes.get().data.ok, true)
 })
 
-test("host: checkRegisteredInPiAi accurately detects provider via SettingsForms describe() without get", async () => {
-  const { checkRegisteredInPiAi, removePiAiProvider } = await import("../lib/provider-sync.js")
-
-  const mockSettingsFormsRegistered = {
-    describe: () => [
-      {
-        ns: "llm-pi-ai",
-        value: {
-          providers: {
-            clinebot: { displayName: "ClineBot" }
-          }
-        }
-      }
-    ],
-    mutate: async (ns, ops) => {}
-  }
-
-  const ctxRegistered = {
-    get: (name) => (name === "settings" ? mockSettingsFormsRegistered : null)
-  }
-
-  const isReg = await checkRegisteredInPiAi(ctxRegistered)
-  assert.equal(isReg, true, "checkRegisteredInPiAi must return true when describe() contains clinebot")
-
-  const mockSettingsFormsEmpty = {
-    describe: () => [
-      {
-        ns: "llm-pi-ai",
-        value: {
-          providers: {}
-        }
-      }
-    ]
-  }
-
-  const ctxEmpty = {
-    get: (name) => (name === "settings" ? mockSettingsFormsEmpty : null)
-  }
-
-  const isNotReg = await checkRegisteredInPiAi(ctxEmpty)
-  assert.equal(isNotReg, false, "checkRegisteredInPiAi must return false when describe() lacks clinebot")
-
-  let mutateCalled = false
-  const mockSettingsFormsNotFound = {
-    mutate: async (ns, ops) => {
-      mutateCalled = true
-      throw new Error("Path not found: providers.clinebot")
-    }
-  }
-
-  const ctxNotFound = {
-    get: (name) => (name === "settings" ? mockSettingsFormsNotFound : null)
-  }
-
-  const res = await removePiAiProvider(ctxNotFound)
-  assert.equal(mutateCalled, true)
-  assert.equal(res.ok, true, "removePiAiProvider must safely absorb not found errors")
-})
-
 test("host: boot and reload survives functional getters and profile-shaped dynamicModels without DataCloneError", async () => {
   let currentRawConfig = () => ({
     enabled: () => true,
@@ -636,67 +577,6 @@ async function loadNativeDshPiAi() {
   }
   return null
 }
-
-test("host: native DSH llm-pi-ai adapter accepts provider and populates model catalog (#173)", async (t) => {
-  const { buildPiAiProvider } = await import("../lib/cline-client.js")
-  const provider = buildPiAiProvider({
-    baseUrl: "http://127.0.0.1:12345/v1",
-    models: [{ id: "synthetic-model", name: "Synthetic" }],
-  })
-
-  // Compat flags must NOT contain rejected affinity flags
-  assert.equal(provider.compat?.sendSessionAffinityHeaders, undefined)
-  assert.equal(provider.compat?.sessionAffinityFormat, undefined)
-
-  const mod = await loadNativeDshPiAi()
-  if (!mod?.apply) {
-    t.skip("native DSH adapter not found")
-    return
-  }
-  const applyNative = mod.apply
-
-  let adapter = null
-  const ctx = {
-    fiber: { entry: { options: { id: "llm-pi-ai" } } },
-    inject() {},
-    on() {},
-    get() { return undefined },
-    logger: { warn() {}, error() {} },
-    llm: {
-      registerConfigurableProviders() { return { replace() {} } },
-      registerModelDiscovery() {},
-      registerAdapter(routes, registered) {
-        adapter = registered
-        return { replace() {} }
-      },
-    },
-  }
-
-  const prevKey = process.env.CLINEBOT_API_KEY
-  process.env.CLINEBOT_API_KEY = "mock-audit-key-for-pi-ai"
-  try {
-    applyNative(ctx, { providers: { get: () => ({ clinebot: provider }) } })
-    const snapshot = adapter.current()
-    const profile = snapshot.profiles.get("clinebot")
-    assert.equal(profile.catalogError, undefined, "Native DSH llm-pi-ai must not report catalogError")
-    const models = await adapter.listModels("clinebot")
-    assert.ok(models.some((m) => m.id === "synthetic-model"))
-
-    let modelError = null
-    try {
-      adapter.modelOf(snapshot, "clinebot", "synthetic-model")
-    } catch (e) {
-      modelError = e
-    }
-    assert.equal(modelError, null, "modelOf must resolve model without throwing")
-  } finally {
-    if (prevKey !== undefined) {
-      process.env.CLINEBOT_API_KEY = prevKey
-    } else {
-      delete process.env.CLINEBOT_API_KEY
-    }
-  }
-})
 
 test("host: loader/volatile-update resets dynamic catalog and plan synced timestamp on native activeAccount switch (#168)", async () => {
   const handlers = {}

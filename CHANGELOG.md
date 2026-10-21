@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-10-21
+
+### Removed
+- **Legacy transport removed**: `transport: "pi-ai"`, `proxyMode`, `lib/proxy-server.js`, `lib/proxy-token.js`, `lib/routes/proxy.js`, the `llm/stream` failover hook and `/register` / `/unregister` routes are gone. ClineBot is adapter-only on `ctx.llm`.
+- **Legacy settings surfaces removed**: the transport selector, proxy diagnostics and proxy-mode toggle no longer appear in Settings or the TUI. A one-time cleanup still removes an old `llm-pi-ai.providers.clinebot` entry for users upgrading from 0.6.1.
+- **Legacy tests removed**; the adapter/session-router paths remain covered. Final bundle: 248.9 KB.
+
 ## [0.6.1] - 2026-10-21
 
 ### Fixed

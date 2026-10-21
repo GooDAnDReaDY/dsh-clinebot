@@ -44,7 +44,6 @@ async function startServer(handler) {
 function configFor(baseUrl, overrides = {}) {
   return {
     enabled: true,
-    transport: 'adapter',
     baseUrl,
     apiKeyEnv: 'CLINEBOT_API_KEY',
     defaultModel: 'cline-pass/deepseek-v4.1-flash',
@@ -59,7 +58,6 @@ function configFor(baseUrl, overrides = {}) {
     accounts: [],
     activeAccount: '',
     accountMode: 'least_used',
-    proxyMode: false,
     statsPath: TEMP_STATS,
     timeoutMs: 2000,
     streamIdleTimeoutMs: 2000,

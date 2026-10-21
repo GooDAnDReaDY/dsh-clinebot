@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.0</b> moves chat onto a native <code>ctx.llm</code> adapter. Requires DSH <code>0.2.1-rc.2</code>. The legacy <code>llm-pi-ai</code> + loopback-proxy path remains available behind <code>transport: "pi-ai"</code> for one release.</p>
+<p><b>0.6.2</b> is adapter-only: chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>. The legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path have been removed.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -118,7 +118,7 @@ graph LR
 * **`lib/adapter.js`**:
   Registers the `ClineBotAdapter` directly on `ctx.llm`: streaming, model catalogue, reasoning effort, pre-first-token account failover, retry policy, usage accounting and provider metadata.
 * **`lib/transport/cline-transport.js`**:
-  OpenAI-compatible SSE transport with connect/idle timeouts, abort handling and upstream error classification. The legacy proxy imports the same parser.
+  OpenAI-compatible SSE transport with connect/idle timeouts, abort handling and upstream error classification.
 * **`lib/models.js`**:
   Dynamic subscription catalogue, curated fallback properties, reasoning efforts, custom models and plan parsing (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **`lib/model-prices.js`**:
@@ -128,9 +128,9 @@ graph LR
 * **`lib/account-pool.js` / `lib/session-router.js`**:
   Credential discovery, usage-aware least-used and round-robin rotation, sticky sessions and cooldown recovery.
 * **`lib/cline-client.js`**:
-  `fetchUsageLimits`, credential save, smoke test, model cache and the legacy `llm-pi-ai` provider builder used only by `transport: "pi-ai"`.
+  `fetchUsageLimits`, credential save, smoke test and the model catalogue cache.
 * **`lib/index.js`**:
-  Cordis lifecycle: adapter registration, optional HTTP routes, quota warnings, `/cline` command, migration of the legacy provider and TUI section registration.
+  Cordis lifecycle: adapter registration, optional HTTP routes, quota warnings, `/cline` command, one-time cleanup of the old provider entry and TUI section registration.
 * **`lib/tui-settings.js`**:
   `dsh-TUI` section for key, base URL, model filters, active account, context window and output cap.
 * **`lib/client.js`**:
@@ -144,7 +144,7 @@ graph LR
 dsh plugin --profile web add @goodandready/dsh-clinebot
 ```
 
-Requires **DSH `0.2.1-rc.2`** and Node 22+. New installs use `transport: "adapter"` and register directly with `ctx.llm`. Set `transport: "pi-ai"` only if you still need the legacy `llm-pi-ai` provider and loopback proxy for one release.
+Requires **DSH `0.2.1-rc.2`** and Node 22+. ClineBot registers directly with `ctx.llm`; there is no transport switch or loopback proxy.
 
 Restart your DeepSeek Harness instance and refresh the browser.
 
@@ -191,7 +191,6 @@ dsh-clinebot:
   baseUrl: https://api.cline.bot/api/v1
   apiKeyEnv: CLINEBOT_API_KEY
   defaultModel: your-default-model
-  proxyMode: true
   disabledModels: []
   customModels: []
   modelReasoningDefaults:
@@ -218,7 +217,6 @@ dsh-clinebot:
 | `customModels` | `array` | `[]` | User-defined gateway models (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | Configured default reasoning effort per model (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | User-defined model context length and max token overrides |
-| `proxyMode` | `boolean` | `true` | Enable local transparent loopback proxy for sticky sessions and automatic 429 failover |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Persistent on-disk path for token usage analytics |
 | `accounts` | `array` | `[]` | Additional accounts for multi-account failover and quota rotation (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | Manually pinned active account env name (empty for least-used auto routing) |
@@ -232,7 +230,7 @@ dsh-clinebot:
 
 ## 🌐 HTTP API Endpoints
 
-All endpoints are registered under `/dsh-clinebot/*` and protected against untrusted cross-site origins (same-origin and loopback allowed). Control endpoints enforce a 256 KiB request payload limit; the loopback proxy endpoint supports up to 64 MiB payloads (`MAX_PROXY_BODY_BYTES`):
+All endpoints are registered under `/dsh-clinebot/*` and protected against untrusted cross-site origins (same-origin and loopback allowed). Control endpoints enforce a 256 KiB request payload limit:
 
 ### Management & Control Endpoints (Max 256 KiB)
 * `GET /dsh-clinebot/status` — Live status report including provider health, active credential, quota, and session metrics.
@@ -251,12 +249,6 @@ All endpoints are registered under `/dsh-clinebot/*` and protected against untru
 * `POST /dsh-clinebot/smoke` — Runs a live latency test ping.
 * `GET /dsh-clinebot/update/status` — Query available GitHub releases and plugin updates.
 * `POST /dsh-clinebot/update/apply` — Apply version upgrade with process-group cleanup and lockfile sync.
-
-### OpenAI-Compatible Loopback Proxy (Max 64 MiB)
-* `POST /dsh-clinebot/v1/chat/completions` — Transparent local proxy supporting streaming SSE and non-streaming responses, Bearer token authentication, sticky session affinity with least-used quota allocation, body read watchdog (`streamIdleTimeoutMs`), and automatic 429 failover.
-* `GET /dsh-clinebot/v1/models` — OpenAI-compatible catalog listing all active plan and custom models.
-
-> **DSH Desktop 2.x & Headless Environments**: The loopback proxy binds an isolated loopback HTTP server on `127.0.0.1` (ephemeral port), completely bypassing `DesktopWebServer` renderer fences (`x-dsh-desktop-renderer`). Automated fence detection (`detectHostWebServerFence`) falls back to direct upstream connection if the loopback server is restricted, and proxy mode can be directly toggled via the Diagnostics settings card.
 
 ---
 

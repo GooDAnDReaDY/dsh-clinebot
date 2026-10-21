@@ -184,27 +184,6 @@ function SettingsPage(props) {
     })
   }
 
-  async function handleRegister() {
-    await performAction('register', async () => {
-      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/register`, { method: 'POST' })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      const count = status?.availableModels?.filter((m) => !(draft?.disabledModels || []).includes(m.id)).length || 0
-      setMsg(t('diag.resynced_msg', { count }))
-      await load()
-    })
-  }
-
-  async function handleUnregister() {
-    await performAction('unregister', async () => {
-      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/unregister`, { method: 'POST' })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      setMsg(t('diag.unregistered_msg'))
-      await load()
-    })
-  }
-
   async function handleSmoke() {
     setSmokeResult(null)
     await performAction('smoke', async () => {
@@ -433,28 +412,21 @@ function SettingsPage(props) {
     React.createElement(IntegrationsSection, {
       draft,
       onStage: staged.stage,
-      transport: draft?.transport || status?.config?.transport || 'adapter',
       t,
     }),
 
     // Diagnostics & Sync with DSH
     React.createElement(DiagSection, {
       keyPresent,
-      isRegistered,
       busy,
       smokeResult,
       handleSmoke,
-      handleUnregister,
-      handleRegister,
-      proxyMode: draft?.proxyMode !== false,
-      onToggleProxy: (value) => staged.stage({ proxyMode: value }),
       t,
     }),
 
     React.createElement(AdvancedSection, {
       draft,
       onStage: staged.stage,
-      transport: draft?.transport || status?.config?.transport || 'adapter',
       t,
     }),
 
