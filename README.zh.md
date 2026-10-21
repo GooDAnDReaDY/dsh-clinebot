@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.6</b> 将客户端包从 256.7 KB 压缩到 202.9 KB，并移除未使用的服务端辅助代码，为后续功能腾出空间。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
+<p><b>0.6.7</b> 在压缩后的 0.6.6 包之上添加 headless 契约测试并移除未使用的图标。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

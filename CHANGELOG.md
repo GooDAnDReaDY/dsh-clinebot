@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2026-10-21
+
+### Added
+- **Headless contract test**: boots the plugin without the UI, asserts the `ctx.llm` adapter, config provider entry, HTTP routes and `/cline` command registration, and verifies removed proxy/register routes stay absent.
+
+### Changed
+- Removed unused icon cases (`search`, `check`, `trash`, `refresh`, `account`) from the client bundle.
+
 ## [0.6.6] - 2026-10-21
 
 ### Changed
