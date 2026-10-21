@@ -16,8 +16,28 @@ import {
   matchesAccount,
   isAccountBlocked,
   getAccountUsageMetric,
-  getNextRoundRobinAccount
+  getNextRoundRobinAccount,
+  setAccountEventSink
 } from '../lib/session-router.js'
+
+test('session-router: emits cooldown, recovery and route events', () => {
+  resetSessionRouter()
+  const events = []
+  setAccountEventSink((event) => events.push(event))
+  try {
+    const pool = [{ id: 'acc1', apiKeyEnv: 'KEY_1', label: 'Account 1', percentUsed: 10, present: true }]
+    resolveSessionAccount('session-events', pool, 'auto')
+    markAccountCooldown('KEY_1', 30000, null, 'rate_limit')
+    clearAccountCooldown('KEY_1')
+    assert.deepEqual(events.map((event) => event.type), ['route', 'cooldown', 'recover'])
+    assert.equal(events[0].accountId, 'KEY_1')
+    assert.equal(events[0].reason, 'new_session_assigned')
+    assert.equal(events[2].reason, 'manual')
+  } finally {
+    setAccountEventSink(null)
+    resetSessionRouter()
+  }
+})
 
 test('session-router: selectLeastUsedAccount picks account with lowest percentUsed', () => {
   resetSessionRouter()
