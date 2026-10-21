@@ -32,13 +32,45 @@ function formatResetTime(isoString) {
   }
 }
 
-function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, t }) {
+function formatForecastDuration(ms) {
+  const totalMinutes = Math.max(1, Math.round(Number(ms) / 60000))
+  const days = Math.floor(totalMinutes / 1440)
+  const hours = Math.floor((totalMinutes % 1440) / 60)
+  const minutes = totalMinutes % 60
+  if (days > 0) return `${days}d ${hours}h`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
+
+function quotaForecast(window, windowMs, t) {
+  const used = Number(window?.percentUsed)
+  const remaining = Number.isFinite(Number(window?.remainingPercent))
+    ? Number(window.remainingPercent)
+    : 100 - used
+  const resetAt = new Date(window?.resetsAt).getTime()
+  const span = Number(windowMs)
+  if (!Number.isFinite(used) || !Number.isFinite(resetAt) || !Number.isFinite(span) || span <= 0) return ''
+  const untilReset = resetAt - Date.now()
+  if (untilReset <= 0) return ''
+  if (remaining <= 0) return t('quota.forecast_exhausted')
+  if (used <= 0) return t('quota.forecast_no_usage')
+  const elapsed = Math.max(1, span - untilReset)
+  const burnPerMs = used / elapsed
+  if (!Number.isFinite(burnPerMs) || burnPerMs <= 0) return ''
+  const etaMs = remaining / burnPerMs
+  if (!Number.isFinite(etaMs) || etaMs <= 0) return ''
+  if (etaMs >= untilReset) return t('quota.forecast_holds')
+  return t('quota.forecast_left', { time: formatForecastDuration(etaMs) })
+}
+
+function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, windowMs, t }) {
   const pct = Math.max(0, Math.min(100, Math.round(percentUsed || 0)))
   const isWarn = pct >= 80 && pct < 90
   const isBad = pct >= 90
   const barClass = isBad ? 'cb-progress-bar-bad' : isWarn ? 'cb-progress-bar-warn' : 'cb-progress-bar-fill'
   const resetCountdown = formatResetCountdown(resetsAt)
   const resetClock = formatResetTime(resetsAt)
+  const forecast = windowMs ? quotaForecast({ percentUsed, remainingPercent, resetsAt }, windowMs, t) : ''
 
   return React.createElement(
     'div',
@@ -72,6 +104,7 @@ function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, t }) {
       'div',
       { className: 'cb-progress-track' },
       React.createElement('div', { className: barClass, style: { width: `${pct}%` } })
-    )
+    ),
+    forecast ? React.createElement('div', { className: 'cb-progress-forecast' }, forecast) : null
   )
 }

@@ -71,6 +71,7 @@ function QuotaPanelView({
               percentUsed: selectedUsage.windows.fiveHour.percentUsed || 0,
               remainingPercent: selectedUsage.windows.fiveHour.remainingPercent || 100,
               resetsAt: selectedUsage.windows.fiveHour.resetsAt,
+              windowMs: 5 * 60 * 60 * 1000,
               t,
             })
           : null,
@@ -80,6 +81,7 @@ function QuotaPanelView({
               percentUsed: selectedUsage.windows.weekly.percentUsed || 0,
               remainingPercent: selectedUsage.windows.weekly.remainingPercent || 100,
               resetsAt: selectedUsage.windows.weekly.resetsAt,
+              windowMs: 7 * 24 * 60 * 60 * 1000,
               t,
             })
           : null,
@@ -89,6 +91,7 @@ function QuotaPanelView({
               percentUsed: selectedUsage.windows.monthly.percentUsed || 0,
               remainingPercent: selectedUsage.windows.monthly.remainingPercent || 100,
               resetsAt: selectedUsage.windows.monthly.resetsAt,
+              windowMs: 30 * 24 * 60 * 60 * 1000,
               t,
             })
           : null,

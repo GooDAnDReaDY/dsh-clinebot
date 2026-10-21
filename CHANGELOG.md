@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-10-21
+
+### Added
+- **Quota forecast**: each 5-hour, weekly and monthly quota row now shows an estimated burn-down (`~2h 15m left`, `holds until reset`, `no usage yet`) based on the current pace and reset time. Forecasts appear in the sidebar and the center-column panel.
+- **Budget guard**: optional `dailyBudgetUsd` and `monthlyBudgetUsd` limits (0 disables). The adapter rejects new ClineBot requests with `BUDGET_EXCEEDED` once the local estimated spend for the UTC day/month reaches the limit; both fields are available in Settings → ClineBot → Advanced and the TUI.
+- Budget fields are wired through `publicConfig`, and the budget guard is covered by unit/integration tests.
+
 ## [0.6.2] - 2026-10-21
 
 ### Removed

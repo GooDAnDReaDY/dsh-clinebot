@@ -69,6 +69,22 @@ function AdvancedSection({ draft, onStage, t }) {
       onChange: numeric('maxPayloadMb', 0),
     }),
     React.createElement(AdvancedField, {
+      id: 'cb-daily-budget',
+      label: t('settings.daily_budget'),
+      hint: t('settings.daily_budget_hint'),
+      value: current.dailyBudgetUsd,
+      type: 'number',
+      onChange: numeric('dailyBudgetUsd', -1),
+    }),
+    React.createElement(AdvancedField, {
+      id: 'cb-monthly-budget',
+      label: t('settings.monthly_budget'),
+      hint: t('settings.monthly_budget_hint'),
+      value: current.monthlyBudgetUsd,
+      type: 'number',
+      onChange: numeric('monthlyBudgetUsd', -1),
+    }),
+    React.createElement(AdvancedField, {
       id: 'cb-stats-path',
       label: t('settings.stats_path'),
       hint: t('settings.stats_path_hint'),
