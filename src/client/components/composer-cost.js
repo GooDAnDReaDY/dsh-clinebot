@@ -54,10 +54,12 @@ function ComposerCostEntry(props) {
   const configSnapshot = useConfigFormsSnapshot(props?.ctx)
   const [stats, setStats] = React.useState(null)
   const [prices, setPrices] = React.useState([])
+  const [sessionStats, setSessionStats] = React.useState(null)
   const markerRef = React.useRef(null)
 
   const projectedTokens = props.useProjection('tokenUsage')
   const selection = props.useProjection('modelSelection')
+  const sessionId = String(props?.sessionId || '')
   const priceOverridesKey = JSON.stringify(configSnapshot?.value?.priceOverrides || {})
 
   React.useEffect(() => {
@@ -72,7 +74,40 @@ function ComposerCostEntry(props) {
   }, [priceOverridesKey])
 
   React.useEffect(() => {
-    if (projectedTokens) return undefined
+    if (!sessionId) {
+      setSessionStats(null)
+      return undefined
+    }
+    let active = true
+    const loadSession = async () => {
+      try {
+        const res = await fetchWithTimeout(
+          `${ROUTE_PREFIX}/stats/session?sessionId=${encodeURIComponent(sessionId)}`,
+          { cache: 'no-store' },
+        )
+        const data = await res.json().catch(() => null)
+        if (active && data?.ok) setSessionStats(data.session || null)
+      } catch {
+        /* quiet */
+      }
+    }
+    loadSession()
+    let timer = null
+    const schedule = () => {
+      timer = setTimeout(async () => {
+        await loadSession()
+        if (active) schedule()
+      }, 10000)
+    }
+    schedule()
+    return () => {
+      active = false
+      if (timer) clearTimeout(timer)
+    }
+  }, [sessionId, projectedTokens])
+
+  React.useEffect(() => {
+    if (projectedTokens || sessionId) return undefined
     let active = true
     const loadStats = async () => {
       try {
@@ -88,7 +123,7 @@ function ComposerCostEntry(props) {
     loadStats()
     const timer = setTimeout(loadStats, 30000)
     return () => { active = false; clearTimeout(timer) }
-  }, [projectedTokens])
+  }, [projectedTokens, sessionId])
 
   const selected = selection?.lastUsed
     ?? selection?.next
@@ -98,32 +133,65 @@ function ComposerCostEntry(props) {
   const isClineBot = (provider === '' || provider === 'clinebot' || provider === 'llm-clinebot')
     && (provider === 'clinebot' || provider === 'llm-clinebot' || modelId.startsWith('cline-pass/'))
 
-  const rawTokens = projectedTokens || {
+  // ClineBot requests are recorded in the plugin's own per-session bucket. That
+  // bucket is provider-scoped, unlike the host's session-wide tokenUsage, so a
+  // session that also used OpenCode cannot inflate the ClineBot read-out.
+  const session = sessionStats && Number(sessionStats.requests || 0) > 0 ? sessionStats : null
+  const sessionTokens = session
+    ? {
+        promptTokens: Number(session.promptTokens || 0),
+        completionTokens: Number(session.completionTokens || 0),
+        reasoningTokens: Number(session.reasoningTokens || 0),
+        cacheReadTokens: Number(session.cacheReadTokens || 0),
+        cacheWriteTokens: Number(session.cacheWriteTokens || 0),
+      }
+    : null
+  const rawTokens = sessionTokens || (sessionId ? null : (projectedTokens || {
     promptTokens: stats?.promptTokens || 0,
     completionTokens: stats?.completionTokens || 0,
     reasoningTokens: stats?.reasoningTokens || 0,
     cacheReadTokens: stats?.cacheReadTokens || 0,
     cacheWriteTokens: stats?.cacheWriteTokens || 0,
-  }
-  const cacheRead = Number(rawTokens.cacheReadTokens || 0)
-  const cacheWrite = Number(rawTokens.cacheWriteTokens || 0)
-  const uncachedInput = Number(rawTokens.uncachedInputTokens)
-  const promptTokens = Number.isFinite(uncachedInput)
-    ? uncachedInput + cacheRead + cacheWrite
-    : Number(rawTokens.promptTokens || rawTokens.inputTokens || 0)
+  }))
+  const cacheRead = Number(rawTokens?.cacheReadTokens || 0)
+  const cacheWrite = Number(rawTokens?.cacheWriteTokens || 0)
+  const uncachedInput = Number(rawTokens?.uncachedInputTokens)
+  const promptTokens = rawTokens
+    ? (Number.isFinite(uncachedInput)
+      ? uncachedInput + cacheRead + cacheWrite
+      : Number(rawTokens.promptTokens || rawTokens.inputTokens || 0))
+    : 0
   const tokens = {
     promptTokens,
-    completionTokens: Number(rawTokens.completionTokens || rawTokens.outputTokens || 0),
-    reasoningTokens: Number(rawTokens.reasoningTokens || 0),
+    completionTokens: Number(rawTokens?.completionTokens || rawTokens?.outputTokens || 0),
+    reasoningTokens: Number(rawTokens?.reasoningTokens || 0),
     cacheReadTokens: cacheRead,
     cacheWriteTokens: cacheWrite,
   }
-  const { cost, priced, source, pTok, cTok, rTok, total } = calculateCost(tokens, modelId, prices)
+  const calculated = calculateCost(tokens, session?.model || modelId, prices)
+  const cost = session ? Number(session.costUsd || 0) : calculated.cost
+  const priced = session ? Number(session.pricedRequests || 0) > 0 : calculated.priced
+  const source = session
+    ? (findPrice(session.model || modelId, prices)?.source || 'estimate')
+    : calculated.source
+  const { pTok, cTok, rTok } = calculated
+  const total = session ? Number(session.totalTokens || pTok + cTok) : calculated.total
+  const last = session?.last || null
+  const lastCost = last ? Number(last.costUsd || 0) : 0
+  const lastPriced = Boolean(last?.priced)
 
-  const costValue = priced ? (cost < 0.0001 && cost > 0 ? '< $0.0001' : `$${cost.toFixed(4)}`) : t('composer.unpriced')
-  const costDisplay = priced && source === 'estimate' ? `≈ ${costValue}` : costValue
+  const costValue = priced
+    ? (cost === 0 ? t('composer.free') : (cost < 0.0001 ? '< $0.0001' : `$${cost.toFixed(4)}`))
+    : t('composer.unpriced')
+  const costDisplay = priced && source === 'estimate' && cost > 0 ? `≈ ${costValue}` : costValue
+  const lastCostValue = last
+    ? (lastPriced
+      ? (lastCost === 0 ? t('composer.free') : (lastCost < 0.0001 ? '< $0.0001' : `$${lastCost.toFixed(4)}`))
+      : t('composer.unpriced'))
+    : ''
   const title = [
     `${t('composer.cost_title')} ${costDisplay}`,
+    ...(last ? [`${t('composer.last_request')} ${lastCostValue}`] : []),
     `${t('composer.prompt_tok')} ${formatTokens(pTok)}`,
     `${t('composer.completion_tok')} ${formatTokens(cTok)}`,
     ...(rTok > 0 ? [`${t('composer.reasoning_tok')} ${formatTokens(rTok)}`] : []),

@@ -8,6 +8,7 @@ import {
   recordUsage,
   flushStats,
   getAnalytics,
+  getSessionStats,
   exportStatsAsCsv,
 } from '../lib/stats-storage.js'
 import { estimateCost, priceTable, resolveModelPrice } from '../lib/model-prices.js'
@@ -118,6 +119,16 @@ test('stats v2: analytics aggregates totals, models, sessions and days', () => {
   const bySession = getAnalytics({ groupBy: 'session' })
   assert.deepEqual(bySession.groups.map((entry) => entry.key).sort(), ['session-1', 'session-2'])
   assert.equal(bySession.groups.find((entry) => entry.key === 'session-1').requests, 2)
+
+  const sessionOne = getSessionStats('session-1')
+  assert.equal(sessionOne.requests, 2)
+  assert.equal(sessionOne.totalTokens, 1800)
+  assert.ok(Math.abs(sessionOne.costUsd - 0.01) < 1e-9)
+  assert.equal(sessionOne.last.model, 'cline-pass/claude-sonnet-4.6')
+  assert.equal(sessionOne.last.sessionId, 'session-1')
+  assert.equal(sessionOne.last.costUsd, 0)
+  assert.equal(getSessionStats('missing'), null)
+  assert.equal(getSessionStats(''), null)
 
   const byDay = getAnalytics({ groupBy: 'day' })
   assert.equal(byDay.groups.length, 1)

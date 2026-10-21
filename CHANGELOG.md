@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-10-21
+
+### Fixed
+- **ClineBot-only session cost**: the composer now reads the plugin's per-session `bySession` bucket instead of the host's session-wide `tokenUsage`. A conversation that also used OpenCode can no longer inflate the ClineBot estimate.
+- **Last request in the tooltip**: each session bucket retains the latest ClineBot request; the native token pill title now shows the ClineBot session cost and the last request cost.
+- **Free estimates**: priced requests that cost zero render as `Free` instead of `$0.0000`.
+
+### Added
+- `GET /dsh-clinebot/stats/session?sessionId=...` returns the ClineBot-only aggregate for one DSH session, including the last request.
+
 ## [0.6.0] - 2026-10-20
 
 ### Added
