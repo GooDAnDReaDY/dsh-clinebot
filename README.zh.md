@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.8</b> 在压缩包之上为分析面板添加 JSON/CSV 导出链接，并加入 locale 死键回归测试。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
+<p><b>0.6.9</b> 添加可选的 models.dev 公开价格同步和本地缓存，手动覆盖始终优先。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

@@ -204,7 +204,7 @@ const en = {
       'composer.reasoning_tok': 'Reasoning Tokens',
       'composer.est_cost': 'Estimated Cost',
       'composer.unpriced': 'unpriced', 'composer.cache_read': 'Cache Read', 'composer.cache_write': 'Cache Write',
-      'composer.price_source': 'Price', 'composer.price_estimate': 'estimate', 'composer.price_override': 'override',
+      'composer.price_source': 'Price', 'composer.price_estimate': 'estimate', 'composer.price_override': 'override', 'composer.price_public': 'public catalog',
       'discovery.title': 'Discovered Local Keys',
       'discovery.import_btn': 'Import from {source}',
       'discovery.imported': 'Imported to accounts pool',
@@ -265,6 +265,9 @@ const en = {
       'prices.input': 'Input', 'prices.output': 'Output', 'prices.cache_read': 'Cache read', 'prices.cache_write': 'Cache write',
       'prices.auto': 'auto', 'prices.empty': 'No models available.',
       'prices.hint': 'These rates affect the composer and local analytics only; they are not an invoice.',
+      'prices.public_hint': 'Sync uses the public models.dev catalog as an estimate; your overrides always win.',
+      'prices.sync': 'Sync public prices', 'prices.syncing': 'Syncing…',
+      'prices.synced': 'Public catalog synced: {count} models', 'prices.sync_failed': 'Price sync failed: {error}',
     }
 
     function makeT(dict, fallback) {

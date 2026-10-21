@@ -14,7 +14,12 @@ import {
   getStatsRetentionDays,
 } from '../lib/stats-storage.js'
 import { exportStatsAsJson } from '../lib/stats-export.js'
-import { estimateCost, priceTable, resolveModelPrice } from '../lib/model-prices.js'
+import {
+  estimateCost,
+  priceTable,
+  resolveModelPrice,
+  setPublicPriceCatalog,
+} from '../lib/model-prices.js'
 import { buildTuiSection, applyTuiSettings } from '../lib/tui-settings.js'
 
 const statsPath = path.join(tmpdir(), `clinebot-analytics-${process.pid}-${Date.now()}.json`)
@@ -35,6 +40,23 @@ test('model-prices: estimates split uncached input, output and cache reads', () 
   const unknown = estimateCost({ model: 'cline-pass/custom-unpriced', promptTokens: 1000, completionTokens: 500 })
   assert.equal(unknown.priced, false)
   assert.equal(unknown.usd, 0)
+})
+
+test('model-prices: public catalog fills estimates and overrides still win', () => {
+  setPublicPriceCatalog({
+    'deepseek-v4.1-flash': { input: 0.3, output: 1.2, cacheRead: 0.006, cacheWrite: null },
+  })
+  const publicPrice = resolveModelPrice('cline-pass/deepseek-v4.1-flash')
+  assert.equal(publicPrice.source, 'public')
+  assert.equal(publicPrice.input, 0.3)
+  const override = resolveModelPrice('cline-pass/deepseek-v4.1-flash', {
+    'cline-pass/deepseek-v4.1-flash': { input: 1, output: 2 },
+  })
+  assert.equal(override.source, 'override')
+  assert.equal(override.input, 1)
+  const table = priceTable({}, ['cline-pass/deepseek-v4.1-flash'])
+  assert.equal(table.models[0].source, 'public')
+  setPublicPriceCatalog({})
 })
 
 test('model-prices: overrides win and unknown models stay unpriced', () => {

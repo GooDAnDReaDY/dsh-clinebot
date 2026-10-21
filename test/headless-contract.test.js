@@ -89,6 +89,7 @@ test('headless contract: adapter, routes and slash command register without the 
       '/dsh-clinebot/analytics',
       '/dsh-clinebot/stats/session',
       '/dsh-clinebot/prices',
+      '/dsh-clinebot/prices/sync',
       '/dsh-clinebot/models/sync',
       '/dsh-clinebot/accounts/usage',
     ]) {
