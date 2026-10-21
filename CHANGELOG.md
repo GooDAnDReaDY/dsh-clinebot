@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.12] - 2026-10-21
+
+### Added
+- **Analytics filters**: filter by model, account and errors directly in the analytics panel; `GET /analytics` now accepts `errorsOnly=1`.
+- **Custom range**: 24-hour preset plus `datetime-local` from/to inputs, evaluated in the browser's local timezone.
+
 ## [0.6.11] - 2026-10-21
 
 ### Added

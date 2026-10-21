@@ -255,6 +255,7 @@ function ensureCss() {
 .cb-dialogRow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .cb-dialogBadges{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap}
 .cb-analytics-controls{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.cb-analytics-date{width:170px;padding:3px 8px;font-size:12px}
 .cb-account-tabs{display:flex;flex-wrap:wrap;gap:6px}
 .cb-account-tab{display:inline-flex;align-items:center;padding:2px 10px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;cursor:pointer}
 .cb-account-tab:hover:not(.cb-account-tab-active){color:var(--dsw-alias-label-primary)}

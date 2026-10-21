@@ -21,6 +21,11 @@ function DashboardDialog(props) {
   const [accountsUsage, setAccountsUsage] = React.useState(null)
   const [selectedAccount, setSelectedAccount] = React.useState('')
   const [analyticsDays, setAnalyticsDays] = React.useState(7)
+  const [analyticsModel, setAnalyticsModel] = React.useState('')
+  const [analyticsAccount, setAnalyticsAccount] = React.useState('')
+  const [analyticsErrorsOnly, setAnalyticsErrorsOnly] = React.useState(false)
+  const [analyticsFrom, setAnalyticsFrom] = React.useState('')
+  const [analyticsTo, setAnalyticsTo] = React.useState('')
   const [heatmapModel, setHeatmapModel] = React.useState('')
   const [selectedHeat, setSelectedHeat] = React.useState(null)
 
@@ -58,13 +63,21 @@ function DashboardDialog(props) {
     setAnalyticsLoading(true)
     setErr('')
     try {
-      const from = Date.now() - days * 86_400_000
+      const now = Date.now()
+      const parsedFrom = analyticsFrom ? Date.parse(analyticsFrom) : NaN
+      const parsedTo = analyticsTo ? Date.parse(analyticsTo) : NaN
+      const from = Number.isFinite(parsedFrom) ? parsedFrom : now - days * 86_400_000
+      const to = Number.isFinite(parsedTo) ? parsedTo : now
       const query = [
         `groupBy=${encodeURIComponent(group)}`,
         'limit=20',
         `from=${from}`,
+        `to=${to}`,
         `heatmapDays=${days}`,
         ...(model ? [`heatmapModel=${encodeURIComponent(model)}`] : []),
+        ...(analyticsModel ? [`model=${encodeURIComponent(analyticsModel)}`] : []),
+        ...(analyticsAccount ? [`account=${encodeURIComponent(analyticsAccount)}`] : []),
+        ...(analyticsErrorsOnly ? ['errorsOnly=1'] : []),
       ].join('&')
       const res = await fetchWithTimeout(`${ROUTE_PREFIX}/analytics?${query}`, { cache: 'no-store' })
       const json = await res.json().catch(() => ({}))
@@ -75,7 +88,7 @@ function DashboardDialog(props) {
     } finally {
       setAnalyticsLoading(false)
     }
-  }, [groupBy, analyticsDays, heatmapModel])
+  }, [groupBy, analyticsDays, heatmapModel, analyticsModel, analyticsAccount, analyticsErrorsOnly, analyticsFrom, analyticsTo])
 
   React.useEffect(() => {
     if (open) loadData()
@@ -239,36 +252,25 @@ function DashboardDialog(props) {
       'div',
       { className: 'cb-dialogRow' },
       React.createElement('div', { className: 'cb-section-title' }, t('analytics.title')),
-      React.createElement(
-        'div',
-        { className: 'cb-analytics-controls' },
-        React.createElement(
-          'select',
-          {
-            className: 'cb-heat-select',
-            value: String(analyticsDays),
-            title: t('analytics.range'),
-            onChange: (event) => setAnalyticsDays(Number(event.target.value)),
-          },
-          React.createElement('option', { value: '7' }, t('analytics.range_7')),
-          React.createElement('option', { value: '30' }, t('analytics.range_30')),
-          React.createElement('option', { value: '90' }, t('analytics.range_90'))
-        ),
-        React.createElement(
-          'div',
-          { className: 'cb-seg' },
-          ['model', 'day', 'account', 'session'].map((group) => React.createElement(
-            'button',
-            {
-              key: group,
-              type: 'button',
-              className: groupBy === group ? 'cb-seg-item cb-seg-item-active' : 'cb-seg-item',
-              onClick: () => setGroupBy(group),
-            },
-            t(`analytics.group_${group}`)
-          ))
-        )
-      )
+      React.createElement(AnalyticsControls, {
+        analyticsDays,
+        setAnalyticsDays,
+        groupBy,
+        setGroupBy,
+        model: analyticsModel,
+        setModel: setAnalyticsModel,
+        account: analyticsAccount,
+        setAccount: setAnalyticsAccount,
+        errorsOnly: analyticsErrorsOnly,
+        setErrorsOnly: setAnalyticsErrorsOnly,
+        from: analyticsFrom,
+        setFrom: setAnalyticsFrom,
+        to: analyticsTo,
+        setTo: setAnalyticsTo,
+        models: status?.availableModels || [],
+        accounts: status?.accounts || [],
+        t,
+      })
     ),
     React.createElement(
       'div',

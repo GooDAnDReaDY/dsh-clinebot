@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.11</b> 添加持久的账户事件历史：冷却、恢复和路由决策。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
+<p><b>0.6.12</b> 为分析添加模型/账户/错误筛选和自定义日期范围。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
