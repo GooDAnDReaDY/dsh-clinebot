@@ -11,4 +11,5 @@ import path from 'node:path'
 const sandboxHome = mkdtempSync(path.join(tmpdir(), 'dsh-clinebot-test-home-'))
 process.env.HOME = sandboxHome
 process.env.DSH_HOME = path.join(sandboxHome, '.dsh')
+process.env.CLINEBOT_DISABLE_PRICE_AUTOSYNC = '1'
 mkdirSync(process.env.DSH_HOME, { recursive: true })
