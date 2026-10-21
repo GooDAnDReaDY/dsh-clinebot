@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.3</b> adds quota burn-down forecasts and optional daily/monthly spend guards on top of the adapter-only line. Chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
+<p><b>0.6.4</b> adds P50/P95 latency, clickable heatmap detail, JSON export and configurable retention on top of quota forecasts and spend guards. Chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -197,6 +197,7 @@ dsh-clinebot:
     your-reasoning-model: high
   modelContextOverrides: []
   statsPath: ~/.dsh/clinebot-stats.json
+  statsRetentionDays: 95
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
   timeoutMs: 30000
@@ -220,6 +221,7 @@ dsh-clinebot:
 | `modelReasoningDefaults` | `object` | `{}` | Configured default reasoning effort per model (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | User-defined model context length and max token overrides |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Persistent on-disk path for token usage analytics |
+| `statsRetentionDays` | `number` | `95` | Retention for day/hour/session telemetry; 0 keeps everything |
 | `dailyBudgetUsd` | `number` | `0` | Optional estimated daily spend guard; 0 disables it |
 | `monthlyBudgetUsd` | `number` | `0` | Optional estimated monthly spend guard; 0 disables it |
 | `accounts` | `array` | `[]` | Additional accounts for multi-account failover and quota rotation (`[{ label, apiKeyEnv }]`) |

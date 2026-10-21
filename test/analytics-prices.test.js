@@ -10,7 +10,10 @@ import {
   getAnalytics,
   getSessionStats,
   exportStatsAsCsv,
+  setStatsRetentionDays,
+  getStatsRetentionDays,
 } from '../lib/stats-storage.js'
+import { exportStatsAsJson } from '../lib/stats-export.js'
 import { estimateCost, priceTable, resolveModelPrice } from '../lib/model-prices.js'
 import { buildTuiSection, applyTuiSettings } from '../lib/tui-settings.js'
 
@@ -141,6 +144,20 @@ test('stats v2: analytics aggregates totals, models, sessions and days', () => {
   const detailed = exportStatsAsCsv(true)
   assert.match(detailed, /^Dimension,Key,Requests,PromptTokens,CompletionTokens,ReasoningTokens,CacheReadTokens,CacheWriteTokens,TotalTokens,CostUsd,TtftMs,LatencyMs/)
   assert.match(detailed, /Session,"session-1"/)
+
+  assert.ok(byModel.totals.p50LatencyMs > 0, 'P50 latency must be computed')
+  assert.ok(byModel.totals.p95LatencyMs >= byModel.totals.p50LatencyMs, 'P95 must not be below P50')
+  const json = JSON.parse(exportStatsAsJson())
+  assert.equal(json.stats.totals.requests, 3)
+  assert.ok(json.stats.bySession['session-1'])
+})
+
+test('stats: retention setter keeps a bounded, explicit policy', () => {
+  assert.equal(setStatsRetentionDays(30), 30)
+  assert.equal(getStatsRetentionDays(), 30)
+  assert.equal(setStatsRetentionDays(0), 0)
+  assert.equal(getStatsRetentionDays(), 0)
+  setStatsRetentionDays(95)
 })
 
 test('tui: section exposes the connection, model and advanced fields', () => {
@@ -156,6 +173,7 @@ test('tui: section exposes the connection, model and advanced fields', () => {
     'activeAccount',
     'contextWindow',
     'maxOutputTokens',
+    'statsRetentionDays',
     'dailyBudgetUsd',
     'monthlyBudgetUsd',
   ])
@@ -184,7 +202,7 @@ test('tui: applyTuiSettings registers the section and disposes it', () => {
   }
   applyTuiSettings(ctx, { live: () => ({}) })
   assert.equal(registered.ns, 'dsh-clinebot')
-  assert.equal(registered.fields.length, 10)
+  assert.equal(registered.fields.length, 11)
   assert.equal(disposed, true)
 })
 

@@ -31,6 +31,16 @@ function StatsSection({ status, onResetStats, busy, t }) {
         React.createElement(
           'a',
           {
+            href: '/dsh-clinebot/stats/export?format=json',
+            download: 'clinebot-stats.json',
+            className: 'cb-btn cb-btn-link',
+          },
+          React.createElement(CbIcon, { name: 'download', size: 13 }),
+          ` ${t('stats.export_json')}`
+        ),
+        React.createElement(
+          'a',
+          {
             href: '/dsh-clinebot/stats/export',
             download: 'clinebot-stats.csv',
             className: 'cb-btn cb-btn-link',
