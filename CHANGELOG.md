@@ -5,6 +5,20 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.14] - 2026-10-21
+
+### Fixed
+- **Settings source gate**: remote clients can no longer pass by spoofing `Sec-Fetch-Site`; `X-Forwarded-Host` is trusted only from a loopback reverse proxy. Added regression cases for both bypasses.
+- **Theme regression**: replaced 58 hardcoded colors in the client stylesheet with DSH theme tokens and `color-mix`, restoring light/dark compatibility and matching `DESIGN.md`.
+
+### Changed
+- Extracted attempt telemetry into `lib/adapter-telemetry.js`; `lib/adapter.js` is back under the 600-line budget.
+- The decomposition test now scans every server module instead of a hand-maintained allowlist.
+
+### Removed
+- Dead/test-only exports `clearAccountEvents`, `getDiscoveredKey` and `clearDiscoveredKeysCache` (with tests adjusted to the production API).
+- Annotated intentional best-effort catches and removed stale `.tgz` artifacts from the workspace.
+
 ## [0.6.13] - 2026-10-21
 
 ### Added
