@@ -330,6 +330,7 @@ function ensureCss() {
 .cb-table{font-size:12px}
 .cb-table th{padding:5px 8px;border-bottom:1px solid rgba(127,127,127,.18);font-size:11px;font-weight:600;opacity:.8}
 .cb-table td{padding:5px 8px;border-bottom:1px solid rgba(127,127,127,.18);font-size:12px}
+.cb-model-group td{padding:8px 8px 4px;color:var(--dsw-alias-label-secondary);font-size:11px;font-weight:650;background:rgba(127,127,127,.08)}
 .cb-progress-track,.cb-bar-track{height:8px;border-radius:999px;background:rgba(127,127,127,.2)}
 .cb-progress-bar-fill,.cb-bar-fill,.cb-footFill,.cb-meter-fill{background:#4fbf86}
 .cb-progress-bar-warn{background:#d9a24a}

@@ -481,7 +481,13 @@ test('commands: behavioral execution of /cline slash command and subcommands', a
   assert.equal(statsOutput.includes('`'), false)
   assert.ok(statsOutput.split('\n')[0].length <= 120)
 
-  // 4. Behavioral test: /cline switch (missing parameter)
+  // 4. Behavioral test: /cline cost
+  const costOutput = await registeredCmd.execute('cost')
+  assert.match(costOutput, /ClineBot Estimated Spend/)
+  assert.match(costOutput, /Daily guard:/)
+  assert.match(costOutput, /Monthly guard:/)
+
+  // 5. Behavioral test: /cline switch (missing parameter)
   const switchOutput = await registeredCmd.execute('switch')
   assert.ok(typeof switchOutput === 'string')
   assert.ok(switchOutput.includes('Please specify account'))

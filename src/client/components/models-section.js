@@ -25,7 +25,6 @@ function ModelsSection({
   const [editingModelId, setEditingModelId] = React.useState(null)
   const [customCtxVal, setCustomCtxVal] = React.useState('')
   const [customMaxVal, setCustomMaxVal] = React.useState('')
-
   function formatCtx(num) {
     num = Number(num) || 200000
     if (num >= 1000000) {
@@ -38,7 +37,6 @@ function ModelsSection({
     }
     return String(num)
   }
-
   const filteredModels = modelsList.filter((m) => {
     if (viewFilter === 'vision') {
       const hasVision = Boolean(m.input?.includes('image') || m.input?.includes('vision'))
@@ -59,10 +57,13 @@ function ModelsSection({
     }
     return true
   })
-
-  return React.createElement(
-    'div',
-    { className: 'cb-section-card' },
+  const groupFor = (m) => (m.isCustom ? 'custom' : (m.inPlan ? 'plan' : 'other'))
+  const orderedModels = [...filteredModels].sort((a, b) => {
+    const order = { plan: 0, other: 1, custom: 2 }
+    return order[groupFor(a)] - order[groupFor(b)]
+  })
+  let lastGroup = ''
+  return React.createElement('div', { className: 'cb-section-card' },
     defaultModelWarning ? React.createElement('div', { className: 'cb-alert-bad cb-inline-alert', style: { marginBottom: '12px' } }, React.createElement(CbIcon, { name: 'warning', size: 14 }), ` ${defaultModelWarning}`) : null,
     React.createElement(VisibleModelsSub, {
       modelsList,
@@ -126,8 +127,6 @@ function ModelsSection({
       )
     ),
     React.createElement('div', { className: 'cb-section-desc' }, t('models.desc')),
-
-    // Search and display filter bar
     React.createElement(
       'div',
       {
@@ -202,7 +201,6 @@ function ModelsSection({
         )
       )
     ),
-
     React.createElement(
       'table',
       { className: 'cb-table' },
@@ -222,7 +220,10 @@ function ModelsSection({
       React.createElement(
         'tbody',
         null,
-        filteredModels.map((m) => {
+        orderedModels.map((m) => {
+          const groupKey = groupFor(m)
+          const showGroup = groupKey !== lastGroup
+          lastGroup = groupKey
           const isEnabled = !disabledSet.has(m.id)
           const defaultCtx = m.defaultContextLength || m.clineContextLength || 200000
           const origCtx = m.originalContextLength || 200000
@@ -231,10 +232,7 @@ function ModelsSection({
           const origProv = m.originalProvider || 'Original'
           const isOverridden = Boolean(m.isContextOverridden)
           const isOriginal = isOverridden && (m.contextLength === origCtx && (m.maxTokens || defaultMax) === origMax)
-
-          return React.createElement(
-            'tr',
-            { key: m.id },
+          const row = React.createElement('tr', { key: m.id },
             React.createElement(
               'td',
               null,
@@ -477,6 +475,15 @@ function ModelsSection({
                 )
               })()
             )
+          )
+          const groupCount = orderedModels.filter((entry) => groupFor(entry) === groupKey).length
+          return React.createElement(React.Fragment, { key: `group-wrap-${m.id}` },
+            showGroup
+              ? React.createElement('tr', { className: 'cb-model-group' },
+                  React.createElement('td', { colSpan: 5 }, `${t(`models.group_${groupKey}`)} · ${groupCount}`)
+                )
+              : null,
+            row
           )
         })
       )

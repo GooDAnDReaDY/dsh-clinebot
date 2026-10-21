@@ -99,6 +99,7 @@ const en = {
       'models.visible_models_hint': 'Choose which models appear in the DSH chat selector (empty means all supported models).',
       'models.in_plan': 'In Plan',
       'models.out_of_plan': 'Out of Plan',
+      'models.group_plan': 'Included in plan', 'models.group_other': 'Other models', 'models.group_custom': 'Custom models',
       'models.plan_only': 'Plan Only',
       'models.show_all': 'Show All',
       'models.clean_stale': 'Clean Stale ({count})',
