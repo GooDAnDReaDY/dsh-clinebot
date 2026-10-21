@@ -3,7 +3,14 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { buildPublicCatalog, syncPublicPrices, loadPublicPriceCache } from '../lib/price-sync.js'
+import {
+  buildPublicCatalog,
+  syncPublicPrices,
+  loadPublicPriceCache,
+  ensurePublicPricesForModels,
+  resetPriceSyncState,
+} from '../lib/price-sync.js'
+import { setPublicPriceCatalog } from '../lib/model-prices.js'
 
 const sample = {
   opencode: {
@@ -33,6 +40,36 @@ test('price-sync: flattens provider catalogs and prefers the public provider', (
   assert.equal(catalog['deepseek-v4.1-flash'].output, 1.2)
   assert.equal(catalog['deepseek-v4.1-flash'].cacheRead, 0.006)
   assert.equal(catalog['glm-5.2'].input, 0.7)
+})
+
+test('price-sync: auto-refreshes only for missing models and throttles repeats', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'clinebot-prices-auto-'))
+  const cachePath = path.join(dir, 'prices.json')
+  let calls = 0
+  const fetchImpl = async () => {
+    calls += 1
+    return { ok: true, status: 200, json: async () => sample }
+  }
+  try {
+    resetPriceSyncState()
+    setPublicPriceCatalog({ 'glm-5.2': { input: 0.7, output: 2.1 } })
+    const covered = await ensurePublicPricesForModels(['cline-pass/glm-5.2'], { cachePath, fetchImpl })
+    assert.equal(covered.synced, false)
+    assert.equal(calls, 0)
+
+    const missing = await ensurePublicPricesForModels(['cline-pass/unknown-model-xyz'], { cachePath, fetchImpl })
+    assert.equal(missing.synced, true)
+    assert.equal(calls, 1)
+    assert.equal(missing.missing.length, 1)
+
+    const repeated = await ensurePublicPricesForModels(['cline-pass/unknown-model-xyz'], { cachePath, fetchImpl })
+    assert.equal(repeated.skipped, true)
+    assert.equal(calls, 1)
+  } finally {
+    resetPriceSyncState()
+    setPublicPriceCatalog({})
+    rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test('price-sync: fetches, caches and reloads the public catalog', async () => {
