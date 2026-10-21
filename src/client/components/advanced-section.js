@@ -69,6 +69,14 @@ function AdvancedSection({ draft, onStage, t }) {
       onChange: numeric('maxPayloadMb', 0),
     }),
     React.createElement(AdvancedField, {
+      id: 'cb-retention',
+      label: t('settings.stats_retention'),
+      hint: t('settings.stats_retention_hint'),
+      value: current.statsRetentionDays,
+      type: 'number',
+      onChange: numeric('statsRetentionDays', -1),
+    }),
+    React.createElement(AdvancedField, {
       id: 'cb-daily-budget',
       label: t('settings.daily_budget'),
       hint: t('settings.daily_budget_hint'),

@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.3</b> 添加配额消耗预测和可选的每日/每月花费上限。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
+<p><b>0.6.4</b> 添加 P50/P95 延迟、可点击热力图、JSON 导出和可配置保留期，并保留配额预测与花费上限。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -168,6 +168,7 @@ dsh-clinebot:
     your-reasoning-model: high
   modelContextOverrides: []
   statsPath: ~/.dsh/clinebot-stats.json
+  statsRetentionDays: 95
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
   timeoutMs: 30000
@@ -191,6 +192,7 @@ dsh-clinebot:
 | `modelReasoningDefaults` | `object` | `{}` | 各模型默认思考强度配置 (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | 用户自定义模型上下文窗口与最大 Token 数量覆盖 |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | 本地持久化 Token 用量统计文件路径 |
+| `statsRetentionDays` | `number` | `95` | 日/小时/会话遥测保留天数；0 表示永久保留 |
 | `dailyBudgetUsd` | `number` | `0` | 可选的每日估算花费上限；0 表示关闭 |
 | `monthlyBudgetUsd` | `number` | `0` | 可选的每月估算花费上限；0 表示关闭 |
 | `accounts` | `array` | `[]` | 额外轮转账号池 (`[{ label, apiKeyEnv }]`) |

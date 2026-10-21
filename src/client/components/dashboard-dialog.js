@@ -22,6 +22,7 @@ function DashboardDialog(props) {
   const [selectedAccount, setSelectedAccount] = React.useState('')
   const [analyticsDays, setAnalyticsDays] = React.useState(7)
   const [heatmapModel, setHeatmapModel] = React.useState('')
+  const [selectedHeat, setSelectedHeat] = React.useState(null)
 
   const loadData = React.useCallback(async () => {
     setLoading(true)
@@ -196,6 +197,8 @@ function DashboardDialog(props) {
         [t('analytics.cache_write'), fmtTokens(totals.cacheWriteTokens)],
         [t('analytics.avg_ttft'), fmtMs(totals.avgTtftMs)],
         [t('analytics.avg_latency'), fmtMs(totals.avgLatencyMs)],
+        [t('analytics.p50_latency'), fmtMs(totals.p50LatencyMs)],
+        [t('analytics.p95_latency'), fmtMs(totals.p95LatencyMs)],
         [t('analytics.errors'), String(Math.round(Number(totals.failed) || 0))],
       ]
     : []
@@ -348,8 +351,19 @@ function DashboardDialog(props) {
       heatmap: analytics?.heatmap,
       model: heatmapModel,
       onModelChange: setHeatmapModel,
+      selected: selectedHeat,
+      onSelect: (cell) => setSelectedHeat((current) => (
+        current && current.day === cell.day && current.hour === cell.hour ? null : cell
+      )),
       t,
-    })
+    }),
+    selectedHeat
+      ? React.createElement('div', { className: 'cb-hint' }, t('analytics.heatmap_selected', {
+          day: selectedHeat.label,
+          hour: String(selectedHeat.hour).padStart(2, '0'),
+          count: selectedHeat.value,
+        }))
+      : null
   )
 
   const panelBody = React.createElement(

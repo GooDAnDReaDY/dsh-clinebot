@@ -284,7 +284,9 @@ function ensureCss() {
 .cb-heat-hour{color:var(--dsw-alias-label-tertiary);font-size:9px;line-height:12px;text-align:center}
 .cb-heat-day{color:var(--dsw-alias-label-secondary);font-size:10px;line-height:14px;white-space:nowrap}
 .cb-heat-cell,.cb-heat-swatch{display:block;border-radius:3px;background:var(--dsw-alias-bg-layer-2)}
-.cb-heat-cell{height:14px}
+.cb-heat-cell{height:14px;border:0;padding:0;cursor:pointer}
+.cb-heat-cell:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}
+.cb-heat-cell.cb-heat-selected{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}
 .cb-heat-swatch{width:12px;height:12px;border-radius:2px}
 .cb-heat-l0{background:var(--dsw-alias-bg-layer-2)}
 .cb-heat-l1{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 18%,var(--dsw-alias-bg-layer-2))}

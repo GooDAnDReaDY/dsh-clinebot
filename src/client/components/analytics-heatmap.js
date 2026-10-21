@@ -14,7 +14,7 @@ function heatHourLabel(hour) {
   return hour % 3 === 0 ? String(hour).padStart(2, '0') : ''
 }
 
-function HeatmapView({ heatmap, model, onModelChange, t }) {
+function HeatmapView({ heatmap, model, onModelChange, onSelect, selected, t }) {
   if (!heatmap || !Array.isArray(heatmap.grid)) {
     return React.createElement('div', { className: 'cb-hint' }, t('analytics.heatmap_empty'))
   }
@@ -78,10 +78,14 @@ function HeatmapView({ heatmap, model, onModelChange, t }) {
           React.Fragment,
           { key: `day-${day}` },
           React.createElement('span', { className: 'cb-heat-day' }, label),
-          (grid[day] || []).map((value, hour) => React.createElement('span', {
+          (grid[day] || []).map((value, hour) => React.createElement('button', {
             key: `cell-${day}-${hour}`,
-            className: `cb-heat-cell cb-heat-l${level(value)}`,
+            type: 'button',
+            className: `cb-heat-cell cb-heat-l${level(value)}${selected?.day === day && selected?.hour === hour ? ' cb-heat-selected' : ''}`,
             title: `${label} ${String(hour).padStart(2, '0')}:00 — ${value} ${t('analytics.requests')}`,
+            'aria-label': `${label} ${String(hour).padStart(2, '0')}:00 — ${value}`,
+            'aria-pressed': selected?.day === day && selected?.hour === hour,
+            onClick: () => onSelect && onSelect({ day, hour, value, label }),
           }))
         ))
       ),

@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.3</b> добавляет прогноз расхода квоты и опциональные дневной/месячный лимиты трат. Чат работает через нативный адаптер <code>ctx.llm</code>, требуется DSH <code>0.2.1-rc.2</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
+<p><b>0.6.4</b> добавляет P50/P95 задержки, кликабельный heatmap, JSON-экспорт и настраиваемый retention поверх прогноза квоты и лимитов трат. Чат работает через нативный адаптер <code>ctx.llm</code>, требуется DSH <code>0.2.1-rc.2</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -166,6 +166,7 @@ dsh-clinebot:
     your-reasoning-model: high
   modelContextOverrides: []
   statsPath: ~/.dsh/clinebot-stats.json
+  statsRetentionDays: 95
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
   timeoutMs: 30000
@@ -189,6 +190,7 @@ dsh-clinebot:
 | `modelReasoningDefaults` | `object` | `{}` | Значения thinking effort по умолчанию для моделей (`low`, `medium`, `high`, `max`) |
 | `modelContextOverrides` | `array` | `[]` | Пользовательские переопределения размера контекста и лимита токенов |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Путь к файлу персистентной аналитики использования токенов |
+| `statsRetentionDays` | `number` | `95` | Срок хранения дневной/часовой/сессионной телеметрии; 0 — хранить всё |
 | `dailyBudgetUsd` | `number` | `0` | Опциональный дневной лимит оценочных трат; 0 отключает |
 | `monthlyBudgetUsd` | `number` | `0` | Опциональный месячный лимит оценочных трат; 0 отключает |
 | `accounts` | `array` | `[]` | Дополнительные аккаунты для ротации квоты и failover (`[{ label, apiKeyEnv }]`) |
