@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.11] - 2026-10-21
+
+### Added
+- **Account event history**: cooldowns, automatic/manual recoveries and routing decisions are kept in a 200-entry ring buffer at `eventLogPath`, exposed through `GET /dsh-clinebot/accounts/history` and a new History view in the accounts section.
+- Routing events cover new session assignments, pinned overrides, model routes and mid-session failover.
+
 ## [0.6.10] - 2026-10-21
 
 ### Added

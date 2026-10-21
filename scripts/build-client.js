@@ -27,6 +27,8 @@ export const MODULES = [
   'src/client/components/advanced-section.js',
   'src/client/components/update-banner.js',
   'src/client/components/key-section.js',
+  'src/client/components/account-history.js',
+  'src/client/components/account-routes.js',
   'src/client/components/accounts-section.js',
   'src/client/components/quota-section.js',
   'src/client/components/custom-models.js',

@@ -92,6 +92,7 @@ test('headless contract: adapter, routes and slash command register without the 
       '/dsh-clinebot/prices/sync',
       '/dsh-clinebot/models/sync',
       '/dsh-clinebot/accounts/usage',
+      '/dsh-clinebot/accounts/history',
     ]) {
       assert.ok(paths.includes(expected), `missing route ${expected}`)
     }

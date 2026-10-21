@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.10</b> adds per-account analytics and cache-savings reporting on top of the public price sync. Chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
+<p><b>0.6.11</b> adds a persistent account event history for cooldowns, recoveries and routing decisions. Chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -199,6 +199,7 @@ dsh-clinebot:
   statsPath: ~/.dsh/clinebot-stats.json
   priceCatalogUrl: https://models.dev/api.json
   priceCatalogPath: ~/.dsh/clinebot-prices.json
+  eventLogPath: ~/.dsh/clinebot-events.json
   statsRetentionDays: 95
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
@@ -225,6 +226,7 @@ dsh-clinebot:
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Persistent on-disk path for token usage analytics |
 | `priceCatalogUrl` | `string` | `"https://models.dev/api.json"` | Public price catalog used by the optional sync |
 | `priceCatalogPath` | `string` | `"~/.dsh/clinebot-prices.json"` | Local cache for the public price catalog |
+| `eventLogPath` | `string` | `"~/.dsh/clinebot-events.json"` | Ring buffer for account cooldown/recovery/routing history |
 | `statsRetentionDays` | `number` | `95` | Retention for day/hour/session telemetry; 0 keeps everything |
 | `dailyBudgetUsd` | `number` | `0` | Optional estimated daily spend guard; 0 disables it |
 | `monthlyBudgetUsd` | `number` | `0` | Optional estimated monthly spend guard; 0 disables it |
