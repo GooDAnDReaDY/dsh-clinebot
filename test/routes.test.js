@@ -133,7 +133,7 @@ function setupRouter({ settingsAvailable = true, activeKey = 'valid-key' } = {})
 
 test('routes: client ROUTE_PREFIX matches registered server base path', () => {
   const clientSource = readFileSync(path.join(root, 'lib', 'client.js'), 'utf8')
-  const match = clientSource.match(/const ROUTE_PREFIX = ['"]([^'"]+)['"]/)
+  const match = clientSource.match(/const ROUTE_PREFIX\s*=\s*['"]([^'"]+)['"]/)
   assert.ok(match, 'ROUTE_PREFIX must be defined in lib/client.js')
   assert.equal(match[1], '/dsh-clinebot', 'Client ROUTE_PREFIX must match server /dsh-clinebot')
 })

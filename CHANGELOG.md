@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6] - 2026-10-21
+
+### Changed
+- **Client bundle compression**: each source module is whitespace-minified with `esbuild` before assembly. `lib/client.js` dropped from 256.7 KB to 202.9 KB while preserving module markers, the DSH loader wrapper and deterministic builds.
+- Removed unused server exports/helpers (`isQuotaExceededError`, `getConnection` re-export, unused price/transport/model exports). Added a 220 KiB regression budget test.
+- Updated bundle-inspection tests to be whitespace-agnostic.
+
 ## [0.6.5] - 2026-10-21
 
 ### Added

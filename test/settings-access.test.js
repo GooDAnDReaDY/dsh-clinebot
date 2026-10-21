@@ -315,7 +315,7 @@ test('settings: handleConfigPatch uses PUT /config to persist customModels and r
   // 1. Static assertion: handleConfigPatch must use PUT, not POST
   assert.ok(clientSrc.includes("method: 'PUT'"), 'settings-page.js handleConfigPatch must use PUT')
   assert.ok(!clientSrc.includes("method: 'POST',\n        headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify(patch)"), 'Must not send POST /config')
-  assert.ok(clientBundle.includes("method: 'PUT'"), 'lib/client.js bundle must use PUT')
+  assert.match(clientBundle, /method:\s*['"]PUT['"]/, 'lib/client.js bundle must use PUT')
 
   // 2. Integration: route accepts PUT /config with customModels and modelReasoningDefaults
   let persistedConfig = null
