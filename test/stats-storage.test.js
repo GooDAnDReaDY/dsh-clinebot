@@ -17,6 +17,7 @@ import {
   resolvePath,
   switchStatsStorage,
   exportStatsAsCsv,
+  getAnalytics,
 } from '../lib/stats-storage.js'
 import { resolvePathWithHome } from '../lib/provider-sync.js'
 
@@ -340,6 +341,45 @@ test('stats-storage: prunes old corrupt backups keeping at most 3 copies (#201)'
   assert.ok(corruptFiles.length <= 3, `Expected at most 3 corrupt backups, got ${corruptFiles.length}`)
 })
 
+
+test('stats-storage: cache savings and per-account analytics aggregate', () => {
+  const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-savings-'))
+  const statsPath = path.join(dir, 'stats.json')
+  try {
+    resetStats(statsPath)
+    recordUsage({
+      model: 'cline-pass/deepseek-v4.1-flash',
+      accountId: 'acc-a',
+      promptTokens: 1000,
+      completionTokens: 100,
+      totalTokens: 1100,
+      cacheReadTokens: 600,
+      cacheSavingsUsd: 0.0001764,
+      costUsd: 0.0004,
+      priced: true,
+      statsPath,
+    })
+    recordUsage({
+      model: 'cline-pass/glm-5.2',
+      accountId: 'acc-b',
+      promptTokens: 500,
+      completionTokens: 50,
+      totalTokens: 550,
+      cacheSavingsUsd: 0.00005,
+      costUsd: 0.0002,
+      priced: true,
+      statsPath,
+    })
+    const accountAnalytics = getAnalytics({ from: 0, to: Date.now() + 1000, groupBy: 'account' })
+    assert.equal(accountAnalytics.groups.length, 2)
+    const accA = accountAnalytics.groups.find((group) => group.key === 'acc-a')
+    assert.equal(accA.cacheSavingsUsd, 0.0001764)
+    assert.equal(accA.costUsd, 0.0004)
+    assert.ok(Math.abs(accountAnalytics.totals.cacheSavingsUsd - 0.0002264) < 1e-12)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
 
 test('stats-storage: recordUsage tracks reasoningTokens and exportStatsAsCsv formats valid CSV (#218)', () => {
   const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-reasoning-'))

@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.9</b> adds optional public price sync from models.dev, with a local cache and manual overrides winning. Chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
+<p><b>0.6.10</b> adds per-account analytics and cache-savings reporting on top of the public price sync. Chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

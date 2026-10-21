@@ -49,6 +49,13 @@ test('model-prices: public catalog fills estimates and overrides still win', () 
   const publicPrice = resolveModelPrice('cline-pass/deepseek-v4.1-flash')
   assert.equal(publicPrice.source, 'public')
   assert.equal(publicPrice.input, 0.3)
+  const cached = estimateCost({
+    model: 'cline-pass/deepseek-v4.1-flash',
+    promptTokens: 1000,
+    completionTokens: 100,
+    cacheReadTokens: 600,
+  })
+  assert.ok(cached.cacheSavingsUsd > 0, 'cache reads must record savings against the input rate')
   const override = resolveModelPrice('cline-pass/deepseek-v4.1-flash', {
     'cline-pass/deepseek-v4.1-flash': { input: 1, output: 2 },
   })

@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.10] - 2026-10-21
+
+### Added
+- **Per-account analytics**: the analytics group selector now includes Accounts, and Settings → ClineBot → Stats shows the top accounts by token usage with requests, tokens and estimated cost.
+- **Cache savings**: cache-read savings versus the normal input rate are recorded per request and shown as a total in analytics and the settings stats summary.
+
 ## [0.6.9] - 2026-10-21
 
 ### Added
