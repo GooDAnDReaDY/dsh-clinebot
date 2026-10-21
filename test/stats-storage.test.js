@@ -381,6 +381,32 @@ test('stats-storage: cache savings and per-account analytics aggregate', () => {
   }
 })
 
+test('stats-storage: filters analytics by model, account and errors', () => {
+  const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-filters-'))
+  const statsPath = path.join(dir, 'stats.json')
+  try {
+    resetStats(statsPath)
+    recordUsage({
+      model: 'model-a', accountId: 'acc-a', promptTokens: 100, completionTokens: 10,
+      totalTokens: 110, statsPath,
+    })
+    recordUsage({
+      model: 'model-b', accountId: 'acc-b', promptTokens: 200, completionTokens: 20,
+      totalTokens: 220, isError: true, is429: true, statsPath,
+    })
+    const to = Date.now() + 1000
+    const byModel = getAnalytics({ from: 0, to, groupBy: 'model', model: 'model-a' })
+    assert.deepEqual(byModel.groups.map((group) => group.key), ['model-a'])
+    const byAccount = getAnalytics({ from: 0, to, groupBy: 'account', account: 'acc-b' })
+    assert.deepEqual(byAccount.groups.map((group) => group.key), ['acc-b'])
+    const errors = getAnalytics({ from: 0, to, groupBy: 'model', errorsOnly: true })
+    assert.deepEqual(errors.groups.map((group) => group.key), ['model-b'])
+    assert.equal(errors.groups[0].failed, 1)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('stats-storage: recordUsage tracks reasoningTokens and exportStatsAsCsv formats valid CSV (#218)', () => {
   const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-reasoning-'))
   const statsPath = path.join(dir, 'stats.json')

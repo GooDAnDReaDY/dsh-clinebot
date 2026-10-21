@@ -41,6 +41,7 @@ export const MODULES = [
   'src/client/components/price-section.js',
   'src/client/components/analytics-heatmap.js',
   'src/client/components/quota-panel-view.js',
+  'src/client/components/analytics-controls.js',
   'src/client/components/dashboard-dialog.js',
   'src/client/components/composer-cost.js',
   'src/client/settings-page.js',
