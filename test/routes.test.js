@@ -166,6 +166,8 @@ test('routes: behavioral verification of all registered routes kind and prefix',
     '/dsh-clinebot/usage',
     '/dsh-clinebot/key/verify',
     '/dsh-clinebot/smoke',
+    '/dsh-clinebot/stats',
+    '/dsh-clinebot/stats/session',
   ]
   for (const exp of expectedPaths) {
     assert.ok(registeredPaths.includes(exp), `Expected route ${exp} to be registered`)
