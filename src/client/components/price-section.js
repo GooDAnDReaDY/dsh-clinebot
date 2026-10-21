@@ -4,7 +4,20 @@
  */
 function PriceSection({ modelsList = [], priceOverrides = {}, onConfigUpdate, t }) {
   const [expanded, setExpanded] = React.useState(false)
+  const [syncState, setSyncState] = React.useState({ busy: false, message: '' })
   const models = Array.isArray(modelsList) ? modelsList : []
+
+  const syncPrices = async () => {
+    setSyncState({ busy: true, message: '' })
+    try {
+      const response = await fetchWithTimeout(`${ROUTE_PREFIX}/prices/sync`, { method: 'POST' })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`)
+      setSyncState({ busy: false, message: t('prices.synced', { count: data.count }) })
+    } catch (err) {
+      setSyncState({ busy: false, message: t('prices.sync_failed', { error: String(err?.message || err) }) })
+    }
+  }
 
   const update = (modelId, field, raw) => {
     const next = { ...(priceOverrides || {}) }
@@ -31,9 +44,18 @@ function PriceSection({ modelsList = [], priceOverrides = {}, onConfigUpdate, t 
         React.createElement('div', { className: 'cb-section-desc' }, t('prices.desc'))
       ),
       React.createElement(
-        'button',
-        { type: 'button', className: 'cb-btn', onClick: () => setExpanded((value) => !value) },
-        expanded ? t('prices.hide') : t('prices.show')
+        'div',
+        { className: 'cb-row', style: { gap: '6px' } },
+        React.createElement(
+          'button',
+          { type: 'button', className: 'cb-btn', disabled: syncState.busy, onClick: syncPrices },
+          syncState.busy ? t('prices.syncing') : t('prices.sync')
+        ),
+        React.createElement(
+          'button',
+          { type: 'button', className: 'cb-btn', onClick: () => setExpanded((value) => !value) },
+          expanded ? t('prices.hide') : t('prices.show')
+        )
       )
     ),
     expanded
@@ -69,7 +91,9 @@ function PriceSection({ modelsList = [], priceOverrides = {}, onConfigUpdate, t 
                   }))
                 )
               }),
-          React.createElement('div', { className: 'cb-hint' }, t('prices.hint'))
+          React.createElement('div', { className: 'cb-hint' }, t('prices.public_hint')),
+          React.createElement('div', { className: 'cb-hint' }, t('prices.hint')),
+          syncState.message ? React.createElement('div', { className: 'cb-hint' }, syncState.message) : null
         )
       : null
   )

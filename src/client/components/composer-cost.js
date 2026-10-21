@@ -183,7 +183,7 @@ function ComposerCostEntry(props) {
   const costValue = priced
     ? (cost === 0 ? t('composer.free') : (cost < 0.0001 ? '< $0.0001' : `$${cost.toFixed(4)}`))
     : t('composer.unpriced')
-  const costDisplay = priced && source === 'estimate' && cost > 0 ? `≈ ${costValue}` : costValue
+  const costDisplay = priced && source !== 'override' && cost > 0 ? `≈ ${costValue}` : costValue
   const lastCostValue = last
     ? (lastPriced
       ? (lastCost === 0 ? t('composer.free') : (lastCost < 0.0001 ? '< $0.0001' : `$${lastCost.toFixed(4)}`))
@@ -197,7 +197,7 @@ function ComposerCostEntry(props) {
     ...(rTok > 0 ? [`${t('composer.reasoning_tok')} ${formatTokens(rTok)}`] : []),
     ...(cacheRead > 0 ? [`${t('composer.cache_read')} ${formatTokens(cacheRead)}`] : []),
     ...(cacheWrite > 0 ? [`${t('composer.cache_write')} ${formatTokens(cacheWrite)}`] : []),
-    ...(priced ? [`${t('composer.price_source')} ${source === 'override' ? t('composer.price_override') : t('composer.price_estimate')}`] : []),
+    ...(priced ? [`${t('composer.price_source')} ${source === 'override' ? t('composer.price_override') : source === 'public' ? t('composer.price_public') : t('composer.price_estimate')}`] : []),
   ].join(' · ')
   const inject = isClineBot && priced && total > 0
 

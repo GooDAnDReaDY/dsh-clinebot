@@ -205,7 +205,7 @@ const zh = {
       'composer.reasoning_tok': '思考推理 Token',
       'composer.est_cost': '预估花费',
       'composer.unpriced': '无价格', 'composer.cache_read': '缓存读取', 'composer.cache_write': '缓存写入',
-      'composer.price_source': '价格来源', 'composer.price_estimate': '估算', 'composer.price_override': '覆盖',
+      'composer.price_source': '价格来源', 'composer.price_estimate': '估算', 'composer.price_override': '覆盖', 'composer.price_public': '公开目录',
       'discovery.title': '发现本地密钥',
       'discovery.import_btn': '从 {source} 导入',
       'discovery.imported': '已成功导入账户池',
@@ -266,4 +266,7 @@ const zh = {
       'prices.input': '输入', 'prices.output': '输出', 'prices.cache_read': '缓存读取', 'prices.cache_write': '缓存写入',
       'prices.auto': '自动', 'prices.empty': '暂无模型。',
       'prices.hint': '这些价格只影响输入框成本和本地分析，不是账单。',
+      'prices.public_hint': '同步使用公开的 models.dev 目录作为估算；手动覆盖始终优先。',
+      'prices.sync': '同步公开价格', 'prices.syncing': '正在同步…',
+      'prices.synced': '公开目录已同步：{count} 个模型', 'prices.sync_failed': '价格同步失败：{error}',
     }

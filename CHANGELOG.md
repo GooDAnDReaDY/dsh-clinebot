@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.9] - 2026-10-21
+
+### Added
+- **Public price sync**: Settings → ClineBot → Models & context can download the public models.dev catalog once, cache it at `priceCatalogPath`, and use it for composer/analytics estimates. Manual `priceOverrides` always win; prices synced from the catalog are marked `public` instead of the local heuristic.
+- New `priceCatalogUrl` and `priceCatalogPath` settings, plus `POST /dsh-clinebot/prices/sync`.
+
 ## [0.6.8] - 2026-10-21
 
 ### Added
