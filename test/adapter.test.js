@@ -6,6 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { ClineBotAdapter } from '../lib/adapter.js'
 import { resetSessionRouter } from '../lib/session-router.js'
+import { resetSessionStats, sessionStats } from '../lib/telemetry.js'
 
 const TEMP_STATS = path.join(os.tmpdir(), `clinebot-adapter-stats-${Date.now()}.json`)
 
@@ -115,6 +116,67 @@ test('adapter: listModels and resolveModel expose catalogue metadata', async () 
   assert.equal(resolved.context.contextWindow, 1000000)
   assert.ok(resolved.defaultMaxTokens > 0)
   assert.ok(Array.isArray(resolved.reasoning.efforts))
+})
+
+test('adapter: multimodal budget offloads seen images and reports telemetry', async () => {
+  resetSessionRouter()
+  resetSessionStats()
+  const server = await startServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    res.end(sse([
+      { choices: [{ delta: { content: 'ok' } }] },
+      { choices: [{ finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 1 } },
+    ]))
+  })
+  try {
+    const messages = [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'first' },
+          { type: 'image', attachment: { name: 'old.png', mediaType: 'image/png' } },
+        ],
+      },
+      { role: 'assistant', content: [{ type: 'text', text: 'seen' }] },
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'second' },
+          { type: 'image', attachment: { name: 'new.png', mediaType: 'image/png' } },
+        ],
+      },
+    ]
+    const adapter = new ClineBotAdapter({
+      ctx: credentialsCtx({ CLINEBOT_API_KEY: 'key-a' }),
+      live: () => configFor(server.baseUrl, { offloadSeenImages: true }),
+    })
+    await collect(adapter.stream({
+      provider: 'clinebot',
+      model: 'cline-pass/deepseek-v4.1-flash',
+      messages,
+      sessionId: 'session-multimodal',
+    }))
+    const body = server.requests[0].body
+    assert.match(String(body.messages[0].content), /previously analyzed/)
+    assert.equal(sessionStats.offloadedImages, 1)
+
+    resetSessionStats()
+    const keep = new ClineBotAdapter({
+      ctx: credentialsCtx({ CLINEBOT_API_KEY: 'key-a' }),
+      live: () => configFor(server.baseUrl, { offloadSeenImages: false }),
+    })
+    await collect(keep.stream({
+      provider: 'clinebot',
+      model: 'cline-pass/deepseek-v4.1-flash',
+      messages,
+      sessionId: 'session-multimodal-keep',
+    }))
+    const keptBody = server.requests[1].body
+    assert.equal(keptBody.messages[0].content[1].type, 'image_url')
+    assert.equal(sessionStats.offloadedImages, 0)
+  } finally {
+    await server.close()
+  }
 })
 
 test('adapter: visibleModels and disabledModels filter the picker catalogue', async () => {

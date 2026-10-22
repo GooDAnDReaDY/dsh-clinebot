@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.14</b> hardens the settings source gate, restores token-only theming and cleans up the audit findings. Chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
+<p><b>0.6.15</b> connects multimodal budgeting, exposes model probe/visibility controls, adds the price auto-sync switch and closes the remaining audit hygiene/security findings. Chat runs on the native <code>ctx.llm</code> adapter and requires DSH <code>0.2.1-rc.2</code>; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -122,7 +122,11 @@ graph LR
 * **`lib/models.js`**:
   Dynamic subscription catalogue, curated fallback properties, reasoning efforts, custom models and plan parsing (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **`lib/model-prices.js`**:
-  Explicit local cost estimates with per-model overrides. Unknown models stay `unpriced` instead of being reported as $0.
+  Explicit local cost estimates with per-model overrides. Unknown models stay `unpriced` instead of being reported as $0. When a newly discovered model has no price, the optional `priceAutoSync` setting fetches the public models.dev catalog (at most once per missing set every 6 hours); turn it off in the price card or set `priceAutoSync: false` while keeping the manual Sync button.
+* **`lib/multimodal-budget.js`**:
+  Offloads images from earlier turns into stable text placeholders and enforces `maxPayloadMb`, reducing prompt-cache churn and oversized ClinePass requests. `offloadedImages` is included in session telemetry.
+* **Model tools in Settings → ClineBot → Models**:
+  The per-model **Ping** button calls `POST /models/probe` and shows TTFT; **Apply visibility** calls `POST /models/visible` after choosing the visible models and plan-only filter.
 * **`lib/stats-storage.js`**:
   Persistent JSON telemetry v2: cache buckets, estimated cost, TTFT/latency, sessions and day/month/model/account aggregates. v1 files upgrade on read.
 * **`lib/account-pool.js` / `lib/session-router.js`**:
@@ -199,6 +203,7 @@ dsh-clinebot:
   statsPath: ~/.dsh/clinebot-stats.json
   priceCatalogUrl: https://models.dev/api.json
   priceCatalogPath: ~/.dsh/clinebot-prices.json
+  priceAutoSync: true
   eventLogPath: ~/.dsh/clinebot-events.json
   statsRetentionDays: 95
   dailyBudgetUsd: 0
@@ -226,6 +231,7 @@ dsh-clinebot:
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Persistent on-disk path for token usage analytics |
 | `priceCatalogUrl` | `string` | `"https://models.dev/api.json"` | Public price catalog used by the optional sync |
 | `priceCatalogPath` | `string` | `"~/.dsh/clinebot-prices.json"` | Local cache for the public price catalog |
+| `priceAutoSync` | `boolean` | `true` | Fetch models.dev for newly discovered models without a price; the manual Sync button remains available when off |
 | `eventLogPath` | `string` | `"~/.dsh/clinebot-events.json"` | Ring buffer for account cooldown/recovery/routing history |
 | `statsRetentionDays` | `number` | `95` | Retention for day/hour/session telemetry; 0 keeps everything |
 | `dailyBudgetUsd` | `number` | `0` | Optional estimated daily spend guard; 0 disables it |

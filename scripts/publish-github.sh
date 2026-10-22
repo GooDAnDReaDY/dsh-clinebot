@@ -37,6 +37,7 @@ REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Repository files a reader needs, on top of the package's npm contents.
 EXTRA_ALLOW=(
   ".gitignore"
+  ".gitattributes"
   "LICENSE"
   "README.md"
   "README.ru.md"

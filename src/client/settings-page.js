@@ -184,6 +184,20 @@ function SettingsPage(props) {
     })
   }
 
+  async function handleApplyVisible(payload) {
+    await performAction('visible-models', async () => {
+      const res = await fetchWithTimeout(`${ROUTE_PREFIX}/models/visible`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload || {}),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`)
+      await load()
+      setMsg(t('models.visible_applied'))
+    })
+  }
+
   async function handleSmoke() {
     setSmokeResult(null)
     await performAction('smoke', async () => {
@@ -391,6 +405,7 @@ function SettingsPage(props) {
         visibleModels: draft?.visibleModels || [],
         filterModelsByPlan: draft?.filterModelsByPlan !== false,
         onConfigUpdate: staged.stage,
+        onApplyVisible: handleApplyVisible,
         onUpdateReasoningEffort: (modelId, effort) => {
           const next = { ...(draft?.modelReasoningDefaults || {}) }
           if (!effort) delete next[modelId]; else next[modelId] = effort
@@ -401,6 +416,7 @@ function SettingsPage(props) {
       React.createElement(PriceSection, {
         modelsList,
         priceOverrides: draft?.priceOverrides || {},
+        priceAutoSync: draft?.priceAutoSync !== false,
         onConfigUpdate: staged.stage,
         t,
       })

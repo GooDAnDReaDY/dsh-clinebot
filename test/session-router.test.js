@@ -6,9 +6,7 @@ import {
   resolveModelRouteAccount,
   markAccountCooldown,
   isAccountInCooldown,
-  clearAccountCooldown,
   resetSessionRouter,
-  releaseSession,
   pruneSessions,
   MAX_SESSIONS,
   SESSION_TTL_MS,
@@ -28,11 +26,9 @@ test('session-router: emits cooldown, recovery and route events', () => {
     const pool = [{ id: 'acc1', apiKeyEnv: 'KEY_1', label: 'Account 1', percentUsed: 10, present: true }]
     resolveSessionAccount('session-events', pool, 'auto')
     markAccountCooldown('KEY_1', 30000, null, 'rate_limit')
-    clearAccountCooldown('KEY_1')
-    assert.deepEqual(events.map((event) => event.type), ['route', 'cooldown', 'recover'])
+    assert.deepEqual(events.map((event) => event.type), ['route', 'cooldown'])
     assert.equal(events[0].accountId, 'KEY_1')
     assert.equal(events[0].reason, 'new_session_assigned')
-    assert.equal(events[2].reason, 'manual')
   } finally {
     setAccountEventSink(null)
     resetSessionRouter()
@@ -112,16 +108,6 @@ test('session-router: automatic cooldown recovery after expiration', () => {
       resolve()
     }, 15)
   })
-})
-
-test('session-router: releaseSession removes session mapping', () => {
-  resetSessionRouter()
-  const pool = [{ id: 'acc1', percentUsed: 10, present: true }]
-  resolveSessionAccount('temp-session', pool)
-  releaseSession('temp-session')
-
-  const res = resolveSessionAccount('temp-session', pool)
-  assert.equal(res.reason, 'new_session_assigned')
 })
 
 test('session-router: manually pinned account branch enforces MAX_SESSIONS capacity bound (#183)', () => {

@@ -7,7 +7,6 @@ import {
   DEFAULT_MODEL_ID,
   isSupportedModel,
   findModel,
-  getDefaultModelIds,
   getAllModels,
   getActiveModelIds,
   parsePlanIncludedModels,
@@ -528,10 +527,6 @@ test('models: findModel and isSupportedModel resolve custom models (#170)', () =
   assert.equal(isVisionModel('custom-vision-agent', [], [], customModels), true)
   assert.equal(isVisionModel('custom-internal-llm', [], [], customModels), false)
 
-  // 4. getDefaultModelIds
-  const ids = getDefaultModelIds([], [], customModels)
-  assert.ok(ids.includes('custom-internal-llm'))
-  assert.ok(ids.includes('custom-vision-agent'))
 })
 
 test('models: getOriginalModelMaxTokens returns vendor specifications (GH #13, GH #15)', () => {

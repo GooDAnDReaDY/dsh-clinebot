@@ -5,6 +5,18 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.15] - 2026-10-21
+
+### Added
+- **Multimodal budgeting** (#257): the adapter now runs `optimizePromptCacheAndBudget`, honors `offloadSeenImages` and `maxPayloadMb`, and records `offloadedImages` in session telemetry.
+- **Model controls** (#258): per-model **Ping** calls `POST /models/probe` and shows TTFT; **Apply visibility** calls `POST /models/visible`.
+- **Price auto-sync switch** (#259): `priceAutoSync` is available in settings and the price card, and is documented in all three READMEs.
+
+### Fixed
+- **Write-route source gate** (#261): POST/PUT without `Origin`/`Referer` are rejected fail-closed, closing the dsh-lanmode loopback-bridge write bypass.
+- Removed test-only exports (`getDefaultModelIds`, `resetPriceSyncState`, `clearAccountCooldown`, `releaseSession`) and wired `configReader` into the host path.
+- Added `.gitattributes` (`* text=auto eol=lf`) and normalized tracked files.
+
 ## [0.6.14] - 2026-10-21
 
 ### Fixed

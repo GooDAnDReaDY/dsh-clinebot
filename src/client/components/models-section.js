@@ -16,6 +16,7 @@ function ModelsSection({
   visibleModels,
   filterModelsByPlan,
   onConfigUpdate,
+  onApplyVisible,
   onUpdateReasoningEffort,
   t,
 }) {
@@ -66,12 +67,7 @@ function ModelsSection({
   return React.createElement('div', { className: 'cb-section-card' },
     defaultModelWarning ? React.createElement('div', { className: 'cb-alert-bad cb-inline-alert', style: { marginBottom: '12px' } }, React.createElement(CbIcon, { name: 'warning', size: 14 }), ` ${defaultModelWarning}`) : null,
     React.createElement(VisibleModelsSub, {
-      modelsList,
-      visibleModels,
-      filterModelsByPlan,
-      onConfigUpdate,
-      busy,
-      t,
+      modelsList, visibleModels, filterModelsByPlan, onConfigUpdate, onApplyVisible, busy, t,
     }),
     React.createElement(
       'div',
@@ -246,6 +242,7 @@ function ModelsSection({
               'td',
               null,
               React.createElement('strong', null, m.name),
+              React.createElement(ModelProbeButton, { modelId: m.id, busy, t }),
               m.recommended
                 ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: '6px' } }, t('models.star'))
                 : null,

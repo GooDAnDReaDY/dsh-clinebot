@@ -8,7 +8,6 @@ import {
   syncPublicPrices,
   loadPublicPriceCache,
   ensurePublicPricesForModels,
-  resetPriceSyncState,
 } from '../lib/price-sync.js'
 import { setPublicPriceCatalog } from '../lib/model-prices.js'
 
@@ -51,10 +50,17 @@ test('price-sync: auto-refreshes only for missing models and throttles repeats',
     return { ok: true, status: 200, json: async () => sample }
   }
   try {
-    resetPriceSyncState()
     setPublicPriceCatalog({ 'glm-5.2': { input: 0.7, output: 2.1 } })
     const covered = await ensurePublicPricesForModels(['cline-pass/glm-5.2'], { cachePath, fetchImpl })
     assert.equal(covered.synced, false)
+    assert.equal(calls, 0)
+
+    const disabled = await ensurePublicPricesForModels(['cline-pass/unknown-model-disabled'], {
+      cachePath,
+      fetchImpl,
+      enabled: false,
+    })
+    assert.equal(disabled.skipped, true)
     assert.equal(calls, 0)
 
     const missing = await ensurePublicPricesForModels(['cline-pass/unknown-model-xyz'], { cachePath, fetchImpl })
@@ -66,7 +72,6 @@ test('price-sync: auto-refreshes only for missing models and throttles repeats',
     assert.equal(repeated.skipped, true)
     assert.equal(calls, 1)
   } finally {
-    resetPriceSyncState()
     setPublicPriceCatalog({})
     rmSync(dir, { recursive: true, force: true })
   }

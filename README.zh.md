@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.14</b> 修复审计发现：加固设置 source gate，恢复仅使用 DSH 主题令牌的样式，并清理死代码和残留文件。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
+<p><b>0.6.15</b> 接入多模态预算、模型延迟/可见性控制、价格自动同步开关，并修复其余审计问题。聊天使用原生 <code>ctx.llm</code> 适配器，需要 DSH <code>0.2.1-rc.2</code>；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -108,6 +108,7 @@ graph LR
 ## ✨ 核心模块与功能
 
 * **`lib/models.js`**：管理动态订阅模型目录与内置精选模板（提供完整的 `Off` / `Low` / `Medium` / `High` / `Max` 思考强度映射、上游 200k 上下文容量标注、自定义模型支持）以及套餐模型动态解析器（`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`）。
+* **价格与模型**：模型行中的 **Ping** 调用 `POST /models/probe` 并显示 TTFT；**应用可见模型** 通过 `POST /models/visible` 保存可见模型和套餐过滤。新模型缺少价格时可通过 `priceAutoSync` 开关自动从 models.dev 获取公开价格；关闭后仍可使用手动同步。
 * **`lib/cline-client.js`**：
   * `fetchUsageLimits`：高效并发轮询 `GET /users/me/plan/usage-limits`、`GET /users/me/plan` 与 `GET /users/me` 并进行内存缓存。
   * `sessionStats` / `recordSessionRequest`：内存级会话度量记录器（请求次数、Token 估算、延迟、时间戳）。

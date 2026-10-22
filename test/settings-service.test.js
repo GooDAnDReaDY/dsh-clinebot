@@ -126,7 +126,7 @@ test("host: settingsApi persists to SettingsForms via ctx.get(settings) when ava
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
     req.method = method
-    req.headers = { "sec-fetch-site": "same-origin" }
+    req.headers = { "sec-fetch-site": "same-origin", host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }
     req.socket = { remoteAddress: "127.0.0.1" }
     return req
   }
@@ -172,7 +172,7 @@ test("routes: /models/toggle and /accounts/active unwrap volatile live getters w
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
     req.method = method
-    req.headers = { "sec-fetch-site": "same-origin" }
+    req.headers = { "sec-fetch-site": "same-origin", host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }
     req.socket = { remoteAddress: "127.0.0.1" }
     return req
   }
@@ -241,7 +241,7 @@ test("host: boot and reload survives functional getters and profile-shaped dynam
   const makeReq = () => {
     const req = Readable.from([])
     req.method = "GET"
-    req.headers = { "sec-fetch-site": "same-origin" }
+    req.headers = { "sec-fetch-site": "same-origin", host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }
     req.socket = { remoteAddress: "127.0.0.1" }
     return req
   }
@@ -280,7 +280,7 @@ test("host: settingsApi.replace rejects when settings service is unavailable or 
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
     req.method = method
-    req.headers = { "sec-fetch-site": "same-origin" }
+    req.headers = { "sec-fetch-site": "same-origin", host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }
     req.socket = { remoteAddress: "127.0.0.1" }
     return req
   }
@@ -341,7 +341,7 @@ test("host: settingsApi.replace fails atomically on revision conflict without mu
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
     req.method = method
-    req.headers = { "sec-fetch-site": "same-origin" }
+    req.headers = { "sec-fetch-site": "same-origin", host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }
     req.socket = { remoteAddress: "127.0.0.1" }
     return req
   }
@@ -407,7 +407,7 @@ test("host: live config retains Volatile getters and reflects external updates a
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
     req.method = method
-    req.headers = { "sec-fetch-site": "same-origin" }
+    req.headers = { "sec-fetch-site": "same-origin", host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }
     req.socket = { remoteAddress: "127.0.0.1" }
     return req
   }
@@ -468,7 +468,7 @@ test("host: live config retains native cosmokit volatile references without sett
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
     req.method = method
-    req.headers = { "sec-fetch-site": "same-origin" }
+    req.headers = { "sec-fetch-site": "same-origin", host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }
     req.socket = { remoteAddress: "127.0.0.1" }
     return req
   }
@@ -526,7 +526,7 @@ test("host: frozen config with native volatile references preserves reactivity t
   const makeReq = (method, body = {}) => {
     const req = Readable.from([Buffer.from(JSON.stringify(body))])
     req.method = method
-    req.headers = { "sec-fetch-site": "same-origin" }
+    req.headers = { "sec-fetch-site": "same-origin", host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" }
     req.socket = { remoteAddress: "127.0.0.1" }
     return req
   }
@@ -730,7 +730,7 @@ test("host: settingsApi.replace preserves verified catalog and timestamp when pe
 
   const putReq = {
     method: "PUT",
-    headers: {},
+    headers: { host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" },
     socket: { remoteAddress: "127.0.0.1" },
     [Symbol.asyncIterator]: async function* () {
       yield Buffer.from(JSON.stringify({ baseUrl: "https://synthetic-b.invalid/v1" }))

@@ -16,11 +16,13 @@ function VisibleModelsSub({
   visibleModels = [],
   filterModelsByPlan = true,
   onConfigUpdate,
+  onApplyVisible,
   busy,
   t,
 }) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState('')
+  const [applyState, setApplyState] = React.useState({ busy: false, message: '' })
 
   const allModelIds = modelsList.map((m) => m.id)
   const allModelIdSet = new Set(allModelIds)
@@ -59,6 +61,17 @@ function VisibleModelsSub({
     if (typeof onConfigUpdate !== 'function') return
     const cleaned = visibleModels.filter((id) => allModelIdSet.has(id))
     onConfigUpdate({ visibleModels: cleaned })
+  }
+
+  async function applyVisible() {
+    if (typeof onApplyVisible !== 'function') return
+    setApplyState({ busy: true, message: '' })
+    try {
+      await onApplyVisible({ visibleModels: isAllVisible ? [] : visibleModels, filterModelsByPlan })
+      setApplyState({ busy: false, message: t('models.visible_applied') })
+    } catch (err) {
+      setApplyState({ busy: false, message: t('models.visible_failed', { error: String(err?.message || err) }) })
+    }
   }
 
   const filtered = modelsList.filter((m) => {
@@ -149,6 +162,17 @@ function VisibleModelsSub({
             type: 'button',
             className: 'cb-btn',
             style: { padding: '4px 10px', fontSize: '12px' },
+            disabled: !!busy || applyState.busy,
+            onClick: applyVisible,
+          },
+          applyState.busy ? t('models.visible_applying') : t('models.visible_apply')
+        ),
+        React.createElement(
+          'button',
+          {
+            type: 'button',
+            className: 'cb-btn',
+            style: { padding: '4px 10px', fontSize: '12px' },
             onClick: () => setOpen(!open),
           },
           React.createElement(CbIcon, {
@@ -165,6 +189,9 @@ function VisibleModelsSub({
       { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)', marginTop: '-4px' } },
       t('models.filter_by_plan_hint')
     ),
+    applyState.message
+      ? React.createElement('div', { className: 'cb-hint', style: { fontSize: '11px' } }, applyState.message)
+      : null,
     open
       ? React.createElement(
           'div',
