@@ -282,7 +282,7 @@ test('stats-storage: unrelated config write preserves in-memory pending usage (#
 
   const req = Readable.from([Buffer.from(JSON.stringify({ defaultModel: 'cline-pass/glm-5.2' }))])
   req.method = 'PUT'
-  req.headers = { 'sec-fetch-site': 'same-origin' }
+  req.headers = { 'sec-fetch-site': 'same-origin', host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
   req.socket = { remoteAddress: '127.0.0.1' }
 
   let putStatus = 0

@@ -126,6 +126,14 @@ test('http: assertTrustedSettingsRequest enforces security and responds 403', ()
   assert.match(body, /Forbidden/)
 
   assert.equal(assertTrustedSettingsRequest(trustedReq, fakeRes), true)
+
+  const loopbackWrite = {
+    method: 'POST',
+    headers: {},
+    socket: { remoteAddress: '127.0.0.1' },
+  }
+  assert.equal(assertTrustedSettingsRequest(loopbackWrite, fakeRes), false)
+  assert.equal(statusCode, 403)
 })
 
 

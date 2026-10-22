@@ -34,6 +34,7 @@ export const MODULES = [
   'src/client/components/custom-models.js',
   'src/client/components/visible-models.js',
   'src/client/components/provider-card.js',
+  'src/client/components/models-probe.js',
   'src/client/components/models-section.js',
   'src/client/components/stats-section.js',
   'src/client/components/diag-section.js',

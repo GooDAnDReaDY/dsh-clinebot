@@ -92,7 +92,7 @@ test('POST /dsh-clinebot/key/verify rejects non-POST and validates key payload',
   // 3. Empty key returns 400
   const emptyReq = {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' },
     socket: { remoteAddress: '127.0.0.1' },
     [Symbol.asyncIterator]: async function* () {
       yield Buffer.from(JSON.stringify({ key: '' }))

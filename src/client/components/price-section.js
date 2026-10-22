@@ -2,7 +2,7 @@
  * Per-model price overrides. A blank field falls back to the built-in local
  * estimate; the values are USD per 1M tokens.
  */
-function PriceSection({ modelsList = [], priceOverrides = {}, onConfigUpdate, t }) {
+function PriceSection({ modelsList = [], priceOverrides = {}, priceAutoSync = true, onConfigUpdate, t }) {
   const [expanded, setExpanded] = React.useState(false)
   const [syncState, setSyncState] = React.useState({ busy: false, message: '' })
   const models = Array.isArray(modelsList) ? modelsList : []
@@ -41,7 +41,13 @@ function PriceSection({ modelsList = [], priceOverrides = {}, onConfigUpdate, t 
         'div',
         { className: 'cb-price-copy' },
         React.createElement('div', { className: 'cb-section-title' }, t('prices.title')),
-        React.createElement('div', { className: 'cb-section-desc' }, t('prices.desc'))
+        React.createElement('div', { className: 'cb-section-desc' }, t('prices.desc')),
+        React.createElement(BooleanControl, {
+          checked: priceAutoSync !== false,
+          label: t('prices.auto_sync'),
+          onChange: (next) => onConfigUpdate && onConfigUpdate({ priceAutoSync: next }),
+        }),
+        React.createElement('div', { className: 'cb-hint' }, t('prices.auto_sync_hint'))
       ),
       React.createElement(
         'div',

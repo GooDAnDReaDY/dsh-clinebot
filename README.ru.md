@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.14</b> закрывает находки аудита: усилен source gate настроек, тема снова использует только токены DSH, мёртвый код и артефакты убраны. Чат работает через нативный адаптер <code>ctx.llm</code>, требуется DSH <code>0.2.1-rc.2</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
+<p><b>0.6.15</b> подключает бюджетирование мультимодальных запросов, добавляет замер моделей и управление видимостью, переключатель автосинхронизации цен и закрывает оставшиеся находки аудита. Чат работает через нативный адаптер <code>ctx.llm</code>, требуется DSH <code>0.2.1-rc.2</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -108,6 +108,7 @@ graph LR
 ## ✨ Структура модулей и возможности
 
 * **`lib/models.js`**: динамический каталог моделей подписки и встроенных шаблонов с поддержкой уровней рассуждения (`Off` / `Low` / `Medium` / `High` / `Max`), контекстных лимитов, пользовательских моделей (`customModels`) и парсинга тарифа (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
+* **Цены и модели**: кнопка **Ping** у модели вызывает `POST /models/probe` и показывает TTFT; кнопка **Применить видимость** сохраняет выбор видимых моделей и фильтр тарифа через `POST /models/visible`. Публичные цены могут автоматически подгружаться из models.dev для новых моделей; это отключается переключателем `priceAutoSync` (или `priceAutoSync: false`), ручная синхронизация остаётся доступной.
 * **`lib/cline-client.js`**:
   * `fetchUsageLimits`: параллельный опрос `GET /users/me/plan/usage-limits`, `GET /users/me/plan` и `GET /users/me` с кэшированием в памяти.
   * `sessionStats` / `recordSessionRequest`: счетчики сессии (запросы, токены, задержка, время).

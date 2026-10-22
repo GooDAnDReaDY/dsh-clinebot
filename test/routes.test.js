@@ -626,7 +626,7 @@ test('commands & routes: custom models are preserved in slash command test/model
       let responseData = null
       const req = {
         method: 'POST',
-        headers: { host: '127.0.0.1:3080' },
+        headers: { host: '127.0.0.1:3080', origin: 'http://127.0.0.1:3080' },
         socket: { remoteAddress: '127.0.0.1' },
         on: (event, handler) => {
           if (event === 'data') handler(Buffer.from(JSON.stringify(body)))
@@ -753,7 +753,7 @@ test('routes: accounts/delete returns honest partial state and allows secret ret
     const r = Readable.from([Buffer.from(JSON.stringify(body))])
     r.method = 'POST'
     r.socket = { remoteAddress: '127.0.0.1' }
-    r.headers = { 'sec-fetch-site': 'same-origin' }
+    r.headers = { 'sec-fetch-site': 'same-origin', host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
     return r
   }
   function createRes() {
@@ -847,7 +847,7 @@ test('routes: accounts/delete rollback preserves concurrent automatic mode activ
     const r = Readable.from([Buffer.from(JSON.stringify(body))])
     r.method = 'POST'
     r.socket = { remoteAddress: '127.0.0.1' }
-    r.headers = { 'sec-fetch-site': 'same-origin' }
+    r.headers = { 'sec-fetch-site': 'same-origin', host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
     return r
   }
   function createRes() {
@@ -922,7 +922,7 @@ test('routes: /dsh-clinebot/models/probe benchmarks TTFT latency and /stats/expo
       const r = Readable.from([Buffer.from(JSON.stringify(body))])
       r.method = 'POST'
       r.socket = { remoteAddress: '127.0.0.1' }
-      r.headers = { 'sec-fetch-site': 'same-origin' }
+      r.headers = { 'sec-fetch-site': 'same-origin', host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
       return r
     }
     function createRes() {
