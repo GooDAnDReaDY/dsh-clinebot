@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.17] - 2026-10-28
+
+### Fixed
+- **Dated ClinePass models** (GitHub #18): model sync and auto-discovery now consult `GET /models` and add dated variants such as `cline-pass/deepseek-v4.1-flash-1017` when their stable plan alias is included. Regular usage refreshes do not make the extra catalog request.
+
 ## [0.6.16] - 2026-10-21
 
 ### Fixed

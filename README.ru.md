@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.16</b> поддерживает всю линию DSH <code>0.2.1</code>, включая <code>0.2.1-rc.3</code>, и сохраняет улучшения мультимодальности, моделей и цен. Чат работает через нативный адаптер <code>ctx.llm</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
+<p><b>0.6.17</b> синхронизирует dated-варианты ClinePass, включая <code>deepseek-v4.1-flash-1017</code>, поддерживает всю линию DSH <code>0.2.1</code> и сохраняет улучшения мультимодальности, моделей и цен. Чат работает через нативный адаптер <code>ctx.llm</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
