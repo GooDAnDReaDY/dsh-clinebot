@@ -10,6 +10,7 @@ import {
   getAllModels,
   getActiveModelIds,
   parsePlanIncludedModels,
+  mergePlanModelVariants,
   formatModelContext,
   formatModelDescription,
   isVisionModel,
@@ -188,6 +189,28 @@ test('models: legacy defaultModel deepseek-v4-flash silently migrates to deepsee
   const pub = publicConfig(cfg)
   assert.equal(pub.defaultModel, 'cline-pass/deepseek-v4.1-flash')
   assert.equal(pub.defaultModelWarning, null, 'No warning should be triggered because obsolete ID was migrated')
+})
+
+test('models: dated catalog variants are merged into plan models (GH #18)', () => {
+  const planModels = parsePlanIncludedModels('Includes DeepSeek V4.1 Flash, Qwen3.8 Max')
+  const merged = mergePlanModelVariants(planModels, [
+    { id: 'deepseek/deepseek-v4.1-flash' },
+    { id: 'deepseek/deepseek-v4.1-flash-1017' },
+    { id: 'deepseek/deepseek-v4.1-flash:batch' },
+    { id: 'qwen/qwen3.8-max-0920' },
+    { id: 'openai/gpt-6.1-terra-pro-1017' },
+    { id: '~deepseek/deepseek-v4.1-flash-0917' },
+  ])
+
+  const dated = merged.find((m) => m.id === 'cline-pass/deepseek-v4.1-flash-1017')
+  assert.ok(dated, 'dated DeepSeek variant must be present')
+  assert.equal(dated.name, 'DeepSeek V4.1 Flash 1017')
+  assert.equal(dated.recommended, false)
+  assert.equal(dated.contextLength, planModels[0].contextLength)
+  assert.ok(merged.some((m) => m.id === 'cline-pass/qwen3.8-max-0920'))
+  assert.equal(merged.filter((m) => m.id === 'cline-pass/deepseek-v4.1-flash-1017').length, 1)
+  assert.ok(!merged.some((m) => m.id === 'cline-pass/deepseek-v4.1-flash:batch'))
+  assert.ok(!merged.some((m) => m.id === 'cline-pass/deepseek-v4.1-flash-0917'))
 })
 
 test('models: formatModelContext and formatModelDescription', () => {

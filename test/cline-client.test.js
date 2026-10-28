@@ -112,6 +112,50 @@ test('cline-client: fetchUsageLimits parsing and caching', async () => {
   assert.equal(res.dynamicModels.length, 11)
 })
 
+test('cline-client: includeCatalog merges dated ClinePass variants (GH #18)', async () => {
+  clearUsageCache()
+  const mockFetch = async (url) => {
+    if (url.includes('/users/me/plan/usage-limits')) {
+      return { ok: true, status: 200, json: async () => ({ data: { limits: [] } }) }
+    }
+    if (url.endsWith('/models')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: [
+            { id: 'deepseek/deepseek-v4.1-flash' },
+            { id: 'deepseek/deepseek-v4.1-flash-1017' },
+            { id: 'deepseek/deepseek-v4.1-flash:batch' },
+          ],
+        }),
+      }
+    }
+    if (url.includes('/users/me/plan')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { plan: { features: { included: ['Includes DeepSeek V4.1 Flash'] } } } }),
+      }
+    }
+    if (url.includes('/users/me')) {
+      return { ok: true, status: 200, json: async () => ({ data: {} }) }
+    }
+    return { ok: false, status: 404 }
+  }
+
+  const res = await fetchUsageLimits('https://api.cline.bot/api/v1', 'valid-key', {
+    fetchImpl: mockFetch,
+    bypassCache: true,
+    includeCatalog: true,
+  })
+
+  assert.equal(res.ok, true)
+  assert.ok(res.dynamicModels.some((m) => m.id === 'cline-pass/deepseek-v4.1-flash-1017'))
+  assert.equal(res.dynamicModels.filter((m) => m.id === 'cline-pass/deepseek-v4.1-flash-1017').length, 1)
+  assert.ok(!res.dynamicModels.some((m) => m.id.includes(':batch')))
+})
+
 test('cline-client: fetchUsageLimits does not output price if API does not return price', async () => {
   clearUsageCache()
   const mockFetch = async (url) => {
