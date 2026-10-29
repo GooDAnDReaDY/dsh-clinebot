@@ -11,6 +11,7 @@ import {
   getActiveModelIds,
   parsePlanIncludedModels,
   mergePlanModelVariants,
+  isFreeModelId,
   formatModelContext,
   formatModelDescription,
   isVisionModel,
@@ -211,6 +212,20 @@ test('models: dated catalog variants are merged into plan models (GH #18)', () =
   assert.equal(merged.filter((m) => m.id === 'cline-pass/deepseek-v4.1-flash-1017').length, 1)
   assert.ok(!merged.some((m) => m.id === 'cline-pass/deepseek-v4.1-flash:batch'))
   assert.ok(!merged.some((m) => m.id === 'cline-pass/deepseek-v4.1-flash-0917'))
+})
+
+test('models: free models are marked from their IDs', () => {
+  assert.equal(isFreeModelId('cline-pass/recursive-flint:free'), true)
+  assert.equal(isFreeModelId('cline-pass/free-model'), true)
+  assert.equal(isFreeModelId('cline-pass/freeway'), false)
+
+  const models = getAllModels([
+    { id: 'cline-pass/free-model', name: 'Free Model', contextLength: 200000 },
+    { id: 'cline-pass/paid-model', name: 'Paid Model', contextLength: 200000 },
+  ])
+  assert.equal(models.find((m) => m.id === 'cline-pass/free-model').free, true)
+  assert.equal(models.find((m) => m.id === 'cline-pass/paid-model').free, false)
+  assert.match(formatModelDescription(models.find((m) => m.id === 'cline-pass/free-model')), /^\[FREE · /)
 })
 
 test('models: formatModelContext and formatModelDescription', () => {

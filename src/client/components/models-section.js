@@ -46,6 +46,8 @@ function ModelsSection({
       if (m.category !== 'coding') return false
     } else if (viewFilter === 'recommended') {
       if (!m.recommended) return false
+    } else if (viewFilter === 'free') {
+      if (!m.free) return false
     } else if (viewFilter === 'disabled') {
       if (!disabledSet.has(m.id)) return false
     }
@@ -61,7 +63,8 @@ function ModelsSection({
   const groupFor = (m) => (m.isCustom ? 'custom' : (m.inPlan ? 'plan' : 'other'))
   const orderedModels = [...filteredModels].sort((a, b) => {
     const order = { plan: 0, other: 1, custom: 2 }
-    return order[groupFor(a)] - order[groupFor(b)]
+    const byGroup = order[groupFor(a)] - order[groupFor(b)]
+    return byGroup || Number(Boolean(b.free)) - Number(Boolean(a.free))
   })
   let lastGroup = ''
   return React.createElement('div', { className: 'cb-section-card' },
@@ -145,16 +148,7 @@ function ModelsSection({
       React.createElement(
         'div',
         { className: 'cb-row', style: { gap: '4px' } },
-        React.createElement(
-          'button',
-          {
-            type: 'button',
-            className: `cb-btn ${viewFilter === 'all' ? 'cb-btn-active' : ''}`,
-            style: { padding: '4px 8px', fontSize: '11px' },
-            onClick: () => setViewFilter('all'),
-          },
-          t('models.filter_all')
-        ),
+        React.createElement('button', { type: 'button', className: `cb-btn ${viewFilter === 'all' ? 'cb-btn-active' : ''}`, style: { padding: '4px 8px', fontSize: '11px' }, onClick: () => setViewFilter('all') }, t('models.filter_all')),
         React.createElement(
           'button',
           {
@@ -185,6 +179,7 @@ function ModelsSection({
           },
           t('models.filter_recommended')
         ),
+        React.createElement('button', { type: 'button', className: `cb-btn ${viewFilter === 'free' ? 'cb-btn-active' : ''}`, style: { padding: '4px 8px', fontSize: '11px' }, onClick: () => setViewFilter('free') }, t('models.filter_free')),
         React.createElement(
           'button',
           {
@@ -248,7 +243,8 @@ function ModelsSection({
                 : null,
               m.isCustom
                 ? React.createElement('span', { className: 'cb-badge', style: { marginLeft: '6px', opacity: 0.8 } }, t('models.auto_new'))
-                : null
+                : null,
+              m.free ? React.createElement('span', { className: 'cb-badge cb-badge-free', style: { marginLeft: '6px' } }, t('models.free')) : null
             ),
             React.createElement('td', null, React.createElement('code', null, m.id)),
             React.createElement(
