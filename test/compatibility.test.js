@@ -10,6 +10,7 @@ test('compatibility: DSH 0.2.1 prerelease line is accepted', () => {
   assert.equal(manifest.dsh.compatibility.dsh, range)
   assert.equal(manifest.dsh.compatibility.dshReleases['0.2.1-rc.2'], 'compatible')
   assert.equal(manifest.dsh.compatibility.dshReleases['0.2.1-rc.3'], 'compatible')
+  assert.equal(manifest.dsh.compatibility.dshReleases['0.2.1-rc.4'], 'compatible')
   for (const peer of [
     '@deepseek-ai/dsh-attachment',
     '@deepseek-ai/dsh-commands',
