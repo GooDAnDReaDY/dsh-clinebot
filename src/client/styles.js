@@ -324,6 +324,7 @@ function ensureCss() {
 .cb-badge-ok{color:var(--dsw-alias-state-success-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 50%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 10%,transparent)}
 .cb-badge-warn{color:var(--dsw-alias-state-warn-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 50%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 10%,transparent)}
 .cb-badge-bad{color:var(--dsw-alias-state-error-primary);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 50%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 10%,transparent)}
+.cb-badge-free{color:var(--dsw-alias-brand-primary);border-color:color-mix(in srgb,var(--dsw-alias-brand-primary) 50%,transparent);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent)}
 .cb-stat-box{padding:8px 10px;border-radius:8px}
 .cb-stat-val{font-size:15px;font-weight:600;line-height:1.4}
 .cb-stat-lbl{font-size:11px;line-height:1.5}

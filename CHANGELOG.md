@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.19] - 2026-10-28
+
+### Added
+- **FREE catalog annotations**: models whose ID/name is free are marked `FREE`, sorted first inside their group, shown with a badge in Settings, and tagged `[FREE …]` in the DSH model picker.
+- **Free filter** in Settings → ClineBot → Models.
+
 ## [0.6.18] - 2026-10-28
 
 ### Added
