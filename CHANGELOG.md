@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.20] - 2026-10-28
+
+### Fixed
+- **Catalog backfill without manual Sync**: auto-discovery retries after 15 seconds when the plan has not been synced yet, and refreshes the model/free/dated catalog every 6 hours. An in-flight guard prevents overlapping discovery runs.
+
 ## [0.6.19] - 2026-10-28
 
 ### Added
