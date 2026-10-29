@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.18] - 2026-10-28
+
+### Added
+- **DSH 0.2.1-rc.4** is admitted and recorded in `dsh.compatibility.dshReleases`; the health matrix now covers rc.2, rc.3 and rc.4.
+
+### Fixed
+- **Insufficient credits** (HTTP 402): classified separately as `INSUFFICIENT_CREDITS`; the account is cooled down for 5 minutes only for the affected model, so other models keep working.
+- **Oversized requests** (HTTP 413 / JSON node limit): classified as non-retryable `REQUEST_TOO_LARGE` with an actionable message instead of a generic upstream error.
+
 ## [0.6.17] - 2026-10-28
 
 ### Fixed

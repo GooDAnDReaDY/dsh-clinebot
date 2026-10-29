@@ -456,6 +456,38 @@ test('session-router: resolveSessionAccount in round_robin mode allocates sequen
 })
 
 
+test('session-router: insufficient-credits cooldown is scoped to one model', () => {
+  resetSessionRouter()
+  const pool = [
+    { apiKeyEnv: 'CLINEBOT_API_KEY_1', id: 'acc1', label: 'A', percentUsed: 10, present: true, value: 'k1' },
+    { apiKeyEnv: 'CLINEBOT_API_KEY_2', id: 'acc2', label: 'B', percentUsed: 20, present: true, value: 'k2' },
+  ]
+  const paidModel = 'cline-pass/deepseek-v4-pro'
+  const freeModel = 'cline-pass/deepseek-v4.1-flash'
+
+  markAccountCooldown('CLINEBOT_API_KEY_1', 60000, null, 'insufficient_credits', paidModel)
+
+  assert.equal(isAccountBlocked(pool[0], paidModel), true)
+  assert.equal(isAccountBlocked(pool[0], freeModel), false)
+  assert.equal(isAccountInCooldown('CLINEBOT_API_KEY_1'), false)
+  assert.equal(isAccountInCooldown('CLINEBOT_API_KEY_1', paidModel), true)
+
+  const paid = resolveSessionAccount('credit-paid', pool, 'auto', 'least_used', paidModel)
+  assert.equal(paid.account.apiKeyEnv, 'CLINEBOT_API_KEY_2')
+
+  const free = resolveSessionAccount('credit-free', pool, 'auto', 'least_used', freeModel)
+  assert.equal(free.account.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+
+  resetSessionRouter()
+  const next = getNextRoundRobinAccount(pool, paidModel)
+  assert.equal(next.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+  markAccountCooldown('CLINEBOT_API_KEY_1', 60000, null, 'insufficient_credits', paidModel)
+  const skipped = getNextRoundRobinAccount(pool, paidModel)
+  assert.equal(skipped.apiKeyEnv, 'CLINEBOT_API_KEY_2')
+  const otherModel = getNextRoundRobinAccount(pool, freeModel)
+  assert.equal(otherModel.apiKeyEnv, 'CLINEBOT_API_KEY_1')
+})
+
 test('session-router: resolveModelRouteAccount respects per-model mapping and fallback (#218)', () => {
   resetSessionRouter()
   const pool = [
