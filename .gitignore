@@ -14,6 +14,7 @@ dist/
 coverage/
 .worktrees/
 .commandcode/
+dsh-health-out/
 
 # Internal service and agent workflow files (dhs-plugin-release-workflow denylist)
 AGENTS.md
