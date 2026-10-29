@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.20</b> автоматически добирает каталог моделей/FREE/dated (повтор через 15 секунд после старта и refresh раз в 6 часов) и сохраняет FREE-аннотации, DSH <code>0.2.1-rc.4</code>, cooldown недостатка кредитов только для конкретной модели и понятные ошибки 402/413. Чат работает через нативный адаптер <code>ctx.llm</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
+<p><b>0.6.21</b> автоматически добирает каталог моделей/FREE/dated, включая устаревшие WEB-профили (refresh через 15 секунд после старта и раз в 6 часов), и сохраняет FREE-аннотации, DSH <code>0.2.1-rc.4</code>, cooldown недостатка кредитов только для конкретной модели и понятные ошибки 402/413. Чат работает через нативный адаптер <code>ctx.llm</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-29T12:44:08.560Z",
+  "hosts": [
+    "0.2.1-rc.2",
+    "0.2.1-rc.3",
+    "0.2.1-rc.4"
+  ],
+  "plugins": [
+    {
+      "name": "@goodandready/dsh-clinebot",
+      "version": "0.6.20",
+      "source": "npm",
+      "repository": "https://github.com/GooDAnDReaDY/dsh-clinebot",
+      "results": {
+        "0.2.1-rc.2": {
+          "compatible": true
+        },
+        "0.2.1-rc.3": {
+          "compatible": true
+        },
+        "0.2.1-rc.4": {
+          "compatible": true
+        }
+      },
+      "summary": {
+        "compatible": 3,
+        "incompatible": 0,
+        "errors": 0
+      }
+    }
+  ]
+}
