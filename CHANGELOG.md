@@ -5,6 +5,18 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.22] - 2026-10-28
+
+### Fixed
+- **Updater env scrub** (#267): child install processes no longer inherit API keys, tokens, secrets, passwords, DSH/CommandCode credentials or npm auth tokens.
+- **Committed-stream failover** (#273): the native adapter no longer retries on another account after a client-visible chunk, so two responses cannot be mixed.
+- **Atomic account mutations** (#274, #272): additions are serialized, credentials are rolled back when settings persistence fails, and discovered-key imports keep the opaque id until success for retry.
+- **SSRF and path hardening** (#268, #269): `priceCatalogUrl` is https models.dev-only with manual redirects; data paths must stay inside `$DSH_HOME`.
+- **CSV export** (#270): RFC 4180 escaping and formula neutralization for model/session keys.
+- **Multimodal payload** (#275, #276): the serialized request (images, text and tools) is measured against `maxPayloadMb`; failed image reads become text blocks instead of fake `image_url` values.
+- **Transport timeouts and limits** (#277, #278): non-SSE bodies have an idle timeout and cancellation; oversized SSE events and response bodies cancel the reader.
+- **FREE catalog diff** (#271): `isCatalogDifferent()` now detects free-status changes.
+
 ## [0.6.21] - 2026-10-28
 
 ### Fixed

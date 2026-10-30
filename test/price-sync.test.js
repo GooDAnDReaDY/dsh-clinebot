@@ -8,6 +8,7 @@ import {
   syncPublicPrices,
   loadPublicPriceCache,
   ensurePublicPricesForModels,
+  isAllowedPriceCatalogUrl,
 } from '../lib/price-sync.js'
 import { setPublicPriceCatalog } from '../lib/model-prices.js'
 
@@ -77,12 +78,21 @@ test('price-sync: auto-refreshes only for missing models and throttles repeats',
   }
 })
 
+test('price-sync: price catalog URL is https models.dev only', () => {
+  assert.equal(isAllowedPriceCatalogUrl('https://models.dev/api.json'), true)
+  assert.equal(isAllowedPriceCatalogUrl('https://cdn.models.dev/api.json'), true)
+  assert.equal(isAllowedPriceCatalogUrl('http://models.dev/api.json'), false)
+  assert.equal(isAllowedPriceCatalogUrl('https://127.0.0.1/api.json'), false)
+  assert.equal(isAllowedPriceCatalogUrl('https://169.254.169.254/latest/meta-data'), false)
+  assert.equal(isAllowedPriceCatalogUrl('https://evil.example/api.json'), false)
+})
+
 test('price-sync: fetches, caches and reloads the public catalog', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'clinebot-prices-'))
   const cachePath = path.join(dir, 'prices.json')
   try {
     const result = await syncPublicPrices({
-      url: 'https://example.invalid/api.json',
+      url: 'https://models.dev/api.json',
       cachePath,
       fetchImpl: async () => ({ ok: true, status: 200, json: async () => sample }),
     })

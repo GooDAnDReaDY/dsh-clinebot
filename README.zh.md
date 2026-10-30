@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.21</b> 自动补齐模型/免费/日期变体目录，包括过期的 WEB 配置（启动后 15 秒刷新并每 6 小时刷新），同时保留免费模型标记、DSH <code>0.2.1-rc.4</code>、按模型隔离的余额不足冷却和明确的 402/413 错误。聊天使用原生 <code>ctx.llm</code> 适配器；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
+<p><b>0.6.22</b> 加强更新器凭据隔离、提供方故障转移、并发账户变更、目录 URL/路径访问、CSV 导出和流限制。保留模型/免费/日期变体自动补齐、DSH <code>0.2.1-rc.4</code>、按模型隔离的余额不足冷却和明确的 402/413 错误。聊天使用原生 <code>ctx.llm</code> 适配器；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

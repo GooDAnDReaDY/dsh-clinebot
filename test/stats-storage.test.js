@@ -407,6 +407,21 @@ test('stats-storage: filters analytics by model, account and errors', () => {
   }
 })
 
+test('stats-storage: CSV export escapes formulas, quotes and newlines (#270)', () => {
+  const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-csv-'))
+  const statsPath = path.join(dir, 'stats.json')
+  try {
+    resetStats(statsPath)
+    recordUsage({ model: '=1+1', sessionId: '=cmd|calc', statsPath })
+    const csv = exportStatsAsCsv(true)
+    assert.ok(csv.includes('Model,"\'=1+1"'))
+    assert.ok(csv.includes('Session,"\'=cmd|calc"'))
+    assert.ok(!csv.includes('Model,"=1+1"'))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('stats-storage: recordUsage tracks reasoningTokens and exportStatsAsCsv formats valid CSV (#218)', () => {
   const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-reasoning-'))
   const statsPath = path.join(dir, 'stats.json')
