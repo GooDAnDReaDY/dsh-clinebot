@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.22</b> hardens updater credentials, provider failover, concurrent account changes, price-catalog/path access, CSV export and stream limits. It keeps automatic model/free/dated catalog backfill, DSH <code>0.2.1-rc.4</code>, model-scoped credit cooldowns and 402/413 errors. Chat runs on the native <code>ctx.llm</code> adapter; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
+<p><b>0.6.23</b> closes residual path/rollback/settings-merge races: profile files cannot be targeted through data paths, orphan credentials are reported explicitly, and account additions merge with concurrent settings. It keeps automatic model/free/dated catalog backfill, DSH <code>0.2.1-rc.4</code>, model-scoped credit cooldowns and 402/413 errors. Chat runs on the native <code>ctx.llm</code> adapter; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

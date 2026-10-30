@@ -8,8 +8,10 @@ test('path-safety: data paths stay inside DSH_HOME', () => {
   const home = path.join(process.env.TEMP || process.env.TMP || '.', 'clinebot-path-safety')
   process.env.DSH_HOME = home
   try {
-    assert.equal(isSafeDataPath(home), true)
+    assert.equal(isSafeDataPath(home), false)
     assert.equal(isSafeDataPath(path.join(home, 'stats.json')), true)
+    assert.equal(isSafeDataPath(path.join(home, 'profiles', 'web', 'package.json')), false)
+    assert.equal(isSafeDataPath(path.join(home, 'settings.yaml')), false)
     assert.equal(isSafeDataPath(path.join(home, '..', 'package.json')), false)
     assert.equal(isSafeDataPath(path.join(process.env.TEMP || process.env.TMP || '.', 'outside.json')), false)
     assert.equal(isSafeDataPath(''), true)
