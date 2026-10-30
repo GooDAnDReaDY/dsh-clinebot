@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.23] - 2026-10-28
+
+### Fixed
+- **Profile-file path guard** (#269): data paths must be `.json`, must stay inside `$DSH_HOME`, and cannot point at `profiles/**/package.json`, settings, credentials or TypeScript configs.
+- **Explicit credential rollback failure** (#272): if settings persistence and credential rollback both fail, the API now reports `partial`/`credentialOrphan` with the env name and keeps the key available for cleanup/retry instead of hiding it.
+- **Settings merge on account add** (#280): account additions use `settingsApi.update({ accounts })` and a fresh config read, preserving concurrent `timeoutMs` and other setting changes.
+
 ## [0.6.22] - 2026-10-28
 
 ### Fixed

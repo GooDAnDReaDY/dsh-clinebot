@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { Readable } from 'node:stream'
 import { registerAccountsRoutes } from '../lib/routes/accounts.js'
 
-function makeHarness({ failSettings = false } = {}) {
+function makeHarness({ failSettings = false, useUpdate = false, setDelayMs = 0, unsetFails = false } = {}) {
   const routes = []
   const secrets = new Map()
   let current = {
@@ -29,8 +29,15 @@ function makeHarness({ failSettings = false } = {}) {
   }
   const credentials = {
     resolve: async (ref) => ({ value: secrets.get(ref?.name || ref) || '' }),
-    set: async (ref, value) => { secrets.set(ref?.name || ref, value) },
-    unset: async (ref) => { secrets.delete(ref?.name || ref) },
+    set: async (ref, value) => {
+      if (setDelayMs) await new Promise((resolve) => setTimeout(resolve, setDelayMs))
+      secrets.set(ref?.name || ref, value)
+    },
+    unset: async (ref) => {
+      if (unsetFails) throw new Error('synthetic unset failure')
+      secrets.delete(ref?.name || ref)
+      return true
+    },
   }
   const ctx = {
     effect: (fn) => fn(),
@@ -41,17 +48,30 @@ function makeHarness({ failSettings = false } = {}) {
   let failOnce = failSettings
   registerAccountsRoutes(ctx, {
     live: () => current,
-    getSettingsApi: () => ({
-      replace: async (next) => {
-        await new Promise((resolve) => setTimeout(resolve, 5))
-        if (failOnce) { failOnce = false; throw new Error('synthetic persistence failure') }
-        current = next
-      },
-    }),
+    getSettingsApi: () => {
+      const api = {
+        replace: async (next) => {
+          await new Promise((resolve) => setTimeout(resolve, 5))
+          if (failOnce) { failOnce = false; throw new Error('synthetic persistence failure') }
+          current = next
+        },
+      }
+      if (useUpdate) {
+        api.update = async (patch) => {
+          current = { ...current, ...patch }
+        }
+      }
+      return api
+    },
     syncProviderState: async () => {},
   })
   const handler = () => routes.find((route) => route.path === '/dsh-clinebot/accounts').handler
-  return { getCurrent: () => current, secrets, handler: handler() }
+  return {
+    getCurrent: () => current,
+    setTimeoutMs: (value) => { current = { ...current, timeoutMs: value } },
+    secrets,
+    handler: handler(),
+  }
 }
 
 function request(body) {
@@ -89,6 +109,27 @@ test('accounts: concurrent additions do not share an env or lose credentials (#2
   assert.deepEqual(envs.sort(), ['CLINEBOT_API_KEY_1', 'CLINEBOT_API_KEY_2'])
   assert.equal(harness.secrets.get('CLINEBOT_API_KEY_1'), 'key-a')
   assert.equal(harness.secrets.get('CLINEBOT_API_KEY_2'), 'key-b')
+})
+
+test('accounts: concurrent settings changes are preserved during add (#280)', async () => {
+  const harness = makeHarness({ useUpdate: true, setDelayMs: 20 })
+  const result = response()
+  const adding = harness.handler(request({ apiKey: 'key-a' }), result.res)
+  setTimeout(() => harness.setTimeoutMs(20000), 5)
+  await adding
+  assert.equal(result.status(), 200)
+  assert.equal(harness.getCurrent().timeoutMs, 20000)
+  assert.equal(harness.getCurrent().accounts.length, 1)
+})
+
+test('accounts: failed rollback reports an orphan credential instead of hiding it (#272)', async () => {
+  const harness = makeHarness({ failSettings: true, unsetFails: true })
+  const result = response()
+  await harness.handler(request({ apiKey: 'key-a' }), result.res)
+  assert.equal(result.status(), 500)
+  assert.equal(result.body().partial, true)
+  assert.equal(result.body().credentialOrphan, true)
+  assert.equal(harness.secrets.has('CLINEBOT_API_KEY_1'), true)
 })
 
 test('accounts: failed settings persistence rolls the new credential back (#272)', async () => {
