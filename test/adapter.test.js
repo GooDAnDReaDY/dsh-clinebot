@@ -149,6 +149,9 @@ test('adapter: multimodal budget offloads seen images and reports telemetry', as
     const adapter = new ClineBotAdapter({
       ctx: credentialsCtx({ CLINEBOT_API_KEY: 'key-a' }),
       live: () => configFor(server.baseUrl, { offloadSeenImages: true }),
+      resolveAttachments: () => ({
+        readImageRequest: async () => ({ data: Buffer.alloc(1000), mediaType: 'image/png' }),
+      }),
     })
     await collect(adapter.stream({
       provider: 'clinebot',
@@ -164,6 +167,9 @@ test('adapter: multimodal budget offloads seen images and reports telemetry', as
     const keep = new ClineBotAdapter({
       ctx: credentialsCtx({ CLINEBOT_API_KEY: 'key-a' }),
       live: () => configFor(server.baseUrl, { offloadSeenImages: false }),
+      resolveAttachments: () => ({
+        readImageRequest: async () => ({ data: Buffer.alloc(1000), mediaType: 'image/png' }),
+      }),
     })
     await collect(keep.stream({
       provider: 'clinebot',
@@ -177,6 +183,76 @@ test('adapter: multimodal budget offloads seen images and reports telemetry', as
   } finally {
     await server.close()
   }
+})
+
+test('adapter: no failover after a client-visible token (#273)', async () => {
+  resetSessionRouter()
+  let call = 0
+  const server = await startServer((_req, res) => {
+    call += 1
+    if (call === 1) {
+      res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+      res.write(sse([{ choices: [{ delta: { content: 'FIRST' } }] }]))
+      setTimeout(() => res.destroy(), 100)
+      return
+    }
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    res.end(sse([
+      { choices: [{ delta: { content: 'SECOND' } }] },
+      { choices: [{ delta: {}, finish_reason: 'stop' }] },
+      '[DONE]',
+    ]))
+  })
+  try {
+    const adapter = new ClineBotAdapter({
+      ctx: credentialsCtx({ CLINEBOT_API_KEY: 'key-a', CLINEBOT_API_KEY_2: 'key-b' }),
+      live: () => configFor(server.baseUrl, {
+        accounts: [{ label: 'Two', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
+        timeoutMs: 1000,
+        streamIdleTimeoutMs: 1000,
+      }),
+    })
+    await assert.rejects(async () => {
+      for await (const _chunk of adapter.stream({
+        provider: 'clinebot',
+        model: 'cline-pass/deepseek-v4.1-flash',
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+        sessionId: 'session-committed',
+      })) {
+        // consume until the interrupted stream rejects
+      }
+    })
+    assert.equal(server.requests.length, 1, 'must not retry after client-visible content')
+  } finally {
+    await server.close()
+  }
+})
+
+test('adapter: measured payload budget includes attachments (#275)', async () => {
+  resetSessionRouter()
+  const adapter = new ClineBotAdapter({
+    ctx: credentialsCtx({ CLINEBOT_API_KEY: 'key-a' }),
+    live: () => configFor('http://127.0.0.1:1', { maxPayloadMb: 0.0001 }),
+    resolveAttachments: () => ({
+      readImageRequest: async () => ({ data: Buffer.alloc(1000), mediaType: 'image/png' }),
+    }),
+  })
+  await assert.rejects(async () => {
+    for await (const _chunk of adapter.stream({
+      provider: 'clinebot',
+      model: 'cline-pass/deepseek-v4.1-flash',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'hello' },
+          { type: 'image', attachment: { name: 'big.png', mediaType: 'image/png' } },
+        ],
+      }],
+      sessionId: 'session-budget',
+    })) {
+      // no chunks expected
+    }
+  }, (error) => error?.code === 'REQUEST_TOO_LARGE')
 })
 
 test('adapter: visibleModels and disabledModels filter the picker catalogue', async () => {

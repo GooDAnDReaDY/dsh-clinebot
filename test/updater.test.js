@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { isNewerVersion, isTrustedUpdateRequest, checkUpdateStatus } from '../lib/updater.js'
+import { isNewerVersion, isTrustedUpdateRequest, checkUpdateStatus, sanitizeChildEnv } from '../lib/updater.js'
 
 test('updater: isNewerVersion semantic version comparison', () => {
   // isNewerVersion(current, candidate)
@@ -19,6 +19,27 @@ test('updater: isNewerVersion semantic version comparison', () => {
   assert.equal(isNewerVersion('0.3.10-beta.2', '0.3.10-beta.1'), false)
   assert.equal(isNewerVersion('0.3.10-rc.1', '0.3.10-rc.2'), true)
   assert.equal(isNewerVersion('0.3.9', '0.3.10-alpha.1'), true)
+})
+
+test('updater: child install env omits credential variables', () => {
+  const env = sanitizeChildEnv({
+    PATH: 'C:/bin',
+    HOME: '/home/test',
+    CLINEBOT_API_KEY: 'secret',
+    CLINEBOT_API_KEY_2: 'secret-2',
+    COMMANDCODE_API_KEY: 'secret-3',
+    OPENAI_API_KEY: 'secret-4',
+    GITHUB_TOKEN: 'secret-5',
+    AWS_SECRET_ACCESS_KEY: 'secret-6',
+    'npm_config_//registry.npmjs.org/:_authToken': 'secret-7',
+    NO_COLOR: '0',
+  })
+  assert.equal(env.PATH, 'C:/bin')
+  assert.equal(env.HOME, '/home/test')
+  assert.equal(env.NO_COLOR, '1')
+  for (const key of Object.keys(env)) {
+    assert.equal(/CLINEBOT|COMMANDCODE|API_KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL/i.test(key), false, key)
+  }
 })
 
 test('updater: isTrustedUpdateRequest security checks', () => {

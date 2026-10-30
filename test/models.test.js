@@ -218,6 +218,7 @@ test('models: free models are marked from their IDs', () => {
   assert.equal(isFreeModelId('cline-pass/recursive-flint:free'), true)
   assert.equal(isFreeModelId('cline-pass/free-model'), true)
   assert.equal(isFreeModelId('cline-pass/freeway'), false)
+  assert.equal(isCatalogDifferent([{ id: 'x', free: true }], [{ id: 'x', free: false }]), true)
 
   const models = getAllModels([
     { id: 'cline-pass/free-model', name: 'Free Model', contextLength: 200000 },
