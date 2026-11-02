@@ -14,13 +14,14 @@ test('http: isTrustedSettingsRequest security rules', () => {
     },
   }), false)
 
-  // 2. Same-origin matching Host header
+  // 2. Same-origin matching Host header from a local browser
   assert.equal(isTrustedSettingsRequest({
     headers: {
       'sec-fetch-site': 'same-origin',
       host: '192.168.1.123:3000',
       origin: 'http://192.168.1.123:3000',
     },
+    socket: { remoteAddress: '127.0.0.1' },
   }), true)
 
   // 3. Reverse proxy with X-Forwarded-Host
@@ -42,12 +43,13 @@ test('http: isTrustedSettingsRequest security rules', () => {
     },
   }), false)
 
-  // 5. Referer fallback matching host
+  // 5. Referer fallback matching host from loopback
   assert.equal(isTrustedSettingsRequest({
     headers: {
       host: '192.168.1.123:3000',
       referer: 'http://192.168.1.123:3000/settings',
     },
+    socket: { remoteAddress: '127.0.0.1' },
   }), true)
 
   // 6. Referer fallback mismatching host
@@ -87,6 +89,26 @@ test('http: isTrustedSettingsRequest security rules', () => {
       'sec-fetch-site': 'same-origin',
       'x-forwarded-host': 'evil.example',
       origin: 'https://evil.example',
+    },
+    socket: { remoteAddress: '10.0.0.5' },
+  }), false)
+
+  // 11. Remote same-origin headers without connection auth fail closed
+  assert.equal(isTrustedSettingsRequest({
+    headers: {
+      'sec-fetch-site': 'same-origin',
+      host: '192.168.1.123:3000',
+      origin: 'http://192.168.1.123:3000',
+    },
+    socket: { remoteAddress: '10.0.0.5' },
+  }), false)
+
+  // 12. Remote forwarded host without connection auth fails closed
+  assert.equal(isTrustedSettingsRequest({
+    headers: {
+      'x-forwarded-host': 'dsh.internal.domain:8443',
+      host: '127.0.0.1:3000',
+      origin: 'https://dsh.internal.domain:8443',
     },
     socket: { remoteAddress: '10.0.0.5' },
   }), false)

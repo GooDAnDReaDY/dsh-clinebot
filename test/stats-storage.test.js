@@ -407,6 +407,21 @@ test('stats-storage: filters analytics by model, account and errors', () => {
   }
 })
 
+test('stats-storage: __proto__ keys do not pollute Object.prototype (#281)', () => {
+  const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-proto-'))
+  const statsPath = path.join(dir, 'stats.json')
+  try {
+    resetStats(statsPath)
+    recordUsage({ model: '__proto__', sessionId: '__proto__', statsPath })
+    const summary = getStatsSummary()
+    assert.equal(Object.hasOwn(Object.prototype, 'requests'), false)
+    assert.equal(Object.hasOwn(summary.byModel, '__proto__'), true)
+    assert.equal(Object.hasOwn(summary.bySession, '__proto__'), true)
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('stats-storage: CSV export escapes formulas, quotes and newlines (#270)', () => {
   const dir = fs.mkdtempSync(path.join(tmpdir(), 'clinebot-stats-csv-'))
   const statsPath = path.join(dir, 'stats.json')

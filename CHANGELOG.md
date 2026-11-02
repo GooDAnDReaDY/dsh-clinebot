@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.24] - 2026-10-28
+
+### Security
+- **Fail-closed source gate** (#250): without `connection.requestRejection`, remote requests are rejected regardless of spoofable `Origin`/`Referer`/`Sec-Fetch-Site`/`X-Forwarded-Host`; loopback remains allowed.
+- **Allowlisted updater env** (#267): the child install process receives only safe OS/npm/DSH variables, not API keys, auth tokens, proxy credentials or other secrets.
+- **Symlink-safe data paths** (#269): realpath/ancestor resolution rejects symlink escapes and profile/config targets.
+- **Prototype-safe telemetry** (#281): stats and session dictionaries use null-prototype maps; `__proto__` session/model keys no longer mutate `Object.prototype`.
+
 ## [0.6.23] - 2026-10-28
 
 ### Fixed
