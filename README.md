@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.24</b> hardens the source gate, updater environment, symlink-safe data paths and prototype-safe telemetry. It keeps automatic model/free/dated catalog backfill, DSH <code>0.2.1-rc.4</code>, model-scoped credit cooldowns and 402/413 errors. Chat runs on the native <code>ctx.llm</code> adapter; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
+<p><b>0.6.25</b> adds DSH <code>0.2.2-rc.1</code> support and keeps the security hardening from 0.6.24. It also keeps automatic model/free/dated catalog backfill, model-scoped credit cooldowns and 402/413 errors. Chat runs on the native <code>ctx.llm</code> adapter; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -83,7 +83,7 @@ graph LR
         TUI["dsh-TUI settings section"]
     end
 
-    subgraph DSHCore [DeepSeek Harness 0.2.1-rc.2+]
+    subgraph DSHCore [DeepSeek Harness 0.2.1-rc.2 ... 0.2.2]
         Llm["ctx.llm"]
         Credentials["ctx.credentials"]
         Web["ctx.web / settings / commands"]
@@ -148,7 +148,7 @@ graph LR
 dsh plugin --profile web add @goodandready/dsh-clinebot
 ```
 
-Requires **DSH `0.2.1-rc.2` or newer in the `0.2.1` line** and Node 22+. ClineBot registers directly with `ctx.llm`; there is no transport switch or loopback proxy.
+Requires **DSH `>=0.2.1-rc.2 <0.2.3-0`** (the `0.2.1` and `0.2.2` lines, including `0.2.2-rc.1`) and Node 22+. ClineBot registers directly with `ctx.llm`; there is no transport switch or loopback proxy.
 
 Restart your DeepSeek Harness instance and refresh the browser.
 
