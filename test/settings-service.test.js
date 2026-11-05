@@ -88,7 +88,7 @@ test("host: resolveKeyValue safely resolves via ctx.get( credentials) without un
     },
   }
 
-  const res1 = await resolveKeyValue(ctxWithGet, "SOME_ENV_KEY")
+  const res1 = await resolveKeyValue(ctxWithGet, "CLINEBOT_API_KEY_SECONDARY")
   assert.equal(getCredentialsCalled, true, "resolveKeyValue must call ctx.get(credentials)")
   assert.equal(res1.value, "secret-from-get")
   assert.equal(res1.source, "credentials")

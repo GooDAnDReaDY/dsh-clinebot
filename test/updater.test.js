@@ -42,18 +42,31 @@ test('updater: child install env omits credential variables', () => {
   }
 })
 
-test('updater: proxy env is stripped of URL credentials', () => {
+test('updater: proxy and registry env is stripped of URL credentials', () => {
   const env = sanitizeChildEnv({
     PATH: 'C:/bin',
     npm_config_proxy: 'http://user:pass@proxy.example:8080',
     NPM_CONFIG_HTTPS_PROXY: 'https://user:pass@proxy.example:8443',
+    npm_config_registry: 'https://user:pass@registry.example/',
     HTTP_PROXY: 'http://user:pass@other.example:3128',
   })
   assert.equal(env.PATH, 'C:/bin')
   assert.equal(env.npm_config_proxy, 'http://proxy.example:8080/')
   assert.equal(env.NPM_CONFIG_HTTPS_PROXY, 'https://proxy.example:8443/')
+  assert.equal(env.npm_config_registry, 'https://registry.example/')
   assert.equal(Object.hasOwn(env, 'HTTP_PROXY'), false)
   assert.equal(JSON.stringify(env).includes('user:pass'), false)
+})
+
+test('updater: Windows Path casing survives the allowlist', () => {
+  const env = sanitizeChildEnv({
+    Path: 'C:/Windows/System32',
+    'ProgramFiles(x86)': 'C:/Program Files (x86)',
+    SystemRoot: 'C:/Windows',
+  })
+  assert.equal(env.Path, 'C:/Windows/System32')
+  assert.equal(env['ProgramFiles(x86)'], 'C:/Program Files (x86)')
+  assert.equal(env.SystemRoot, 'C:/Windows')
 })
 
 test('updater: isTrustedUpdateRequest security checks', () => {
