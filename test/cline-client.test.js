@@ -10,6 +10,7 @@ import {
   buildUsageCacheKey,
   clearProbeCache,
   probeHealth,
+  resolveKeyValue,
   retryWithBackoff,
   DEFAULT_BASE_URL,
   DEFAULT_API_KEY_ENV,
@@ -43,6 +44,26 @@ test('cline-client: resolveApiKey', () => {
 
   const missing = resolveApiKey('OTHER_KEY', env)
   assert.equal(missing.value, '')
+  assert.equal(missing.envName, 'OTHER_KEY')
+})
+
+test('cline-client: invalid apiKeyEnv is not resolved', async () => {
+  let credentialsRead = false
+  const ctx = { get: () => { credentialsRead = true; return { resolve: async () => ({ value: 'leak' }) } } }
+  const result = await resolveKeyValue(ctx, 'AWS_SECRET_ACCESS_KEY')
+  assert.equal(result.value, '')
+  assert.equal(result.source, 'invalid')
+  assert.equal(credentialsRead, false)
+})
+
+test('cline-client: remote http baseUrl is rejected before sending the key', async () => {
+  let called = false
+  const result = await fetchUsageLimits('http://remote.example/api/v1', 'secret-key', {
+    fetchImpl: async () => { called = true; throw new Error('must not fetch') },
+  })
+  assert.equal(result.ok, false)
+  assert.match(result.error, /https/)
+  assert.equal(called, false)
 })
 
 test('cline-client: fetchUsageLimits parsing and caching', async () => {

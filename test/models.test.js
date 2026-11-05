@@ -460,12 +460,12 @@ test('provider-sync: autoDiscoverPlanModels reconciles removed models and metada
   let currentConfig = {
     enabled: true,
     baseUrl: 'https://api.cline.bot/api/v1',
-    apiKeyEnv: 'TEST_KEY_ENV_168',
+    apiKeyEnv: 'CLINEBOT_API_KEY_168',
     dynamicModels: [modelFlash, modelPro],
     planSyncedAt: 1000,
   }
 
-  process.env.TEST_KEY_ENV_168 = 'valid-test-key-168'
+  process.env.CLINEBOT_API_KEY_168 = 'valid-test-key-168'
 
   const mockCtx = {
     credentials: {

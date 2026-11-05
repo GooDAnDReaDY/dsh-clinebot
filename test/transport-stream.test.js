@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readResponseText, readSseEvents } from '../lib/transport/cline-transport.js'
+import { readResponseText, readSseEvents, requestChatCompletion } from '../lib/transport/cline-transport.js'
 
 function openStream(chunk, { close = false } = {}) {
   let cancelled = false
@@ -16,6 +16,13 @@ function openStream(chunk, { close = false } = {}) {
   })
   return { stream, isCancelled: () => cancelled }
 }
+
+test('transport: remote http chat target is rejected before fetch', async () => {
+  await assert.rejects(
+    requestChatCompletion({ baseUrl: 'http://remote.example/api/v1', apiKey: 'secret', body: {} }),
+    /https/,
+  )
+})
 
 test('transport: non-SSE body read has an idle timeout and cancels the reader (#277)', async () => {
   const { stream, isCancelled } = openStream('partial-body')

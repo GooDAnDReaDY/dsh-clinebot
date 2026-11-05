@@ -5,6 +5,16 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.27] - 2026-11-05
+
+### Security
+- **Updater Windows environment (#289)**: the environment allowlist is case-insensitive, so Windows `Path` and `ProgramFiles(x86)` survive into the child installer.
+- **Updater registry credentials (#290)**: npm registry/proxy URL userinfo is stripped before the child installer starts.
+- **Complete write-path guard (#288)**: adapter telemetry and the models sync route no longer write stats or price caches outside `$DSH_HOME`; invalid paths fall back instead of being used.
+- **Dangling symlink guard (#291)**: `isSafeDataPath()` rejects symlinks whose target does not exist, closing the remaining symlink escape from #269.
+- **Native settings HTTPS gate (#292)**: remote chat and usage requests reject plain HTTP `baseUrl` even when the value came from native settings.
+- **Credential name allowlist (#293)**: `apiKeyEnv`, account env names and credential resolution accept only `CLINEBOT_API_KEY` names; invalid names cannot read arbitrary environment credentials.
+
 ## [0.6.26] - 2026-11-05
 
 ### Security
