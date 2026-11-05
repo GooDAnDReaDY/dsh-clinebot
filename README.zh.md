@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.27</b> 完善 native settings 安全边界：远程端点仅允许 HTTPS、凭据名称白名单、遥测/价格安全路径、拒绝悬空符号链接，以及 Windows 安全的 updater 环境。保留 DSH <code>0.2.2-rc.1</code> 支持、模型/免费/日期变体自动补齐、按模型隔离的余额不足冷却和明确的 402/413 错误。聊天使用原生 <code>ctx.llm</code> 适配器；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
+<p><b>0.6.28</b> 修复 loopback 主机名检查，<code>127.0.0.1.evil.example</code> 之类的名称不再绕过 HTTPS 限制。保留 0.6.27 的完整 native settings 安全边界、DSH <code>0.2.2-rc.1</code> 支持、模型/免费/日期变体自动补齐、按模型隔离的余额不足冷却和明确的 402/413 错误。聊天使用原生 <code>ctx.llm</code> 适配器；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
