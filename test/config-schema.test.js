@@ -14,6 +14,14 @@ test('user settings fields are volatile so the host namespace is published', () 
   assert.equal(Config.dict.accounts.inner.dict.label.meta.volatile, undefined)
 })
 
+test('plainConfig keeps __proto__ as own data (#287)', () => {
+  const source = JSON.parse('{"__proto__":{"polluted":true},"baseUrl":"https://api.cline.bot/api/v1"}')
+  const plain = plainConfig(source)
+  assert.equal(Object.hasOwn(plain, '__proto__'), true)
+  assert.equal(Object.getPrototypeOf(plain), Object.prototype)
+  assert.equal(Object.hasOwn(Object.prototype, 'polluted'), false)
+})
+
 test('plainConfig copies volatile field references and resolves function getters before structuredClone', () => {
   const enabled = Object.freeze({ get: () => true })
   const dynamicModels = Object.freeze({ get: () => [{ id: 'm', name: 'M' }] })

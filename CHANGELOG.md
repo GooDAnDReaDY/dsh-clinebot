@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.26] - 2026-11-05
+
+### Security
+- **Updater proxy credentials (#285)**: proxy env values are stripped of URL userinfo before being passed to install scripts.
+- **Native settings path guard (#286)**: unsafe `statsPath`, `eventLogPath`, `modelsCachePath` and `priceCatalogPath` values are ignored by startup/sync and rejected by write routes, not only by the HTTP config handler.
+- **Prototype-safe price/config dictionaries (#287)**: price catalogs, config snapshots and account snapshots keep `__proto__` as own data instead of changing object prototypes.
+
 ## [0.6.25] - 2026-11-04
 
 ### Added

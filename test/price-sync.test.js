@@ -78,6 +78,15 @@ test('price-sync: auto-refreshes only for missing models and throttles repeats',
   }
 })
 
+test('price-sync: __proto__ model keys stay own data (#287)', () => {
+  const catalog = buildPublicCatalog({
+    provider: { id: 'public', models: { weird: { id: '__proto__', cost: { input: 1, output: 2 } } } },
+  })
+  assert.equal(Object.getPrototypeOf(catalog), null)
+  assert.equal(Object.hasOwn(catalog, '__proto__'), true)
+  assert.equal(Object.hasOwn(Object.prototype, 'input'), false)
+})
+
 test('price-sync: price catalog URL is https models.dev only', () => {
   assert.equal(isAllowedPriceCatalogUrl('https://models.dev/api.json'), true)
   assert.equal(isAllowedPriceCatalogUrl('https://cdn.models.dev/api.json'), true)

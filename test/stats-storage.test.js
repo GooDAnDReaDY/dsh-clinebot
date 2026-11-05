@@ -128,7 +128,7 @@ test('stats-storage: flushStats synchronously flushes queued writes (#158)', () 
 
 test('stats-storage: apply() cold start loads existing stats and preserves history on next request (#158)', async () => {
   const { apply } = await import('../lib/index.js')
-  const coldStatsPath = path.join(tmpdir(), `cold-stats-${Date.now()}.json`)
+  const coldStatsPath = path.join(process.env.DSH_HOME, `cold-stats-${Date.now()}.json`)
 
   // Pre-seed disk with 50 previous requests
   const seedStats = {
