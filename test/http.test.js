@@ -1,8 +1,22 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { isTrustedSettingsRequest, writeJson, readBody } from '../lib/http.js'
+import { isTrustedSettingsRequest, isSecureRemoteBaseUrl, writeJson, readBody } from '../lib/http.js'
 import { assertTrustedSettingsRequest } from '../lib/access.js'
 import { Readable } from 'node:stream'
+
+test('http: loopback hostname matching is exact', () => {
+  assert.equal(isSecureRemoteBaseUrl('https://api.cline.bot'), true)
+  assert.equal(isSecureRemoteBaseUrl('http://127.0.0.1:8080'), true)
+  assert.equal(isSecureRemoteBaseUrl('http://localhost:8080'), true)
+  assert.equal(isSecureRemoteBaseUrl('http://127.0.0.1.evil.example'), false)
+  assert.equal(isSecureRemoteBaseUrl('http://127.evil.example'), false)
+  assert.equal(isSecureRemoteBaseUrl('http://127.0.0.1evil.example'), false)
+  assert.equal(isSecureRemoteBaseUrl('http://remote.example'), false)
+  assert.equal(isTrustedSettingsRequest({
+    headers: { host: '127.0.0.1:3000', origin: 'http://127.0.0.1.evil.example:3000' },
+    socket: { remoteAddress: '127.0.0.1' },
+  }), false)
+})
 
 test('http: isTrustedSettingsRequest security rules', () => {
   // 1. Cross-site request must always be rejected

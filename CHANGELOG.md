@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.28] - 2026-11-05
+
+### Security
+- **Loopback hostname bypass (#294)**: URL hostnames are now matched exactly as `localhost`, `::1` or a valid `127.0.0.0/8` address; names such as `127.0.0.1.evil.example` no longer pass the HTTPS gate.
+
 ## [0.6.27] - 2026-11-05
 
 ### Security

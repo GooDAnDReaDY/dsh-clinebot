@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.27</b> завершает security-границу native settings: HTTPS-only внешние endpoints, allowlist имён credentials, безопасные пути telemetry/price, отклонение dangling symlink и Windows-safe окружение updater. Сохраняются поддержка DSH <code>0.2.2-rc.1</code>, автодобор каталога моделей/FREE/dated, cooldown недостатка кредитов для конкретной модели и ошибки 402/413. Чат работает через нативный адаптер <code>ctx.llm</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
+<p><b>0.6.28</b> исправляет проверку loopback-hostname: имена вроде <code>127.0.0.1.evil.example</code> больше не обходят HTTPS-гейт. Сохраняются полная security-граница native settings из 0.6.27, поддержка DSH <code>0.2.2-rc.1</code>, автодобор каталога моделей/FREE/dated, cooldown недостатка кредитов для конкретной модели и ошибки 402/413. Чат работает через нативный адаптер <code>ctx.llm</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
