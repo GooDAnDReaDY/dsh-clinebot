@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.25</b> adds DSH <code>0.2.2-rc.1</code> support and keeps the security hardening from 0.6.24. It also keeps automatic model/free/dated catalog backfill, model-scoped credit cooldowns and 402/413 errors. Chat runs on the native <code>ctx.llm</code> adapter; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
+<p><b>0.6.26</b> hardens updater proxy credentials, native settings data paths and prototype-safe price/config dictionaries. It keeps DSH <code>0.2.2-rc.1</code> support, automatic model/free/dated catalog backfill, model-scoped credit cooldowns and 402/413 errors. Chat runs on the native <code>ctx.llm</code> adapter; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
