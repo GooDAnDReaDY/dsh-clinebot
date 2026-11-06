@@ -227,4 +227,19 @@ test('http (#222): connection.requestRejection authenticates settings requests',
   const resReqConn = createFakeRes()
   assert.equal(assertTrustedSettingsRequest(reqWithConn, resReqConn), false)
   assert.equal(statusCode, 401)
+
+  // 6. DSH Desktop strips Origin/Referer after host auth admits the request.
+  const desktopWrite = {
+    method: 'POST',
+    headers: { host: '127.0.0.1:3000' },
+    socket: { remoteAddress: '127.0.0.1' },
+  }
+  const ctxDesktop = { connection: { requestRejection: () => undefined } }
+  const resDesktop = createFakeRes()
+  assert.equal(assertTrustedSettingsRequest(desktopWrite, resDesktop, ctxDesktop), true)
+
+  let calls = 0
+  const ctxSingleCall = { connection: { requestRejection: () => { calls += 1; return undefined } } }
+  assert.equal(assertTrustedSettingsRequest(desktopWrite, createFakeRes(), ctxSingleCall), true)
+  assert.equal(calls, 1, 'host auth must be called once per request')
 })
