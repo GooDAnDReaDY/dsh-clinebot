@@ -32,14 +32,14 @@ function IntegrationsSection({ draft, onStage, t }) {
       id: 'cb-sidebar-quota',
       label: t('settings.sidebar_quota'),
       hint: t('settings.sidebar_quota_hint'),
-      checked: current.showSidebarQuota !== false,
+      checked: Boolean(current.showSidebarQuota),
       onChange: (value) => onStage({ showSidebarQuota: value }),
     }),
     React.createElement(IntegrationToggle, {
       id: 'cb-composer-cost',
       label: t('settings.composer_cost'),
       hint: t('settings.composer_cost_hint'),
-      checked: current.showComposerCost !== false,
+      checked: Boolean(current.showComposerCost),
       onChange: (value) => onStage({ showComposerCost: value }),
     })
   )

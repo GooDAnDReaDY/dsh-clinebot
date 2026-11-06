@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.29</b> исправляет проверку ключа в DSH Desktop, когда host убирает <code>Origin</code>/<code>Referer</code>, но принимает запрос через <code>connection.requestRejection()</code>. Сохраняются полная security-граница из 0.6.28, поддержка DSH <code>0.2.2-rc.1</code>, автодобор каталога моделей/FREE/dated, cooldown недостатка кредитов для конкретной модели и ошибки 402/413. Чат работает через нативный адаптер <code>ctx.llm</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
+<p><b>0.6.30</b> исправляет гонку idle-таймера стрима в Node 22 (удален вызов <code>timer.unref()</code> для предотвращения преждевременного завершения цикла событий) и переводит экранные значки (квоту в сайдбаре и индикатор стоимости в композере) в состояние выключено по умолчанию для явного включения пользователем в «Настройки → ClineBot → Интеграции». Сохраняются полная security-граница, поддержка DSH <code>0.2.2-rc.1</code>, автодобор каталога моделей/FREE/dated, cooldown недостатка кредитов для конкретной модели и ошибки 402/413. Чат работает через нативный адаптер <code>ctx.llm</code>; старые <code>llm-pi-ai</code>, loopback-прокси и <code>llm/stream</code> удалены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

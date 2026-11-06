@@ -266,7 +266,7 @@ function ComposerCostEntry(props) {
     }
   }, [inject, costDisplay, title])
 
-  if (configSnapshot?.value?.showComposerCost === false) return null
+  if (!configSnapshot?.value?.showComposerCost) return null
   if (total === 0 && !stats) return null
   if (!inject) return null
   return React.createElement('span', {

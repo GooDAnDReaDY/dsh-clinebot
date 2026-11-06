@@ -43,7 +43,7 @@ function SidebarQuota({ ctx, wide, t: propT, open: openPanel }) {
 
   // Check the configForms snapshot for the showSidebarQuota toggle
   const configSnapshot = useConfigFormsSnapshot(ctx)
-  const show = configSnapshot?.value?.showSidebarQuota !== false
+  const show = Boolean(configSnapshot?.value?.showSidebarQuota)
 
   const loadQuota = React.useCallback(async () => {
     try {
