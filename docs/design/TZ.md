@@ -986,7 +986,7 @@ Analytics:
 | `contextWindow` | number | `0` (unset) | Глобальный context override |
 | `maxOutputTokens` | number | `0` (derived) | `0` = omit `max_tokens`; >0 = cap |
 | `priceOverrides` | dict | `{}` | Пользовательские ставки |
-| `showComposerCost` | boolean | `true` | Показывать стоимость в composer |
+| `showComposerCost` | boolean | `false` | Показывать стоимость в composer |
 | `legacyMigratedAt` | number | `0` | Внутренняя метка миграции (non-volatile) |
 
 ### 10.2 Deprecated

@@ -106,7 +106,7 @@ function QuotaSection({ keyPresent, status, usage, busy, handleRefreshQuota, sho
             title: t('sidebar.show_quota'),
             description: t('sidebar.show_quota_hint'),
             control: React.createElement(BooleanControl, {
-              checked: showSidebarQuota !== false,
+              checked: Boolean(showSidebarQuota),
               label: t('sidebar.show_quota'),
               onChange: (next) => onToggleSidebarQuota && onToggleSidebarQuota(next),
             }),

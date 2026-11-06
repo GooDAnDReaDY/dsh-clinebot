@@ -371,7 +371,7 @@ function SettingsPage(props) {
       usage,
       busy,
       handleRefreshQuota,
-      showSidebarQuota: draft?.showSidebarQuota !== false,
+      showSidebarQuota: Boolean(draft?.showSidebarQuota),
       onToggleSidebarQuota: (value) => staged.stage({ showSidebarQuota: value }),
       t,
     }),
