@@ -93,6 +93,43 @@ test('updater: isTrustedUpdateRequest security checks', () => {
     ...validReq,
     headers: { ...validReq.headers, origin: 'https://evil.example.com' }
   }), false)
+
+  // Issue #294: Hostnames starting with 127 must not be treated as loopback
+  assert.equal(isTrustedUpdateRequest({
+    ...validReq,
+    headers: {
+      ...validReq.headers,
+      host: '127.attacker.example:3000',
+      origin: 'http://127.attacker.example:3000',
+    },
+  }), false)
+  assert.equal(isTrustedUpdateRequest({
+    ...validReq,
+    headers: {
+      ...validReq.headers,
+      host: '127.0.0.1.attacker.example:3000',
+      origin: 'http://127.0.0.1.attacker.example:3000',
+    },
+  }), false)
+
+  // Trusted localhost and IPv6 loopback
+  assert.equal(isTrustedUpdateRequest({
+    ...validReq,
+    headers: {
+      ...validReq.headers,
+      host: 'localhost:3000',
+      origin: 'http://localhost:3000',
+    },
+  }), true)
+  assert.equal(isTrustedUpdateRequest({
+    socket: { remoteAddress: '::1' },
+    headers: {
+      'x-dsh-plugin-update': '1',
+      host: '[::1]:3000',
+      origin: 'http://[::1]:3000',
+      'sec-fetch-site': 'same-origin',
+    },
+  }), true)
 })
 
 test('updater: checkUpdateStatus detects status with manifestUrl', async () => {

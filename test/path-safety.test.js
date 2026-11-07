@@ -18,6 +18,10 @@ test('path-safety: data paths stay inside DSH_HOME', () => {
     assert.equal(isSafeDataPath(path.join(home, '..', 'package.json')), false)
     assert.equal(isSafeDataPath(path.join(process.env.TEMP || process.env.TMP || '.', 'outside.json')), false)
     assert.equal(isSafeDataPath(''), true)
+    assert.equal(isSafeDataPath('~/.dsh/clinebot-stats.json'), true)
+    assert.equal(isSafeDataPath('~/.dsh/profiles/web/clinebot-custom.json'), true)
+    assert.equal(isSafeDataPath('~/.dsh/../escape.json'), false)
+    assert.equal(isSafeDataPath('~/escape.json'), false)
 
     const outside = path.join(os.tmpdir(), `clinebot-outside-${process.pid}-${Date.now()}.json`)
     fs.writeFileSync(outside, '{}')
