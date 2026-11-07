@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.31</b> обеспечивает строгую изоляцию профилей (телеметрия, статистика, логи событий и кэш цен сохраняются строго внутри активного <code>DSH_HOME</code> без утечки в <code>~/.dsh</code>, #299) и усиливает безопасность updater'а (проверка origin hostname через <code>isLoopbackHostname</code> отклоняет домены вида <code>127.attacker.example</code>, #294). Сохраняются полная security-граница, экранные значки, отключенные по умолчанию (#297), поддержка DSH <code>0.2.2-rc.1</code> и нативный адаптер <code>ctx.llm</code>.</p>
+<p><b>0.6.32</b> усиливает безопасность и модульность архитектуры: унифицирует валидацию базовых URL через <code>isSecureRemoteBaseUrl</code> с поддержкой IPv6 и loopback smoke-проверок (#302), блокирует обход symlink-ссылок при поиске ключей в <code>~/.cline</code> (#303), и декомпозирует управление дисковым кэшем в <code>lib/models-cache.js</code> (#304). Сохраняются полная security-граница, экранные значки, отключенные по умолчанию (#297), поддержка DSH <code>0.2.2-rc.1</code> и нативный адаптер <code>ctx.llm</code>.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

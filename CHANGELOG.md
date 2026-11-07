@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.32] - 2026-11-07
+
+### Security & Architecture
+- **Unified Base URL Validation**: Replaced ad-hoc `baseUrl` checks in settings and accounts routes with canonical `isSecureRemoteBaseUrl`, properly supporting IPv6 loopback (`[::1]`) and validating remote endpoints uniformly across smoke testing and config updates (#302).
+- **Symlink Traversal Prevention in Key Discovery**: Switched to `fs.lstatSync` and explicit `!isSymbolicLink()` checks when scanning `~/.cline` for API keys, blocking symlink traversal attacks from untrusted directories (#303).
+- **Models Catalog Decomposition**: Extracted disk cache management to `lib/models-cache.js`, reducing `lib/models.js` complexity and enforcing the strict file size limit under 600 lines (#304).
+
 ## [0.6.31] - 2026-11-07
 
 ### Security & Bug Fixes
