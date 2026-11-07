@@ -389,3 +389,44 @@ test('provider-sync: buildStatus returns statsSummary matching persistent storag
   assert.ok(status.statsSummary, 'buildStatus must include statsSummary')
   assert.deepEqual(status.statsSummary, getStatsSummary())
 })
+
+test('PUT /config: validates baseUrl via isSecureRemoteBaseUrl (#302)', async () => {
+  let replacedWith = null
+  const settingsApi = {
+    replace: async (val) => { replacedWith = val },
+  }
+  const handlers = []
+  const ctx = {
+    effect: (fn) => fn(),
+    webServer: { register: (r) => handlers.push(r) },
+  }
+  registerSettingsRoutes(ctx, {
+    live: () => ({ enabled: true }),
+    getSettingsApi: () => settingsApi,
+    syncProviderState: async () => {},
+    triggerAutoDiscover: () => {},
+  })
+
+  const handler = handlers.find((r) => r.path === '/dsh-clinebot/config').handler
+
+  const putBase = async (url) => {
+    const req = Readable.from([Buffer.from(JSON.stringify({ baseUrl: url }))])
+    req.method = 'PUT'
+    req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+    req.socket = { remoteAddress: '127.0.0.1' }
+    const out = respond()
+    await handler(req, out.res)
+    return out.read()
+  }
+
+  // Allowed endpoints
+  assert.equal((await putBase('https://api.cline.bot')).status, 200)
+  assert.equal((await putBase('http://localhost:3000')).status, 200)
+  assert.equal((await putBase('http://127.0.0.1:3000')).status, 200)
+  assert.equal((await putBase('http://[::1]:3000')).status, 200)
+
+  // Rejected endpoints
+  assert.equal((await putBase('http://evil.example.com')).status, 400)
+  assert.equal((await putBase('http://127.attacker.example:3000')).status, 400)
+  assert.equal((await putBase('ftp://localhost:3000')).status, 400)
+})
