@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.31</b> ensures strict profile data isolation (telemetry, stats, events, and price cache resolve strictly inside active <code>DSH_HOME</code> without leaking into <code>~/.dsh</code>, #299) and hardens updater loopback verification (origin hostname check with <code>isLoopbackHostname</code> rejects external domains like <code>127.attacker.example</code>, #294). Maintains full security boundary, default-disabled screen badges (#297), DSH <code>0.2.2-rc.1</code> compatibility, and native <code>ctx.llm</code> adapter.</p>
+<p><b>0.6.32</b> strengthens security and architectural modularity: unifies base URL validation via <code>isSecureRemoteBaseUrl</code> supporting IPv6 and loopback smoke tests (#302), blocks symlink traversal when discovering keys in <code>~/.cline</code> (#303), and decomposes disk cache into <code>lib/models-cache.js</code> (#304). Maintains full security boundary, default-disabled screen badges (#297), DSH <code>0.2.2-rc.1</code> compatibility, and native <code>ctx.llm</code> adapter.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
