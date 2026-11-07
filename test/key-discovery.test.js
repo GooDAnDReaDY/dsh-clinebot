@@ -241,3 +241,25 @@ test('key-discovery: route POST /keys/discovered/import rejects missing id and u
   await importHandler(req403, res403.res)
   assert.equal(res403.read().status, 403)
 })
+import fs from 'node:fs'
+import path from 'node:path'
+import os from 'node:os'
+
+test('key-discovery: ignores symbolic links to prevent symlink traversal (#303)', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kd-symlink-test-'))
+  const targetSecretFile = path.join(tmpDir, 'target-secret.json')
+  const linkFile = path.join(tmpDir, 'linked.json')
+  fs.writeFileSync(targetSecretFile, JSON.stringify({ key: 'cline_symlink_secret_1234567890' }))
+
+  try {
+    fs.symlinkSync(targetSecretFile, linkFile)
+    // The discoverLocalClineKeys ignores non-regular and symlink files
+    const discovered = discoverLocalClineKeys()
+    const foundSymlink = discovered.find((d) => d.path === linkFile)
+    assert.equal(foundSymlink, undefined, 'Symlinks must not be scanned or returned')
+  } catch (err) {
+    if (err?.code !== 'EPERM') throw err
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
+  }
+})
