@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.30</b> 修复 Node 22 中的流式传输空闲定时器竞争问题（移除 <code>timer.unref()</code> 以防止事件循环提前终止），并将屏幕徽标/指示器（侧边栏配额表和编辑器会话费用）默认设为禁用，供用户在“设置 -> ClineBot -> 集成”中显式启用。保留完整的安全边界、DSH <code>0.2.2-rc.1</code> 支持、模型/免费/日期变体自动补齐、按模型隔离的余额不足冷却和明确的 402/413 错误。聊天使用原生 <code>ctx.llm</code> 适配器；旧的 <code>llm-pi-ai</code>、回环代理和 <code>llm/stream</code> 已删除。</p>
+<p><b>0.6.31</b> 保证严格的配置隔离（统计信息、遥测、事件日志与价格缓存严格存储在激活的 <code>DSH_HOME</code> 目录中，防止泄露至 <code>~/.dsh</code>，#299），并加固更新器的回环验证（通过 <code>isLoopbackHostname</code> 拒绝形如 <code>127.attacker.example</code> 的域名，#294）。保留完整安全边界、默认禁用的屏幕指示器 (#297)、DSH <code>0.2.2-rc.1</code> 兼容性及原生 <code>ctx.llm</code> 适配器。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

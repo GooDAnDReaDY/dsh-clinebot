@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.30</b> fixes a stream idle timer race in Node 22 (removing <code>timer.unref()</code> to prevent premature event loop termination) and defaults on-screen UI badges (sidebar quota meter and composer session cost) to disabled so users can enable them explicitly in Settings -> ClineBot -> Integrations. It keeps the complete security boundary, DSH <code>0.2.2-rc.1</code> support, automatic model/free/dated catalog backfill, model-scoped credit cooldowns and 402/413 errors. Chat runs on the native <code>ctx.llm</code> adapter; the legacy <code>llm-pi-ai</code>, loopback proxy and <code>llm/stream</code> path are removed.</p>
+<p><b>0.6.31</b> ensures strict profile data isolation (telemetry, stats, events, and price cache resolve strictly inside active <code>DSH_HOME</code> without leaking into <code>~/.dsh</code>, #299) and hardens updater loopback verification (origin hostname check with <code>isLoopbackHostname</code> rejects external domains like <code>127.attacker.example</code>, #294). Maintains full security boundary, default-disabled screen badges (#297), DSH <code>0.2.2-rc.1</code> compatibility, and native <code>ctx.llm</code> adapter.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

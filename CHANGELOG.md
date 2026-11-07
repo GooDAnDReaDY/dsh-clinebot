@@ -5,6 +5,12 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.31] - 2026-11-07
+
+### Security & Bug Fixes
+- **Profile Data Isolation (`DSH_HOME`)**: Stats, event logs, price cache, and models cache resolve strictly within the active `DSH_HOME` directory, preventing data leakage into `$HOME/.dsh` when isolated profiles are configured (#299).
+- **Updater Hostname Hardening**: Origin hostname verification in `isTrustedUpdateRequest` now strictly uses `isLoopbackHostname`, rejecting non-loopback domains starting with `127.` such as `127.attacker.example` (#294).
+
 ## [0.6.30] - 2026-11-06
 
 ### Fixed
