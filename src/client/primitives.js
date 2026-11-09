@@ -16,6 +16,9 @@ const Switch = (primitives && primitives.Switch) || null
 /** Native dialog window; the plugin draws a plainer one when it is absent. */
 const Modal = (primitives && primitives.Modal) || null
 
+/** Native chevron icon when shell provides it; fallback SVG otherwise. */
+const IconChevronDownOutline14 = (primitives && (primitives.IconChevronDownOutline14 || primitives.IconChevronDown14 || primitives.ChevronDown14)) || null
+
 /**
  * Boolean preference control: the native Switch when the shell provides it, the
  * plugin's own checkbox otherwise. Both take the same `checked`/`disabled`/`onChange`.
