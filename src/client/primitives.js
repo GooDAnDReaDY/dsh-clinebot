@@ -41,3 +41,22 @@ function BooleanControl(props) {
     onChange: (e) => { if (typeof onChange === 'function') onChange(e.target.checked) },
   })
 }
+
+function fmtTokens(value) {
+  const n = Number(value) || 0
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return String(n)
+}
+
+function fmtCost(value) {
+  const n = Number(value) || 0
+  if (n === 0) return '$0'
+  if (n < 0.0001) return '< $0.0001'
+  return `$${n.toFixed(4)}`
+}
+
+function fmtMs(value) {
+  const n = Number(value) || 0
+  return n > 0 ? `${Math.round(n)} ms` : '—'
+}

@@ -358,6 +358,11 @@ function ensureCss() {
 .cb-banner-warning{background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 10%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 50%,transparent);color:var(--dsw-alias-state-warn-primary)}
 .cb-banner-exhausted{background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 10%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-state-error-primary) 50%,transparent);color:var(--dsw-alias-state-error-primary)}
 .cb-account-route-row,.cb-model-row,.cb-preview,.cb-account-add{background:var(--dsw-alias-bg-layer-1)}
+@media (prefers-reduced-motion: reduce) {
+  .cb-progress-bar-fill, .cb-bar-fill, .cb-footFill, .cb-meter-fill, .cb-settings-chevron {
+    transition: none !important;
+  }
+}
 
 `
       document.head.appendChild(style)
