@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.32</b> strengthens security and architectural modularity: unifies base URL validation via <code>isSecureRemoteBaseUrl</code> supporting IPv6 and loopback smoke tests (#302), blocks symlink traversal when discovering keys in <code>~/.cline</code> (#303), and decomposes disk cache into <code>lib/models-cache.js</code> (#304). Maintains full security boundary, default-disabled screen badges (#297), DSH <code>0.2.2-rc.1</code> compatibility, and native <code>ctx.llm</code> adapter.</p>
+<p><b>0.6.33</b> brings full security hardening, modular decomposition, and accessibility compliance: unifies <code>baseUrl</code> validation via <code>isSecureRemoteBaseUrl</code> across key verification and smokeChat (#307), enforces <code>DSH_HOME</code> isolation in updater (#308), decomposes <code>adapter.js</code>, <code>models-section.js</code>, and <code>dashboard-dialog.js</code> (#309, #310), ensures session router cleanup upon unload (#311), connects <code>defaultModelsCachePath</code> (#312), and adds <code>prefers-reduced-motion</code> accessibility support (#313). Maintains full security boundary, default-disabled screen badges (#297), DSH <code>0.2.2-rc.1</code> compatibility, and native <code>ctx.llm</code> adapter.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

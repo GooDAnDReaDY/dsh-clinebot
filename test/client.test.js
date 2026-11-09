@@ -126,6 +126,7 @@ test('the stylesheet carries the DSH design tokens', () => {
   }
   // The host's footer *container* is off limits; the action list is the one
   // exception and it is scoped (see the stacking test below).
+  assert.ok(css.includes("prefers-reduced-motion"), "stylesheet should support prefers-reduced-motion");
   assert.ok(!/class\*="_footArea"/.test(css), 'must not reach into the host sidebar footer container')
 })
 

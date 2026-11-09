@@ -430,3 +430,55 @@ test('PUT /config: validates baseUrl via isSecureRemoteBaseUrl (#302)', async ()
   assert.equal((await putBase('http://127.attacker.example:3000')).status, 400)
   assert.equal((await putBase('ftp://localhost:3000')).status, 400)
 })
+
+test('smokeChat permits IPv6 loopback baseUrl (#307)', async () => {
+  // Mock fetchImpl to confirm it passes baseUrl gate
+  let calledUrl = ''
+  const mockFetch = async (url) => {
+    calledUrl = String(url)
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({
+        choices: [{ message: { content: 'pong' } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+      })
+    }
+  }
+
+  const result = await smokeChat('http://[::1]:3000/api/v1', 'test-key', { fetchImpl: mockFetch })
+  assert.equal(result.ok, true)
+  assert.ok(calledUrl.startsWith('http://[::1]:3000'))
+})
+
+test('registerAuthRoutes key verify permits IPv6 loopback baseUrl (#307)', async () => {
+  const handlers = []
+  const ctx = {
+    effect: (fn) => fn(),
+    webServer: { register: (r) => handlers.push(r) },
+  }
+  const { registerAuthRoutes } = await import('../lib/routes/auth.js')
+  registerAuthRoutes(ctx, {
+    live: () => ({ enabled: true, baseUrl: 'http://[::1]:3000/api/v1' }),
+    getSettingsApi: () => ({}),
+    syncProviderState: async () => {},
+  })
+
+  const handler = handlers.find((r) => r.path === '/dsh-clinebot/key/verify').handler
+
+  const postKey = async (body, remoteAddr = '127.0.0.1') => {
+    const req = Readable.from([Buffer.from(JSON.stringify(body))])
+    req.method = 'POST'
+    req.headers = { host: '127.0.0.1:3000', origin: 'http://127.0.0.1:3000' }
+    req.socket = { remoteAddress: remoteAddr }
+    const out = respond()
+    await handler(req, out.res)
+    return out.read()
+  }
+
+  // Key empty -> 400
+  const emptyRes = await postKey({ key: '' })
+  assert.equal(emptyRes.status, 400)
+  assert.match(emptyRes.body.error, /Key is empty/)
+})
