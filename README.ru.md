@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.33</b> обеспечивает комплексное усиление безопасности, модульную декомпозицию и доступность: унифицирует валидацию <code>baseUrl</code> через <code>isSecureRemoteBaseUrl</code> в проверке ключа и smokeChat (#307), гарантирует изоляцию <code>DSH_HOME</code> в updater (#308), декомпозирует <code>adapter.js</code>, <code>models-section.js</code> и <code>dashboard-dialog.js</code> (#309, #310), сбрасывает сессионный роутер при выгрузке (#311), подключает дефолтный <code>defaultModelsCachePath</code> (#312) и добавляет поддержку <code>prefers-reduced-motion</code> (#313). Сохраняются полная security-граница, экранные значки, отключенные по умолчанию (#297), поддержка DSH <code>0.2.2-rc.1</code> и нативный адаптер <code>ctx.llm</code>.</p>
+<p><b>0.6.34</b> обеспечивает полную совместимость активации с DSH 0.2.2-rc.1 и cordis 4.1.0, устраняя ошибку чтения свойств строгого прокси (#317, GitHub #20). Исправляет обработку оборванных ответов модели (#318), учитывает HTTP-ошибки и отмены в статистике (#319), закрепляет приоритет маршрутизации по модели над закреплённым аккаунтом (#320), согласует ядровый значок chevron с дизайн-контрактом (#321) и выводит диагностику роутера в /status (#322). Сохраняются полная security-граница, экранные значки, отключенные по умолчанию (#297), и нативный адаптер <code>ctx.llm</code>.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

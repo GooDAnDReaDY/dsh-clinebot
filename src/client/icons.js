@@ -49,6 +49,12 @@ function CbIcon({ name, size = 16, className }) {
       )
       break
     case 'chevron':
+      if (IconChevronDownOutline14) {
+        return React.createElement(IconChevronDownOutline14, {
+          className: className || 'cb-icon',
+          style: { width: size, height: size },
+        })
+      }
       children.push(React.createElement('path', { key: 'p', d: 'm6 4 4 4-4 4' }))
       break
     case 'kebab':

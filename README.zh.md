@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.33</b> 实现了全面的安全加固、模块化解耦与无障碍支持：通过 <code>isSecureRemoteBaseUrl</code> 统一密钥验证与 smokeChat 的 <code>baseUrl</code> 校验 (#307)，在更新器中严格遵循 <code>DSH_HOME</code> 隔离 (#308)，解耦 <code>adapter.js</code>、<code>models-section.js</code> 与 <code>dashboard-dialog.js</code> (#309, #310)，在插件卸载时重置会话路由 (#311)，接入默认 <code>defaultModelsCachePath</code> (#312)，并增加 <code>prefers-reduced-motion</code> 减弱动态支持 (#313)。保留完整安全边界、默认禁用的屏幕指示器 (#297)、DSH <code>0.2.2-rc.1</code> 兼容性及原生 <code>ctx.llm</code> 适配器。</p>
+<p><b>0.6.34</b> 实现了与 DSH 0.2.2-rc.1 及内置 cordis 4.1.0 的全面激活兼容，修复严格代理下的属性读取异常（#317，GitHub #20）。修复截断流处理（#318），在遥测中记录 HTTP 错误与取消请求（#319），明确按模型路由优先于固定账户（#320），对齐设计规范中的 Chevron 图标基元（#321），并在 /status 中公开路由诊断信息（#322）。保留完整安全边界、默认禁用的屏幕指示器（#297）及原生 <code>ctx.llm</code> 适配器。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
