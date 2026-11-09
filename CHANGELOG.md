@@ -5,6 +5,22 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.33] - 2026-11-09
+
+### Security & Hardening
+- **Unified Base URL Verification**: Aligned `baseUrl` checks in `lib/routes/auth.js` (`key/verify`) and `lib/cline-client.js` (`smokeChat`) with canonical `isSecureRemoteBaseUrl`, allowing IPv6 loopback (`http://[::1]`) while strictly rejecting remote non-HTTPS endpoints (#307).
+- **Updater Profile Isolation (`DSH_HOME`)**: Updated `detectRuntime()` in `lib/updater.js` to resolve `profileDir` relative to `dshHome()`, preserving complete directory and lock isolation across DSH profiles (#308).
+
+### Architecture & Decomposition
+- **Adapter Decomposition**: Extracted streaming and catalog helper functions into `lib/adapter-helpers.js`, reducing `lib/adapter.js` to 522 lines and securing comfortable headroom below the 600-line architecture limit (#309).
+- **Client Components Decomposition**: Extracted `ModelRow` and `AnalyticsPanelView` into dedicated subcomponents, reducing `models-section.js` (264 lines) and `dashboard-dialog.js` (376 lines) well under the 500-line client limit (#310).
+- **Session Router Lifecycle Cleanup**: Added `resetSessionRouter()` call to the plugin unload effect in `lib/index.js`, preventing stale session bindings across plugin re-applies (#311).
+- **Default Models Cache Fallback**: Connected `defaultModelsCachePath()` as the standard fallback when `modelsCachePath` is empty or invalid, ensuring models snapshot persistence inside `$DSH_HOME` (#312).
+
+### UI & Accessibility
+- **Reduced Motion Support**: Added `@media (prefers-reduced-motion: reduce)` to disable progress bar and chevron transitions for users with motion sensitivity (#313).
+- **Design Contract Refresh**: Updated `docs/design/DESIGN.md` to reflect native `ClineBotAdapter extends LlmAdapter` on `ctx.llm` and remove obsolete legacy notes (#314).
+
 ## [0.6.32] - 2026-11-07
 
 ### Security & Architecture
