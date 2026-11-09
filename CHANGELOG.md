@@ -5,6 +5,20 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.34] - 2026-11-09
+
+### Fixed
+- **Cordis 4.1.0 activation compatibility**: Resolved plugin activation failure on DSH 0.2.2-rc.1 with bundled cordis 4.1.0 (`cannot get property "webServer" without inject`), preventing in-app market installation rollbacks (#317, GitHub #20).
+- **Safe service proxy**: Wrapped `webCtx` with a safe proxy intercepting `webServer` property reads on strict cordis fibers and ensured idempotent route registration.
+- **Defensive updater & account-pool service reads**: Used `service(ctx, webServer)` in updater registration and `service(ctx, settings)` during account pool rotation to eliminate uncaught strict-proxy getter exceptions.
+- **Widened peer dependencies**: Updated peer dependency on `@deepseek-ai/cordis` to `~4.0.5 || ~4.1.0`.
+- **Truncated model response handling**: Checked `length` and `max_tokens` before tool-call checks in `finishChunk` to ensure `max-tokens` is reported even with partial tool calls; yield `STREAM_TRUNCATED` on premature stream disconnects without `finish_reason` or `[DONE]` (#318).
+- **HTTP error & cancellation telemetry**: Captured provider HTTP errors (429, 500, 401) and connection errors in attempt statistics; marked user cancellations after first token with `aborted: true` instead of successful completion (#319).
+- **Per-model routing priority**: Prioritized model-specific account routes over general pinned accounts (`model_route` > `pinned_active`) (#320).
+- **Client icon primitives**: Wired `IconChevronDownOutline14` in `src/client/primitives.js` and `icons.js` matching `DESIGN.md` design contract (#321).
+- **Export cleanup & router diagnostics**: Connected `getSessionRouterStatus` to `GET /dsh-clinebot/status` for cooldown visibility and included `retentionDays` in stats summary (#322).
+- **Repository hygiene**: Verified merge status and removed 7 fully-merged legacy branches and obsolete audit worktrees (#323).
+
 ## [0.6.33] - 2026-11-09
 
 ### Security & Hardening

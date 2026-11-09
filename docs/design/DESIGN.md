@@ -114,6 +114,9 @@ graph LR
   * Probes official kernel primitives via safe dynamic import: `try { require('@deepseek-ai/dsh-client-ui-primitives') } catch (_) {}` for `IconChevronDownOutline14`.
   * When running on streamlined web profiles where primitives are absent, seamlessly falls back to pixel-perfect SVG `FallbackChevron` (14x14, stroke 1.5, `currentColor`).
   * Card expansion toggle employs canonical class-based rotation: `.cb-chevron` with `transition: transform .16s ease` and `.cb-chevron-open` (`transform: rotate(180deg)`), preserving DSH native micro-interactions.
+* **Per-Model Account Routing Priority (Resolves #320)**:
+  * When both a manual pinned account (`activeAccount`) and model-specific account rules (`modelRoutes`) are active, the specific model route takes absolute precedence over the general pinned account.
+  * Requests for models without a designated route fall back to the pinned account or standard failover strategy.
 * **Architectural Boundaries & Module Decomposition (Resolves #29)**:
   * **Browser Bundle (`lib/client.js`)**: Under DSH web profile architecture, client plugins are served directly as single-file self-registering bundles (`window.__ModuleLoader__.load({ id, factory })`) without runtime bundling servers. Splitting client code into unbundled ES modules would break DSH kernel resolution, while introducing runtime bundlers adds unnecessary complexity contrary to `ponytail` minimal engineering standards. Therefore, `lib/client.js` remains a unified runtime artifact, internally organized into distinct domain sections (CSS Theme Tokens, UI Primitives & Chevron, State & Store, Section Components, Entrypoint).
   * **Host Backend Separation (`lib/`)**: Backend responsibilities are decoupled across clean domain boundaries:
