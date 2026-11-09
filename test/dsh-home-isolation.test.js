@@ -99,3 +99,26 @@ test('dsh-home-isolation: profile isolation with custom DSH_HOME (#299)', () => 
     fs.rmSync(synthDshHome, { recursive: true, force: true })
   }
 })
+
+test('dsh-home-isolation: updater respects DSH_HOME (#308)', async () => {
+  const synthDshHome = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-isolation-upd-'))
+  const origDshHome = process.env.DSH_HOME
+  const origProfileDir = process.env.DSH_PROFILE_DIR
+
+  delete process.env.DSH_PROFILE_DIR
+  process.env.DSH_HOME = synthDshHome
+
+  try {
+    const { detectRuntime } = await import('../lib/updater.js')
+    const runtime = detectRuntime()
+    assert.equal(runtime.profileDir, path.join(synthDshHome, 'profiles', 'web'))
+  } finally {
+    if (origDshHome === undefined) delete process.env.DSH_HOME
+    else process.env.DSH_HOME = origDshHome
+
+    if (origProfileDir === undefined) delete process.env.DSH_PROFILE_DIR
+    else process.env.DSH_PROFILE_DIR = origProfileDir
+
+    fs.rmSync(synthDshHome, { recursive: true, force: true })
+  }
+})
