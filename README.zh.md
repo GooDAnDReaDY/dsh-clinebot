@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.34</b> 实现了与 DSH 0.2.2-rc.1 及内置 cordis 4.1.0 的全面激活兼容，修复严格代理下的属性读取异常（#317，GitHub #20）。修复截断流处理（#318），在遥测中记录 HTTP 错误与取消请求（#319），明确按模型路由优先于固定账户（#320），对齐设计规范中的 Chevron 图标基元（#321），并在 /status 中公开路由诊断信息（#322）。保留完整安全边界、默认禁用的屏幕指示器（#297）及原生 <code>ctx.llm</code> 适配器。</p>
+<p><b>0.6.35</b> 改进了错误可观测性与仓库规范性：将模型缓存持久化与账户变更队列中的静默异常捕获替换为结构化日志告警，补充标准化的 AGENTS.md、index.md 与 deploy.sh，并将内部构建脚本与测试排除在 GitHub 公开镜像之外（#327、#328、#329）。完整保留与 DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 的兼容性、按模型路由优先级及原生 <code>ctx.llm</code> 适配器。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
