@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.34</b> delivers full activation compatibility with DSH 0.2.2-rc.1 and bundled cordis 4.1.0, resolving strict-proxy property access errors (#317, GitHub #20). Fixes truncated stream handling (#318), captures HTTP error and cancellation telemetry (#319), prioritizes per-model account routes over pinned accounts (#320), aligns client chevron primitives with the design contract (#321), and exposes router diagnostics in /status (#322). Maintains full security boundary, default-disabled screen badges (#297), and native <code>ctx.llm</code> adapter.</p>
+<p><b>0.6.35</b> improves operational observability and repository hygiene: replaces silent error-swallowing catch handlers in cache persistence and account queues with structured logger warnings, adds standardized deployment and agent entrypoints, and keeps internal scripts and tests out of the public mirror tree. Builds on full DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 compatibility, truncated stream handling, per-model routing priority, and native <code>ctx.llm</code> adapter.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

@@ -1,1 +1,4 @@
 * text=auto eol=lf
+AGENTS.md export-ignore
+index.md export-ignore
+deploy.sh export-ignore

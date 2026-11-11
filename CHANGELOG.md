@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.35] - 2026-11-11
+
+### Fixed
+- **Repository & deployment documentation**: Added `AGENTS.md`, `index.md`, and `deploy.sh` to git tracking, removed them from `.gitignore`, and marked them `export-ignore` in `.gitattributes` (#327).
+- **Clean GitHub mirror tree**: Excluded internal `scripts/` and `test/` directories from `scripts/publish-github.sh` allowlist and added them to `FORBIDDEN` so only product files reach the public GitHub repository (#328).
+- **Error observability**: Replaced silent `.catch(() => {})` handlers across `lib/models-cache.js`, `lib/routes/accounts.js`, `lib/provider-sync.js`, `lib/index.js`, and `lib/transport/cline-transport.js` with structured logger warnings and explicit intent annotations (#329).
+
 ## [0.6.34] - 2026-11-09
 
 ### Fixed
