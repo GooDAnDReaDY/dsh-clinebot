@@ -46,8 +46,6 @@ EXTRA_ALLOW=(
   "package.json"
   "cordis.patch.yml"
   "src"
-  "scripts"
-  "test"
 )
 
 # Never publish these, even if they sneak into the allowlist.
@@ -55,6 +53,8 @@ FORBIDDEN=(
   "AGENTS.md"
   "index.md"
   "deploy.sh"
+  "scripts"
+  "test"
   ".gitea"
   ".worktrees"
   ".planning"

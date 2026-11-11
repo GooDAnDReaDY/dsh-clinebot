@@ -17,9 +17,6 @@ coverage/
 dsh-health-out/
 
 # Internal service and agent workflow files (dhs-plugin-release-workflow denylist)
-AGENTS.md
-index.md
-deploy.sh
 release-notes.md
 docs/plans/
 .planning/
