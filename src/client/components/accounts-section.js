@@ -39,7 +39,7 @@ function AccountsSection({
       .then((data) => {
         if (active && data?.ok && Array.isArray(data.discovered)) setDiscoveredKeys(data.discovered)
       })
-      .catch(() => {})
+      .catch(() => null)
     return () => { active = false }
   }, [])
 
@@ -54,7 +54,7 @@ function AccountsSection({
         for (const entry of data.accounts) next[entry.apiKeyEnv] = entry
         setUsageByAccount(next)
       })
-      .catch(() => {})
+      .catch(() => null)
     return () => { active = false }
   }, [accountSignature, status?.activeAccount, busy])
 
@@ -70,7 +70,7 @@ function AccountsSection({
       .then((data) => {
         if (data?.ok && Array.isArray(data.events)) setHistory(data.events)
       })
-      .catch(() => {})
+      .catch(() => null)
       .finally(() => setHistoryLoading(false))
   }
 
