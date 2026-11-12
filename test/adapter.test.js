@@ -417,3 +417,95 @@ test('adapter: pre-first-token 429 fails over to the next account', async () => 
     resetSessionRouter()
   }
 })
+
+test('adapter: pre-first-token 403 ENTITLEMENT_ERROR fails over to the next account', async () => {
+  resetSessionRouter()
+  let call = 0
+  const server = await startServer((_req, res) => {
+    call += 1
+    if (call === 1) {
+      res.writeHead(403, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        error: {
+          code: 'ENTITLEMENT_ERROR',
+          message: 'Error 403: the user is not subscribed to required model plan',
+        },
+      }))
+      return
+    }
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' })
+    res.end(sse([
+      { choices: [{ delta: { content: 'ok from account 2' } }] },
+      { choices: [{ delta: {}, finish_reason: 'stop' }] },
+      '[DONE]',
+    ]))
+  })
+
+  try {
+    const adapter = new ClineBotAdapter({
+      ctx: credentialsCtx({
+        CLINEBOT_API_KEY: 'key-a',
+        CLINEBOT_API_KEY_2: 'key-b',
+      }),
+      live: () => configFor(server.baseUrl, {
+        accounts: [{ label: 'Two', apiKeyEnv: 'CLINEBOT_API_KEY_2' }],
+      }),
+    })
+    const chunks = await collect(adapter.stream({
+      provider: 'clinebot',
+      model: 'cline-pass/deepseek-v4.1-flash',
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+      sessionId: 'session-entitlement-failover',
+    }))
+
+    const text = chunks.filter((chunk) => chunk.type === 'text-delta').map((chunk) => chunk.text).join('')
+    assert.equal(text, 'ok from account 2')
+    assert.equal(server.requests.length, 2)
+    assert.equal(server.requests[0].headers.authorization, 'Bearer key-a')
+    assert.equal(server.requests[1].headers.authorization, 'Bearer key-b')
+    assert.deepEqual(chunks.at(-1), { type: 'finish', reason: { kind: 'stop' } })
+  } finally {
+    await server.close()
+    resetSessionRouter()
+  }
+})
+
+test('adapter: pre-first-token 403 ENTITLEMENT_ERROR throws MODEL_UNSUPPORTED LlmError with plan detail', async () => {
+  resetSessionRouter()
+  const server = await startServer((_req, res) => {
+    res.writeHead(403, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({
+      error: {
+        code: 'ENTITLEMENT_ERROR',
+        message: 'Error 403: the user is not subscribed to required model plan',
+      },
+    }))
+  })
+
+  try {
+    const adapter = new ClineBotAdapter({
+      ctx: credentialsCtx({ CLINEBOT_API_KEY: 'key-single' }),
+      live: () => configFor(server.baseUrl, {}),
+    })
+
+    await assert.rejects(async () => {
+      for await (const _chunk of adapter.stream({
+        provider: 'clinebot',
+        model: 'cline-pass/deepseek-v4.1-flash',
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+        sessionId: 'session-single-account-entitlement',
+      })) {
+        // unreachable
+      }
+    }, (error) => {
+      assert.equal(error.code, 'MODEL_UNSUPPORTED')
+      assert.equal(error.failure?.status, 403)
+      assert.match(error.message, /user is not subscribed to required model plan/i)
+      assert.doesNotMatch(error.message, /invalid api key/i)
+      return true
+    })
+  } finally {
+    await server.close()
+    resetSessionRouter()
+  }
+})

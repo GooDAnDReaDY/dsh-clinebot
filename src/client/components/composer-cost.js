@@ -69,7 +69,7 @@ function ComposerCostEntry(props) {
       .then((data) => {
         if (active && data?.ok && Array.isArray(data.models)) setPrices(data.models)
       })
-      .catch(() => {})
+      .catch(() => null)
     return () => { active = false }
   }, [priceOverridesKey])
 
@@ -87,8 +87,8 @@ function ComposerCostEntry(props) {
         )
         const data = await res.json().catch(() => null)
         if (active && data?.ok) setSessionStats(data.session || null)
-      } catch {
-        /* quiet */
+      } catch (_err) {
+        return null
       }
     }
     loadSession()
@@ -116,8 +116,8 @@ function ComposerCostEntry(props) {
         const data = await res.json().catch(() => null)
         const totals = data?.stats?.totals || data?.stats?.summary || null
         if (active && totals) setStats(totals)
-      } catch {
-        /* quiet */
+      } catch (_err) {
+        return null
       }
     }
     loadStats()

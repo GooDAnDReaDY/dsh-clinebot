@@ -51,8 +51,8 @@ function SidebarQuota({ ctx, wide, t: propT, open: openPanel }) {
       if (!res.ok) return
       const json = await res.json().catch(() => null)
       if (json && json.ok) setData(json)
-    } catch {
-      // quiet on network fail
+    } catch (_err) {
+      return null
     }
   }, [])
 
@@ -103,8 +103,9 @@ function SidebarQuota({ ctx, wide, t: propT, open: openPanel }) {
     if (typeof openPanel === 'function') {
       try {
         if (openPanel() !== false) return
-      } catch {
-        /* fall through to the local window */
+      } catch (_err) {
+        setOpen(true)
+        return
       }
     }
     setOpen(true)
