@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.36] - 2026-11-12
+
+### Fixed
+- **Upstream error classification & model failover**: Accurately distinguish upstream HTTP 403 `ENTITLEMENT_ERROR` and model plan subscription messages from invalid credentials, mapping them to `MODEL_UNSUPPORTED` and allowing failover across accounts in the pool instead of misleading the user with "API key is invalid" (#332).
+- **Diagnostic credential redaction**: Automatically sanitize API keys and Bearer tokens in error diagnostics and telemetry to prevent sensitive credential leakage.
+- **Client & bundle optimization**: Replaced empty catch blocks across client components and server code, keeping the client bundle strictly within size limits (221 KiB).
+
 ## [0.6.35] - 2026-11-11
 
 ### Fixed
