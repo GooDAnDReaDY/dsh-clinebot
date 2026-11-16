@@ -153,26 +153,6 @@ function apply(ctx) {
     )
   )
 
-  // Models-page provider card. The seat is keyed by the provider's settings
-  // namespace, which the native adapter registration declares as `dsh-clinebot`
-  // (`settingsNs`). The component returns null for every other provider row, so
-  // it cannot leak onto a sibling's card.
-  registerSlotWhenReady('settings.models.provider-card', () =>
-    ctx.slots.register(
-      {
-        name: 'settings.models.provider-card',
-        key: NS,
-        locale: NS,
-        inject: () => ({ ctx }),
-      },
-      (props) => React.createElement(
-        ErrorBoundary,
-        { t: props && props.t },
-        React.createElement(ProviderCard, { ...props, ctx: (props && props.ctx) || ctx })
-      )
-    )
-  )
-
   // Composer Session Cost Dock (conversation.composer.dock slot)
   registerSlotWhenReady('conversation.composer.dock', () =>
     ctx.slots.register(

@@ -31,6 +31,7 @@ function AccountsSection({
   const [historyOpen, setHistoryOpen] = React.useState(false)
   const [history, setHistory] = React.useState([])
   const [historyLoading, setHistoryLoading] = React.useState(false)
+  const [usageError, setUsageError] = React.useState('')
 
   React.useEffect(() => {
     let active = true
@@ -47,14 +48,16 @@ function AccountsSection({
   React.useEffect(() => {
     let active = true
     fetchWithTimeout(`${ROUTE_PREFIX}/accounts/usage`, { cache: 'no-store' })
-      .then((response) => response.json())
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))))
       .then((data) => {
-        if (!active || !data?.ok || !Array.isArray(data.accounts)) return
+        if (!active) return
+        if (!data?.ok || !Array.isArray(data.accounts)) throw new Error(data?.error || 'usage unavailable')
         const next = {}
         for (const entry of data.accounts) next[entry.apiKeyEnv] = entry
         setUsageByAccount(next)
+        setUsageError('')
       })
-      .catch(() => null)
+      .catch((err) => { if (active) setUsageError(String(err?.message || err)) })
     return () => { active = false }
   }, [accountSignature, status?.activeAccount, busy])
 
@@ -341,7 +344,9 @@ function AccountsSection({
                   'div',
                   { className: 'cb-account-quota' },
                   percent === null
-                    ? null
+                    ? (usageError
+                        ? React.createElement('span', { className: 'cb-badge cb-badge-warn', title: usageError }, t('common.error'))
+                        : null)
                     : React.createElement(
                         React.Fragment,
                         null,

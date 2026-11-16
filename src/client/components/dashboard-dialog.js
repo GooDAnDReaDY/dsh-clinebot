@@ -41,6 +41,8 @@ function DashboardDialog(props) {
       const uJson = await uRes.json().catch(() => ({}))
       const sJson = await sRes.json().catch(() => ({}))
       const aJson = await aRes.json().catch(() => ({}))
+      const failed = [uJson, sJson, aJson].find((entry) => entry && entry.ok === false)
+      if (failed) throw new Error(failed.error || 'usage unavailable')
       if (uJson?.ok) setData(uJson)
       if (sJson?.ok) setStatus(sJson)
       if (aJson?.ok) {

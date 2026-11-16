@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.38] - 2026-11-16
+
+### Changed
+- **Client bundle diet (#349)**: removed the dead `settings.models.provider-card` seat and its module, 14 unreachable locale keys in both dictionaries, unused CSS families (`.cb-provider-*`, `.cb-composer-cost*`, the legacy `.cb-bar-*` aliases, `.cb-btn-disabled`, `.cb-state-ok`) and seven redundant locals in the model table. The seat is now listed as retired by the client slot test. `lib/client.js` dropped from 221 334 to 218 140 bytes across this release.
+
+### Fixed
+- **Failed reads no longer look like empty data (#345)**: the sidebar quota meter, the quota panel, the account quota column and the settings page now distinguish loading, empty and error. A failing `usage`, `status` or `accounts/usage` call shows the server message instead of silently rendering "no data", `ok: false` replies are treated as failures, and the settings page reports a real load error instead of reusing the loading string.
+
 ## [0.6.37] - 2026-11-16
 
 ### Security

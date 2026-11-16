@@ -19,6 +19,7 @@ function SettingsPage(props) {
 
   React.useEffect(() => { ensureCss() }, [])
 
+  const [statsError, setStatsError] = React.useState('')
   const pendingRef = React.useRef({})
   const load = React.useCallback(async () => {
     setErr('')
@@ -28,6 +29,7 @@ function SettingsPage(props) {
     ])
     const data = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+    setStatsError(statsRes && statsRes.ok ? '' : (statsRes ? `HTTP ${statsRes.status}` : 'network error'))
     const rawStats = statsRes && statsRes.ok ? await statsRes.json().catch(() => null) : null
     const statsObj = (rawStats && typeof rawStats === 'object' && rawStats.stats) ? rawStats.stats : (rawStats || data.statsSummary || {})
     setStatus({ ...data, statsSummary: statsObj })
@@ -275,7 +277,7 @@ function SettingsPage(props) {
       return React.createElement(
         'div',
         { className: 'cb-page' },
-        React.createElement('div', { className: 'cb-alert cb-alert-err' }, `${t('settings.loading')}: ${err}`),
+        React.createElement('div', { className: 'cb-alert cb-alert-err' }, t('settings.load_error', { error: err })),
         React.createElement('button', { type: 'button', className: 'cb-btn', style: { marginTop: '12px' }, onClick: () => { setErr(''); load().catch((e) => setErr(String(e.message || e))) } }, t('settings.retry'))
       )
     }
@@ -331,6 +333,7 @@ function SettingsPage(props) {
 
     // Notifications
     err ? React.createElement('div', { className: 'cb-alert-bad' }, err) : null,
+    statsError ? React.createElement('div', { className: 'cb-alert-bad' }, t('stats.load_error', { error: statsError })) : null,
     msg ? React.createElement('div', { className: 'cb-alert-ok' }, msg) : null,
 
     // Card 1: API Key and Credentials

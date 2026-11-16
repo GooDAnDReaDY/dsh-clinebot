@@ -216,13 +216,6 @@ function ModelsSection({
           const showGroup = groupKey !== lastGroup
           lastGroup = groupKey
           const isEnabled = !disabledSet.has(m.id)
-          const defaultCtx = m.defaultContextLength || m.clineContextLength || 200000
-          const origCtx = m.originalContextLength || 200000
-          const defaultMax = m.defaultMaxTokens || 8192
-          const origMax = m.originalMaxTokens || defaultMax
-          const origProv = m.originalProvider || 'Original'
-          const isOverridden = Boolean(m.isContextOverridden)
-          const isOriginal = isOverridden && (m.contextLength === origCtx && (m.maxTokens || defaultMax) === origMax)
           const row = React.createElement(ModelRow, {
             m,
             isEnabled,

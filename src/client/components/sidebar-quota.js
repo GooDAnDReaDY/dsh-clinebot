@@ -40,6 +40,8 @@ function SidebarQuota({ ctx, wide, t: propT, open: openPanel }) {
   const t = propT || makeT(en, en)
   const [data, setData] = React.useState(null)
   const [open, setOpen] = React.useState(false)
+  const [loading, setLoading] = React.useState(true)
+  const [loadError, setLoadError] = React.useState('')
 
   // Check the configForms snapshot for the showSidebarQuota toggle
   const configSnapshot = useConfigFormsSnapshot(ctx)
@@ -48,11 +50,15 @@ function SidebarQuota({ ctx, wide, t: propT, open: openPanel }) {
   const loadQuota = React.useCallback(async () => {
     try {
       const res = await fetchWithTimeout(`${ROUTE_PREFIX}/usage`, { cache: 'no-store' })
-      if (!res.ok) return
       const json = await res.json().catch(() => null)
-      if (json && json.ok) setData(json)
-    } catch (_err) {
-      return null
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!json || !json.ok) throw new Error((json && json.error) || 'usage unavailable')
+      setData(json)
+      setLoadError('')
+    } catch (err) {
+      setLoadError(String((err && err.message) || err))
+    } finally {
+      setLoading(false)
     }
   }, [])
 
@@ -200,7 +206,11 @@ function SidebarQuota({ ctx, wide, t: propT, open: openPanel }) {
       }),
       rows.some((window) => windowPct(window) !== null)
         ? null
-        : React.createElement('span', { className: 'cb-footMessage' }, data?.error || t('quota.no_windows'))
+        : React.createElement(
+            'span',
+            { className: 'cb-footMessage' },
+            loading ? t('common.loading') : (loadError ? t('common.load_error', { error: loadError }) : t('quota.no_windows'))
+          )
     ),
     dialog
   )
