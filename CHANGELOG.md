@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.39] - 2026-11-17
+
+### Changed
+- **Repository git hooks**: `lefthook` is now a dev dependency with a `lefthook.yml` that runs the client bundle drift check on commit and the full test suite before a push. The machine-level hook shims previously could not resolve the binary, so every check was performed by hand. No runtime code, bundle bytes or package contents change beyond `devDependencies` in the manifest.
+
 ## [0.6.38] - 2026-11-16
 
 ### Changed
