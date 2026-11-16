@@ -155,7 +155,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 
 ## ⚙️ 配置项参考 (DSH 设置与 Web UI)
 
-在现代 DeepSeek Harness (0.1.7+) 中，各项配置通过 Web UI 或 `PUT /dsh-clinebot/config` 原生管理，密钥安全存储于 DSH Credentials 凭据中心 (`~/.dsh/.credentials.yaml`)。
+在 DeepSeek Harness 0.2.x（本插件支持 `>=0.2.1-rc.2 <0.2.3-0`）中，各项配置通过 Web UI 或 `PUT /dsh-clinebot/config` 原生管理，密钥安全存储于 DSH Credentials 凭据中心 (`~/.dsh/.credentials.yaml`)。
 
 ```yaml
 dsh-clinebot:
@@ -213,20 +213,35 @@ dsh-clinebot:
 ### 管理与控制接口（上限 256 KiB）
 * `GET /dsh-clinebot/status` — 服务运行状态，包括健康探活、当前凭据名称、配额限制及会话统计。
 * `GET /dsh-clinebot/config` — 诊断接口，安全获取脱敏后的公共配置（不含敏感密钥）。
-* `PUT /dsh-clinebot/config` — 更新配置项（严格校验模式，已废弃的 `enabledModels` 被拦截）。
-* `POST /dsh-clinebot/key/verify` — 实时验证 API 密钥有效性，返回绑定邮箱及套餐名称。
+* `PUT /dsh-clinebot/config` — 更新配置项（严格校验模式，未知字段与已废弃的 `enabledModels` 返回 `400`）。自定义模型通过此处的 `customModels` 管理，没有单独的自定义模型路由。
 * `POST /dsh-clinebot/save-key` — 将 API 密钥安全写入 DSH 凭据服务。
+* `POST /dsh-clinebot/key/verify` — 实时验证 API 密钥有效性，返回绑定邮箱及套餐名称。
+* `POST /dsh-clinebot/smoke` — 发起快速探测并返回 TTFT。
+* `GET /dsh-clinebot/usage` — 当前活动账号的滚动配额窗口。
+* `GET /dsh-clinebot/accounts/usage` — 账号池中所有账号的实时配额。
+* `GET /dsh-clinebot/accounts/history` — 事件环形缓冲区中的冷却、恢复与路由决策记录。
+* `POST /dsh-clinebot/accounts` — 添加多账号备用凭据。
+* `POST` / `DELETE /dsh-clinebot/accounts/delete` — 删除账号（具备原子化凭据保护）。
+* `POST /dsh-clinebot/accounts/active` — 指定活动账号（为空时自动启用最低用量优先路由）。
+* `POST /dsh-clinebot/accounts/rename` — 重命名账号，不触碰密钥。
+* `POST /dsh-clinebot/accounts/key/clear` — 删除账号密钥但保留账号池记录。
+* `GET /dsh-clinebot/keys/discovered` — 本地发现的 Cline 密钥，已脱敏并以不透明 id 标识。
+* `POST /dsh-clinebot/keys/discovered/import` — 按 id 在服务端导入发现的密钥，密钥不会进入浏览器。
 * `POST /dsh-clinebot/models/sync` — 手动同步官方套餐动态模型列表。
 * `POST /dsh-clinebot/models/toggle` — 批量切换模型可用性（更新 `disabledModels` 并保留 Volatile 引用）。
-* `POST /dsh-clinebot/models/custom` / `DELETE /dsh-clinebot/models/custom` — 自定义模型增删。
-* `POST /dsh-clinebot/models/context` / `DELETE /dsh-clinebot/models/context` — 上下文窗口与最大 Token 覆盖。
-* `POST /dsh-clinebot/accounts` — 添加多账号备用凭据。
-* `POST /dsh-clinebot/accounts/delete` — 删除账号（具备原子化凭据保护）。
-* `POST /dsh-clinebot/accounts/active` — 指定活动账号（为空时自动启用最低用量优先路由）。
+* `POST /dsh-clinebot/models/context` — 设置上下文窗口与最大输出 Token、恢复默认或厂商上限、批量应用。重置使用同一路由并传入 `reset: true`，不存在 `DELETE` 变体。
+* `POST /dsh-clinebot/models/visible` — 指定在 DSH 模型选择器中显示的确切模型集合（`visibleModels`）。
+* `POST /dsh-clinebot/models/probe` — 测量单个模型的 TTFT。
+* `GET /dsh-clinebot/stats` — 持久化的请求与 Token 统计。
+* `GET /dsh-clinebot/stats/session?sessionId=...` — 单个 DSH 会话的 ClineBot 专属聚合数据。
 * `POST /dsh-clinebot/stats/reset` — 重置会话与 Token 消耗统计。
-* `POST /dsh-clinebot/smoke` — 发起快速探测并返回实时延迟。
-* `GET /dsh-clinebot/update/status` — 查询插件版本更新状态。
-* `POST /dsh-clinebot/update/apply` — 应用版本更新（支持进程树完全清理与锁文件保护）。
+* `GET /dsh-clinebot/stats/export` — 导出 CSV，或使用 `format=json`（`detailed=1` 增加列）导出 JSON。
+* `GET /dsh-clinebot/analytics` — 按天、小时、模型、账号与会话聚合；支持 `errorsOnly=1` 与日期区间。
+* `GET /dsh-clinebot/prices` — 供输入框与分析使用的价格表。
+* `POST /dsh-clinebot/prices/sync` — 下载公开价格目录（白名单 https 来源，手动处理重定向）。
+* `GET`, `HEAD` / `POST /dsh-clinebot/update` — `GET`/`HEAD` 返回更新状态；`POST` 启动精确版本的后台安装，含进程组清理与配置锁。
+
+`/dsh-clinebot/register`、`/dsh-clinebot/unregister`、`/dsh-clinebot/v1/chat/completions` 与 `/dsh-clinebot/v1/models` 这些路由并不存在。对话通过原生 `ctx.llm` 适配器完成，不经过 HTTP 代理。
 
 ---
 

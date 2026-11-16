@@ -5,6 +5,18 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.37] - 2026-11-16
+
+### Security
+- **Cross-port loopback CSRF (#335)**: `isTrustedSettingsRequest` now compares the full origin authority (hostname and port, with protocol-default fallback) against the request `Host`, so a page served from another loopback port can no longer reach the write routes. Body-bearing non-GET requests must send `Content-Type: application/json` or receive `415`, which removes the browser "simple request" delivery path.
+
+### Fixed
+- **Account-scoped authentication failures (#343)**: HTTP 401 is treated as an account problem instead of a request problem. The failing account receives a five-minute `upstream_auth` cooldown and the request rotates to the next key in the pool; `AUTH` is raised only after every configured account has been tried.
+- **Large payload verification (#342)**: measured on Node 22 / undici that the Fetch 64 KiB keepalive body limit is not enforced, and added a regression test proving that a 96 KiB body reaches the upstream, so a future runtime change cannot break long-context requests silently.
+
+### Documentation
+- Design contract, TZ, `index.md`, `AGENTS.md` and the three READMEs now match the actual `0.6.36` state: the 28 registered routes, the real module list, test and bundle counts, and no references to the removed `/register`, `/unregister`, `/v1/*` or `/models/custom` endpoints.
+
 ## [0.6.36] - 2026-11-12
 
 ### Fixed

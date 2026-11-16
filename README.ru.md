@@ -153,7 +153,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 
 ## ⚙️ Конфигурация (Настройки DSH и Web UI)
 
-В современном DeepSeek Harness (0.1.7+) настройки управляются через карточку в Web UI или `PUT /dsh-clinebot/config`, а секретные ключи безопасно хранятся в DSH Credentials (`~/.dsh/.credentials.yaml`).
+В DeepSeek Harness 0.2.x (плагин поддерживает `>=0.2.1-rc.2 <0.2.3-0`) настройки управляются через карточку в Web UI или `PUT /dsh-clinebot/config`, а секретные ключи безопасно хранятся в DSH Credentials (`~/.dsh/.credentials.yaml`).
 
 ```yaml
 dsh-clinebot:
@@ -211,20 +211,35 @@ dsh-clinebot:
 ### Управляющие эндпоинты (макс. 256 КиБ)
 * `GET /dsh-clinebot/status` — Текущее состояние провайдера, активный аккаунт, квоты и статистика сессий.
 * `GET /dsh-clinebot/config` — Диагностический маршрут, возвращающий открытую конфигурацию (без секретов).
-* `PUT /dsh-clinebot/config` — Обновление параметров конфигурации (устаревший `enabledModels` блокируется).
-* `POST /dsh-clinebot/key/verify` — Проверка API-ключа на сервере `api.cline.bot` с возвратом email и тарифа.
+* `PUT /dsh-clinebot/config` — Обновление параметров конфигурации (неизвестные поля и устаревший `enabledModels` отклоняются с `400`). Пользовательские модели задаются здесь же через `customModels`; отдельного маршрута для них нет.
 * `POST /dsh-clinebot/save-key` — Сохранение ключа в сервис credentials DSH под именем `CLINEBOT_API_KEY*`.
+* `POST /dsh-clinebot/key/verify` — Проверка API-ключа на сервере `api.cline.bot` с возвратом email и тарифа.
+* `POST /dsh-clinebot/smoke` — Тестовый инференс с замером TTFT.
+* `GET /dsh-clinebot/usage` — Скользящие окна квот активного аккаунта.
+* `GET /dsh-clinebot/accounts/usage` — Живые квоты всех аккаунтов пула.
+* `GET /dsh-clinebot/accounts/history` — Кулдауны, восстановления и решения роутера из кольцевого буфера событий.
+* `POST /dsh-clinebot/accounts` — Добавление аккаунта в пул ротации.
+* `POST` / `DELETE /dsh-clinebot/accounts/delete` — Удаление аккаунта с атомарной защитой секретного ключа.
+* `POST /dsh-clinebot/accounts/active` — Назначение активного аккаунта из пула (или пусто для auto least-used).
+* `POST /dsh-clinebot/accounts/rename` — Переименование аккаунта без изменения ключа.
+* `POST /dsh-clinebot/accounts/key/clear` — Удаление ключа аккаунта с сохранением записи в пуле.
+* `GET /dsh-clinebot/keys/discovered` — Обнаруженные локальные ключи Cline: замаскированы и доступны по opaque id.
+* `POST /dsh-clinebot/keys/discovered/import` — Серверный импорт обнаруженного ключа по id; секрет не попадает в браузер.
 * `POST /dsh-clinebot/models/sync` — Синхронизация списка моделей с официальным тарифом ClinePass.
 * `POST /dsh-clinebot/models/toggle` — Включение и отключение моделей через `disabledModels` с сохранением Volatile-ссылок.
-* `POST /dsh-clinebot/models/custom` / `DELETE /dsh-clinebot/models/custom` — Управление пользовательскими моделями.
-* `POST /dsh-clinebot/models/context` / `DELETE /dsh-clinebot/models/context` — Переопределение контекстного окна моделей.
-* `POST /dsh-clinebot/accounts` — Добавление аккаунта в пул ротации.
-* `POST /dsh-clinebot/accounts/delete` — Удаление аккаунта с атомарной защитой секретного ключа.
-* `POST /dsh-clinebot/accounts/active` — Назначение активного аккаунта из пула (или пусто для auto least-used).
+* `POST /dsh-clinebot/models/context` — Контекстное окно и max output токены, сброс к дефолту или вендорским лимитам, batch-применение. Сброс — этот же маршрут с `reset: true`; варианта `DELETE` нет.
+* `POST /dsh-clinebot/models/visible` — Точный набор моделей, видимых в picker DSH (`visibleModels`).
+* `POST /dsh-clinebot/models/probe` — Замер TTFT для одной модели.
+* `GET /dsh-clinebot/stats` — Персистентная статистика запросов и токенов.
+* `GET /dsh-clinebot/stats/session?sessionId=...` — Агрегат ClineBot-only по одной сессии DSH.
 * `POST /dsh-clinebot/stats/reset` — Сброс счётчиков запросов и токенов.
-* `POST /dsh-clinebot/smoke` — Выполнение тестового пинга задержки.
-* `GET /dsh-clinebot/update/status` — Проверка наличия обновлений плагина.
-* `POST /dsh-clinebot/update/apply` — Обновление плагина с корректным завершением групп процессов и блокировками профиля.
+* `GET /dsh-clinebot/stats/export` — Экспорт в CSV или JSON (`format=json`, `detailed=1` для дополнительных колонок).
+* `GET /dsh-clinebot/analytics` — Агрегаты по дням, часам, моделям, аккаунтам и сессиям; поддерживает `errorsOnly=1` и диапазон дат.
+* `GET /dsh-clinebot/prices` — Таблица цен для композера и аналитики.
+* `POST /dsh-clinebot/prices/sync` — Загрузка публичного каталога цен (allowlisted https-источник, ручные редиректы).
+* `GET`, `HEAD` / `POST /dsh-clinebot/update` — `GET`/`HEAD` отдают статус обновления; `POST` запускает фоновую установку точной версии с очисткой группы процессов и блокировкой профиля.
+
+Маршрутов `/dsh-clinebot/register`, `/dsh-clinebot/unregister`, `/dsh-clinebot/v1/chat/completions` и `/dsh-clinebot/v1/models` не существует. Чат идёт через нативный адаптер `ctx.llm`, а не через HTTP-прокси.
 
 ---
 

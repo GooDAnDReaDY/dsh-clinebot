@@ -187,7 +187,7 @@ From any DSH chat session, type `/cline` to inspect quota, warning alerts, and s
 
 ## ⚙️ Configuration Reference (DSH Settings & Web UI)
 
-In modern DeepSeek Harness (0.1.7+), settings are managed natively via the DSH Web UI Settings card or `PUT /dsh-clinebot/config`, with API keys persisted securely in DSH Credentials storage (`~/.dsh/.credentials.yaml`).
+In DeepSeek Harness 0.2.x (this plugin supports `>=0.2.1-rc.2 <0.2.3-0`), settings are managed natively via the DSH Web UI Settings card or `PUT /dsh-clinebot/config`, with API keys persisted securely in DSH Credentials storage (`~/.dsh/.credentials.yaml`).
 
 ```yaml
 dsh-clinebot:
@@ -253,20 +253,35 @@ All endpoints are registered under `/dsh-clinebot/*` and protected against untru
 ### Management & Control Endpoints (Max 256 KiB)
 * `GET /dsh-clinebot/status` — Live status report including provider health, active credential, quota, and session metrics.
 * `GET /dsh-clinebot/config` — Diagnostic endpoint returning public configuration without secret keys.
-* `PUT /dsh-clinebot/config` — Update configuration fields. Accepts only known schema properties (unknown fields or deprecated `enabledModels` return `400 Bad Request`).
-* `POST /dsh-clinebot/key/verify` — Validates a candidate API key against `api.cline.bot` and returns account email and plan name.
+* `PUT /dsh-clinebot/config` — Update configuration fields. Accepts only known schema properties (unknown fields or deprecated `enabledModels` return `400 Bad Request`). Custom models are managed here through `customModels`; there is no separate custom-model route.
 * `POST /dsh-clinebot/save-key` — Saves a key into DSH credentials service under a valid `CLINEBOT_API_KEY*` name.
+* `POST /dsh-clinebot/key/verify` — Validates a candidate API key against `api.cline.bot` and returns account email and plan name.
+* `POST /dsh-clinebot/smoke` — Runs a live latency test ping and reports TTFT.
+* `GET /dsh-clinebot/usage` — Rolling quota windows of the active account.
+* `GET /dsh-clinebot/accounts/usage` — Live quota windows for every account in the pool.
+* `GET /dsh-clinebot/accounts/history` — Cooldown, recovery and routing decisions from the event ring buffer.
+* `POST /dsh-clinebot/accounts` — Add account to the multi-account pool.
+* `POST` / `DELETE /dsh-clinebot/accounts/delete` — Delete account from the pool with atomic credential preservation.
+* `POST /dsh-clinebot/accounts/active` — Switch or pin active account (or empty for auto least-used routing).
+* `POST /dsh-clinebot/accounts/rename` — Rename an account without touching its key.
+* `POST /dsh-clinebot/accounts/key/clear` — Remove an account's key while keeping the pool entry.
+* `GET /dsh-clinebot/keys/discovered` — Locally discovered Cline keys, masked and identified by an opaque id.
+* `POST /dsh-clinebot/keys/discovered/import` — Import a discovered key server-side by id; the secret never reaches the browser.
 * `POST /dsh-clinebot/models/sync` — Synchronizes models with your active subscription plan.
 * `POST /dsh-clinebot/models/toggle` — Toggles models via `disabledModels` (atomic Volatile preservation).
-* `POST /dsh-clinebot/models/custom` / `DELETE /dsh-clinebot/models/custom` — Manage custom user-defined models.
-* `POST /dsh-clinebot/models/context` / `DELETE /dsh-clinebot/models/context` — Manage model context length overrides.
-* `POST /dsh-clinebot/accounts` — Add account to the multi-account pool.
-* `POST /dsh-clinebot/accounts/delete` — Delete account from the pool with atomic credential preservation.
-* `POST /dsh-clinebot/accounts/active` — Switch or pin active account (or empty for auto least-used routing).
+* `POST /dsh-clinebot/models/context` — Set context length and max output tokens, restore defaults or vendor limits, or apply in bulk. Reset is this same route with `reset: true`; there is no `DELETE` variant.
+* `POST /dsh-clinebot/models/visible` — Set the exact subset of models exposed in the DSH picker (`visibleModels`).
+* `POST /dsh-clinebot/models/probe` — Measure TTFT for one model.
+* `GET /dsh-clinebot/stats` — Persistent token and request statistics.
+* `GET /dsh-clinebot/stats/session?sessionId=...` — ClineBot-only aggregate for one DSH session.
 * `POST /dsh-clinebot/stats/reset` — Reset session request and token statistics.
-* `POST /dsh-clinebot/smoke` — Runs a live latency test ping.
-* `GET /dsh-clinebot/update/status` — Query available GitHub releases and plugin updates.
-* `POST /dsh-clinebot/update/apply` — Apply version upgrade with process-group cleanup and lockfile sync.
+* `GET /dsh-clinebot/stats/export` — Export statistics as CSV, or JSON with `format=json` (`detailed=1` for extra columns).
+* `GET /dsh-clinebot/analytics` — Aggregates by day, hour, model, account and session; supports `errorsOnly=1` and a date range.
+* `GET /dsh-clinebot/prices` — Price table used by the composer and analytics.
+* `POST /dsh-clinebot/prices/sync` — Download the public price catalog (allowlisted https source, manual redirects).
+* `GET`, `HEAD` / `POST /dsh-clinebot/update` — `GET`/`HEAD` report update status; `POST` starts a background exact-version install with process-group cleanup and profile locking.
+
+Consumer endpoints such as `/dsh-clinebot/register`, `/dsh-clinebot/unregister`, `/dsh-clinebot/v1/chat/completions` and `/dsh-clinebot/v1/models` do not exist. Chat goes through the native `ctx.llm` adapter, not an HTTP proxy.
 
 ---
 
