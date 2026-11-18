@@ -93,7 +93,7 @@ function StatsSection({ status, onResetStats, busy, t }) {
       React.createElement(
         'div',
         { className: 'cb-stat-box' },
-        React.createElement('div', { className: 'cb-stat-val' }, `${requests} (${sess.successfulRequests || 0} sess)`),
+        React.createElement('div', { className: 'cb-stat-val' }, t('stats.requests_sessions', { requests, sessions: sess.successfulRequests || 0 })),
         React.createElement('div', { className: 'cb-stat-lbl' }, t('stats.requests'))
       ),
       React.createElement(
@@ -104,7 +104,7 @@ function StatsSection({ status, onResetStats, busy, t }) {
           'div',
           { className: 'cb-stat-lbl' },
           reasoning > 0
-            ? `${t('stats.tokens')} (${reasoning.toLocaleString()} reasoning)`
+            ? t('stats.tokens_reasoning', { tokens: t('stats.tokens'), reasoning: reasoning.toLocaleString() })
             : t('stats.tokens')
         )
       ),
@@ -133,7 +133,16 @@ function StatsSection({ status, onResetStats, busy, t }) {
             React.createElement(
               'span',
               { className: 'cb-muted' },
-              `${data.requests || 0} reqs · ${Number(data.totalTokens ?? data.tokens ?? 0).toLocaleString()} tok${data.reasoningTokens ? ` (${Number(data.reasoningTokens).toLocaleString()} reasoning)` : ''}`
+              data.reasoningTokens
+                ? t('stats.compact_reasoning', {
+                    requests: data.requests || 0,
+                    tokens: Number(data.totalTokens ?? data.tokens ?? 0).toLocaleString(),
+                    reasoning: Number(data.reasoningTokens).toLocaleString(),
+                  })
+                : t('stats.compact', {
+                    requests: data.requests || 0,
+                    tokens: Number(data.totalTokens ?? data.tokens ?? 0).toLocaleString(),
+                  })
             )
           ))
         )
@@ -150,7 +159,11 @@ function StatsSection({ status, onResetStats, busy, t }) {
             React.createElement(
               'span',
               { className: 'cb-muted' },
-              `${data.requests || 0} reqs · ${Number(data.totalTokens || 0).toLocaleString()} tok · ≈ $${Number(data.costUsd || 0).toFixed(4)}`
+              t('stats.compact_cost', {
+                requests: data.requests || 0,
+                tokens: Number(data.totalTokens || 0).toLocaleString(),
+                cost: Number(data.costUsd || 0).toFixed(4),
+              })
             )
           ))
         )

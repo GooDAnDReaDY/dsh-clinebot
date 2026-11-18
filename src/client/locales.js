@@ -243,6 +243,18 @@ const en = {
       'common.error': 'Load error',
       'common.load_error': 'Could not load: {error}',
       'stats.load_error': 'Stats unavailable: {error}',
+      'stats.requests_sessions': '{requests} ({sessions} sess)',
+      'stats.tokens_reasoning': '{tokens} ({reasoning} reasoning)',
+      'stats.compact': '{requests} reqs · {tokens} tok',
+      'stats.compact_reasoning': '{requests} reqs · {tokens} tok ({reasoning} reasoning)',
+      'stats.compact_cost': '{requests} reqs · {tokens} tok · ≈ ${cost}',
+      'models.original': 'Original',
+      'models.limits_title': 'Context Window / Max Output Tokens',
+      'key.validated': 'OK',
+      'key.notice': 'Notice (check console)',
+      'duration.days_hours': '{days}d {hours}h',
+      'duration.hours_minutes': '{hours}h {minutes}m',
+      'duration.minutes': '{minutes}m',
       'settings.load_error': 'Could not load settings: {error}',
       'analytics.unpriced': '{count} request(s) have no price estimate and are excluded from cost totals.',
       'analytics.group_model': 'Models', 'analytics.group_day': 'Days', 'analytics.group_account': 'Accounts', 'analytics.group_session': 'Sessions',
@@ -283,7 +295,7 @@ const en = {
     function makeT(dict, fallback) {
       return function t(key, vars) {
         if (key === 'quota.countdown' && vars?.time === 'resetting') {
-          return (dict && dict['quota.resetting']) || (fallback && fallback['quota.resetting']) || '正在重置'
+          return (dict && dict['quota.resetting']) || (fallback && fallback['quota.resetting']) || ''
         }
         let val = (dict && dict[key]) || (fallback && fallback[key]) || key
         if (vars && typeof val === 'string') {

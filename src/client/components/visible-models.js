@@ -262,7 +262,7 @@ function VisibleModelsSub({
                     {
                       className: 'cb-badge',
                       style: { fontSize: '11px', padding: '2px 6px', fontWeight: '600' },
-                      title: 'Context Window / Max Output Tokens',
+                      title: t('models.limits_title'),
                     },
                     ctxStr
                   ),

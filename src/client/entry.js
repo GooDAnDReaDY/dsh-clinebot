@@ -12,8 +12,21 @@ function apply(ctx) {
   // The stylesheet has to be in the document before any of this plugin's slots
   // render. `sidebar.footer.action` and `main` mount on boot, so leaving the
   // injection to the settings page's mount effect renders those seats unstyled
-  // until the user opens the plugin page.
-  ensureCss()
+  // until the user opens the plugin page. `ctx.effect` runs the body right away
+  // and hands back the teardown, so the tag leaves with the plugin (#351).
+  const injectStyles = () => {
+    ensureCss()
+    return () => {
+      if (typeof document === 'undefined') return
+      const el = document.getElementById(STYLE_ID)
+      if (el && el.parentNode) el.parentNode.removeChild(el)
+    }
+  }
+  if (typeof ctx.effect === 'function') {
+    ctx.effect(injectStyles, 'dsh-clinebot: stylesheet')
+  } else {
+    injectStyles()
+  }
 
   const addLocale = (locale, dictionary) => {
     try {

@@ -1,8 +1,10 @@
+const STYLE_ID = 'dsh-clinebot-full-css'
+
 function ensureCss() {
       if (typeof document === 'undefined') return
-      if (document.getElementById('dsh-clinebot-full-css')) return
+      if (document.getElementById(STYLE_ID)) return
       const style = document.createElement('style')
-      style.id = 'dsh-clinebot-full-css'
+      style.id = STYLE_ID
       style.dataset.dshPlugin = NS
       style.textContent = `
 .cb-page{display:flex;flex-direction:column;gap:16px;width:100%}

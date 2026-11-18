@@ -28,7 +28,7 @@ function createAccountActions({ performAction, load, t, setMsg }) {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
-      setMsg(t('key.saved_msg', { status: data.validated ? 'OK' : (data.validationError || 'Notice') }))
+      setMsg(t('key.saved_msg', { status: data.validated ? t('key.validated') : (data.validationError || t('key.notice')) }))
       await load()
     })
   }

@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.40] - 2026-11-17
+
+### Fixed
+- **Localization completeness (#350)**: session telemetry summaries and the compact stats lines, the model-limit tooltip, the "original" provider fallback, key-validation statuses and quota countdown units now come from the `en`/`zh` dictionaries instead of hardcoded English. The stray Chinese literals in the fallback paths are gone, so an English session can no longer receive a Chinese "resetting" label.
+
+### Changed
+- **Stylesheet lifecycle (#351)**: the injected style tag is created inside `ctx.effect` and removed when the plugin unloads, so a reload no longer reuses a leftover node. Injection still runs synchronously, keeping the sidebar and composer seats styled at boot.
+
 ## [0.6.39] - 2026-11-17
 
 ### Changed

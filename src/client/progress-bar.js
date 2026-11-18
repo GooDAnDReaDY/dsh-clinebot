@@ -1,4 +1,4 @@
-function formatResetCountdown(isoString) {
+function formatResetCountdown(isoString, t) {
   if (!isoString) return ''
   try {
     const d = new Date(isoString)
@@ -9,13 +9,13 @@ function formatResetCountdown(isoString) {
     const days = Math.floor(totalHours / 24)
     const hours = totalHours % 24
     if (days > 0) {
-      return `${days}d ${hours}h`
+      return t ? t('duration.days_hours', { days, hours }) : `${days}d ${hours}h`
     }
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
     if (hours > 0) {
-      return `${hours}h ${minutes}m`
+      return t ? t('duration.hours_minutes', { hours, minutes }) : `${hours}h ${minutes}m`
     }
-    return `${Math.max(1, minutes)}m`
+    return t ? t('duration.minutes', { minutes: Math.max(1, minutes) }) : `${Math.max(1, minutes)}m`
   } catch {
     return ''
   }
@@ -32,14 +32,14 @@ function formatResetTime(isoString) {
   }
 }
 
-function formatForecastDuration(ms) {
+function formatForecastDuration(ms, t) {
   const totalMinutes = Math.max(1, Math.round(Number(ms) / 60000))
   const days = Math.floor(totalMinutes / 1440)
   const hours = Math.floor((totalMinutes % 1440) / 60)
   const minutes = totalMinutes % 60
-  if (days > 0) return `${days}d ${hours}h`
-  if (hours > 0) return `${hours}h ${minutes}m`
-  return `${minutes}m`
+  if (days > 0) return t ? t('duration.days_hours', { days, hours }) : `${days}d ${hours}h`
+  if (hours > 0) return t ? t('duration.hours_minutes', { hours, minutes }) : `${hours}h ${minutes}m`
+  return t ? t('duration.minutes', { minutes }) : `${minutes}m`
 }
 
 function quotaForecast(window, windowMs, t) {
@@ -60,7 +60,7 @@ function quotaForecast(window, windowMs, t) {
   const etaMs = remaining / burnPerMs
   if (!Number.isFinite(etaMs) || etaMs <= 0) return ''
   if (etaMs >= untilReset) return t('quota.forecast_holds')
-  return t('quota.forecast_left', { time: formatForecastDuration(etaMs) })
+  return t('quota.forecast_left', { time: formatForecastDuration(etaMs, t) })
 }
 
 function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, windowMs, t }) {
@@ -68,7 +68,7 @@ function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, windowMs,
   const isWarn = pct >= 80 && pct < 90
   const isBad = pct >= 90
   const barClass = isBad ? 'cb-progress-bar-bad' : isWarn ? 'cb-progress-bar-warn' : 'cb-progress-bar-fill'
-  const resetCountdown = formatResetCountdown(resetsAt)
+  const resetCountdown = formatResetCountdown(resetsAt, t)
   const resetClock = formatResetTime(resetsAt)
   const forecast = windowMs ? quotaForecast({ percentUsed, remainingPercent, resetsAt }, windowMs, t) : ''
 
@@ -96,7 +96,7 @@ function ProgressBar({ label, percentUsed, remainingPercent, resetsAt, windowMs,
         { className: isBad ? 'cb-progress-meta cb-progress-meta-bad' : 'cb-progress-meta' },
         t('quota.used', { pct }),
         resetCountdown
-          ? ` · ${resetCountdown === 'resetting' ? (t('quota.resetting') || '正在重置') : t('quota.countdown', { time: resetCountdown })}`
+          ? ` · ${resetCountdown === 'resetting' ? t('quota.resetting') : t('quota.countdown', { time: resetCountdown })}`
           : (resetClock ? ` · ${t('quota.reset_at', { time: resetClock })}` : '')
       )
     ),

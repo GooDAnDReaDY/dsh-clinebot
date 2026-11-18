@@ -148,7 +148,7 @@ function SettingsPage(props) {
       const data = await res.json().catch(() => ({}))
       if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setApiKeyInput('')
-      setMsg(t('key.saved_msg', { status: data.validated ? 'OK' : 'Notice (check console)' }))
+      setMsg(t('key.saved_msg', { status: data.validated ? t('key.validated') : t('key.notice') }))
       await load()
     })
   }

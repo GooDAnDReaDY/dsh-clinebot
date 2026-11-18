@@ -19,7 +19,7 @@ function ModelRow({
   const origCtx = m.originalContextLength || 200000
   const defaultMax = m.defaultMaxTokens || 8192
   const origMax = m.originalMaxTokens || defaultMax
-  const origProv = m.originalProvider || 'Original'
+  const origProv = m.originalProvider || t('models.original')
   const isOverridden = Boolean(m.isContextOverridden)
   const isOriginal = isOverridden && (m.contextLength === origCtx && (m.maxTokens || defaultMax) === origMax)
 
