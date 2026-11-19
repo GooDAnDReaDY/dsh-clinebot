@@ -5,6 +5,15 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.44] - 2026-11-19
+
+### Fixed
+- **HTTP-date Retry-After (#357)**: both the delta-seconds and the date form are parsed, and the immediate-retry hint 0 is no longer discarded.
+- **Filtered answers are errors (#354)**: `content_filter` and every other non-stop reason finish with `kind: error` instead of looking complete.
+- **No empty user turn (#356)**: a turn built from empty blocks is skipped instead of being sent as `content: ""`.
+- **TTFT on the JSON fallback (#360)**: `onFirstToken` fires before the first delta, so non-streaming responses report a real first-token time.
+- **Serialized settings writes (#339)**: `replace` and `update` share one promise chain, so two mutations cannot race on the same revision.
+
 ## [0.6.43] - 2026-11-19
 
 ### Security
