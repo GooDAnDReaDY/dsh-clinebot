@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.42] - 2026-11-19
+
+### Fixed
+- **Cooldown on the last attempt (#341)**: both failure branches now mark the account cooldown before deciding whether another attempt remains, so a single-account install no longer retries a throttled key on the very next turn.
+- **Stalled streams rotate the pool (#340)**: `STREAM_IDLE_TIMEOUT` is retryable in the adapter policy and in the stream failure set, so an upstream that accepts the connection and then goes silent fails over instead of aborting the turn.
+- **Released sockets (#346)**: `readSseEvents` cancels the reader in `finally` when a consumer stops at `[DONE]` or detaches without an error, so the response body is drained instead of waiting for garbage collection.
+- **Usage of failed attempts (#347)**: stream-failure telemetry is recorded before the retry decision, so tokens the upstream already billed reach statistics, cost estimation and the budget guard.
+
 ## [0.6.41] - 2026-11-17
 
 ### Added
