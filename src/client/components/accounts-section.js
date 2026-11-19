@@ -158,7 +158,7 @@ function AccountsSection({
       'div',
       { className: 'cb-section-head' },
       React.createElement('div', { className: 'cb-section-title' }, t('accounts.title')),
-      React.createElement(
+      status?.config?.showAccountHistory === false ? null : React.createElement(
         'button',
         { type: 'button', className: 'cb-btn', onClick: toggleHistory },
         historyOpen ? t('accounts.history_hide') : t('accounts.history_show')

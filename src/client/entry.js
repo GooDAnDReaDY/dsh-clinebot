@@ -28,6 +28,19 @@ function apply(ctx) {
     injectStyles()
   }
 
+  // Display toggles own whole surfaces (#344). Slots are registered once, so the
+  // setting is read at apply time; a hidden surface must not take its feature
+  // with it, which is why only the seat is gated here.
+  const displayEnabled = (key) => {
+    try {
+      const snapshot = readConfigForms(ctx)?.get?.(NS)?.getSnapshot?.()
+      const value = snapshot && snapshot.value ? snapshot.value[key] : undefined
+      return value === undefined ? true : Boolean(value)
+    } catch {
+      return true
+    }
+  }
+
   const addLocale = (locale, dictionary) => {
     try {
       return ctx.locale.register(NS, locale, dictionary)
@@ -145,7 +158,7 @@ function apply(ctx) {
   // through `layout.selectPanel`; the panel's Close button selects the
   // conversation again. When no layout service is available the card falls back
   // to its local Modal.
-  registerSlotWhenReady('main', () =>
+  if (displayEnabled('showQuotaPanel')) registerSlotWhenReady('main', () =>
     ctx.slots.register(
       {
         name: 'main',

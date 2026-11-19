@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.41] - 2026-11-17
+
+### Added
+- **Per-surface display toggles (#344)**: Settings → ClineBot → Integrations now carries a switch for the quota panel, the update banner, the account history button, the model latency probe, the price section, the usage statistics section and the diagnostics section. All seven default to visible, and hiding a surface leaves the adapter, the HTTP routes and the stored data untouched. The settings section itself and the collapsed Advanced group are documented as intentionally toggle-free.
+
 ## [0.6.40] - 2026-11-17
 
 ### Fixed

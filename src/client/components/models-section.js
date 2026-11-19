@@ -1,5 +1,6 @@
 function ModelsSection({
   modelsList,
+  showProbe,
   disabledSet,
   enabledCount,
   keyPresent,
@@ -218,6 +219,7 @@ function ModelsSection({
           const isEnabled = !disabledSet.has(m.id)
           const row = React.createElement(ModelRow, {
             m,
+            showProbe,
             isEnabled,
             handleToggleModel,
             busy,

@@ -1,5 +1,6 @@
 function ModelRow({
   m,
+  showProbe,
   isEnabled,
   handleToggleModel,
   busy,
@@ -39,7 +40,7 @@ function ModelRow({
       'td',
       null,
       React.createElement('strong', null, m.name),
-      React.createElement(ModelProbeButton, { modelId: m.id, busy, t }),
+      showProbe === false ? null : React.createElement(ModelProbeButton, { modelId: m.id, busy, t }),
       m.recommended
         ? React.createElement('span', { className: 'cb-badge cb-badge-ok', style: { marginLeft: '6px' } }, t('models.star'))
         : null,

@@ -324,7 +324,7 @@ function SettingsPage(props) {
     ),
 
     // In-app Update Bar
-    React.createElement(UpdateBanner, { updateState, handleTriggerUpdate, handleCheckUpdate: checkUpdate, t }),
+    draft?.showUpdateBanner === false ? null : React.createElement(UpdateBanner, { updateState, handleTriggerUpdate, handleCheckUpdate: checkUpdate, t }),
 
     // Settings host status warning
     configSnapshot?.status === 'unavailable'
@@ -392,6 +392,7 @@ function SettingsPage(props) {
       },
       React.createElement(ModelsSection, {
         modelsList,
+        showProbe: draft?.showModelProbe !== false,
         disabledSet,
         enabledCount,
         keyPresent,
@@ -416,7 +417,7 @@ function SettingsPage(props) {
         },
         t,
       }),
-      React.createElement(PriceSection, {
+      draft?.showPriceSection === false ? null : React.createElement(PriceSection, {
         modelsList,
         priceOverrides: draft?.priceOverrides || {},
         priceAutoSync: draft?.priceAutoSync !== false,
@@ -426,7 +427,7 @@ function SettingsPage(props) {
     ),
 
     // Session Metrics & Usage Tracking
-    React.createElement(StatsSection, { status, onResetStats: handleResetStats, busy, t }),
+    draft?.showStatsSection === false ? null : React.createElement(StatsSection, { status, onResetStats: handleResetStats, busy, t }),
 
     React.createElement(IntegrationsSection, {
       draft,
@@ -435,7 +436,7 @@ function SettingsPage(props) {
     }),
 
     // Diagnostics & Sync with DSH
-    React.createElement(DiagSection, {
+    draft?.showDiagnosticsSection === false ? null : React.createElement(DiagSection, {
       keyPresent,
       busy,
       smokeResult,

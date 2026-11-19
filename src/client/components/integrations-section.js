@@ -12,6 +12,17 @@ function IntegrationToggle({ id, label, hint, checked, onChange }) {
   })
 }
 
+/** Surfaces the user can hide wholesale (#344). Each entry is one persisted toggle. */
+const SURFACE_TOGGLES = (t) => [
+  { id: 'showQuotaPanel', label: t('settings.show_quota_panel'), hint: t('settings.show_quota_panel_hint') },
+  { id: 'showUpdateBanner', label: t('settings.show_update_banner'), hint: t('settings.show_update_banner_hint') },
+  { id: 'showAccountHistory', label: t('settings.show_account_history'), hint: t('settings.show_account_history_hint') },
+  { id: 'showModelProbe', label: t('settings.show_model_probe'), hint: t('settings.show_model_probe_hint') },
+  { id: 'showPriceSection', label: t('settings.show_price_section'), hint: t('settings.show_price_section_hint') },
+  { id: 'showStatsSection', label: t('settings.show_stats_section'), hint: t('settings.show_stats_section_hint') },
+  { id: 'showDiagnosticsSection', label: t('settings.show_diagnostics_section'), hint: t('settings.show_diagnostics_section_hint') },
+]
+
 function IntegrationsSection({ draft, onStage, t }) {
   const current = draft || {}
   return React.createElement(
@@ -41,6 +52,14 @@ function IntegrationsSection({ draft, onStage, t }) {
       hint: t('settings.composer_cost_hint'),
       checked: Boolean(current.showComposerCost),
       onChange: (value) => onStage({ showComposerCost: value }),
-    })
+    }),
+    ...SURFACE_TOGGLES(t).map(({ id, label, hint }) => React.createElement(IntegrationToggle, {
+      key: id,
+      id: `cb-${id}`,
+      label,
+      hint,
+      checked: current[id] !== false,
+      onChange: (value) => onStage({ [id]: value }),
+    }))
   )
 }
