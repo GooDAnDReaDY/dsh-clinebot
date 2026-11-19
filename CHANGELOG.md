@@ -5,6 +5,18 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.43] - 2026-11-19
+
+### Security
+- **Update status is loopback-only (#336)**: the read branch answered before the trust gate, exposing the installed version and profile layout to any network peer.
+- **Registry version is validated before install (#338)**: a value that is not a real semver is treated as "no update", so a poisoned registry response cannot become an npm specification.
+- **Expensive routes are throttled (#337)**: smoke, model probe, price sync and per-account usage answer 429 inside their minimum interval instead of burning quota.
+- **Discovered keys expose no path (#353)**: the response now carries only an opaque id, the source and a four-character mask.
+
+### Fixed
+- **Collision-free cache temp files (#352)**: price and account-event caches use a random suffix, so two same-millisecond writes no longer race on rename.
+- **CSV formula neutralization (#355)**: leading whitespace and control characters no longer bypass the `=`, `+`, `-`, `@` guard.
+
 ## [0.6.42] - 2026-11-19
 
 ### Fixed
