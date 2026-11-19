@@ -45,13 +45,22 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
       },
     },
     React.createElement(
-      'div',
+      'button',
       {
+        type: 'button',
+        'aria-expanded': isExpanded,
         style: {
           display: 'flex',
+          width: '100%',
           justifyContent: 'space-between',
           alignItems: 'center',
           cursor: 'pointer',
+          background: 'none',
+          border: 0,
+          padding: 0,
+          font: 'inherit',
+          color: 'inherit',
+          textAlign: 'left',
         },
         onClick: () => setIsExpanded(!isExpanded),
       },

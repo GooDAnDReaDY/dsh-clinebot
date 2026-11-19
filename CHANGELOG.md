@@ -5,6 +5,13 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.45] - 2026-11-19
+
+### Fixed
+- **Field-level validation error (#359)**: a numeric row reports its own out-of-range value and marks the input `aria-invalid`, instead of only the shared save bar complaining.
+- **Expander is a button (#348)**: the custom-model header is keyboard reachable, exposes `aria-expanded` and keeps its previous look.
+- **Structural footer rule (#358)**: the column layout no longer depends on a hashed host class name.
+
 ## [0.6.44] - 2026-11-19
 
 ### Fixed

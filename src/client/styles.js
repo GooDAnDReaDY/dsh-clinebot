@@ -74,7 +74,7 @@ function ensureCss() {
    the window label wraps. Stack the list while this meter is in it. The :has()
    scoping keeps the rule off any footer that does not contain this plugin, so it
    cannot reach across other registrants the way a plain descendant selector would. */
-[class*="_footerActions"]:has(.cb-foot), [class*="_footerActions"]:has(.cb-railButton){flex-direction:column}
+div:has(> .cb-foot), div:has(> .cb-railButton){flex-direction:column}
 .cb-foot{box-sizing:border-box;flex:1 1 auto;width:100%;min-width:0;display:flex;flex-direction:column;gap:6px;margin:0 0 4px;padding:8px;border:.5px solid transparent;border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;text-align:left;cursor:pointer}
 .cb-foot:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover);border-color:var(--dsw-alias-border-l3)}
 .cb-foot:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:-2px}
