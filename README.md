@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.35</b> improves operational observability and repository hygiene: replaces silent error-swallowing catch handlers in cache persistence and account queues with structured logger warnings, adds standardized deployment and agent entrypoints, and keeps internal scripts and tests out of the public mirror tree. Builds on full DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 compatibility, truncated stream handling, per-model routing priority, and native <code>ctx.llm</code> adapter.</p>
+<p><b>0.6.46</b> fixes the adapter retry policy shape so recoverable upstream failures retry instead of aborting with a non-JSON <code>llm/retry</code> event, and adds per-model advanced settings: image input, temperature, top_p and stop sequences, including image support for custom models. Builds on full DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 compatibility, truncated stream handling, per-model routing priority, and native <code>ctx.llm</code> adapter.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -127,6 +127,8 @@ graph LR
   Offloads images from earlier turns into stable text placeholders and enforces `maxPayloadMb`, reducing prompt-cache churn and oversized ClinePass requests. `offloadedImages` is included in session telemetry.
 * **Model tools in Settings → ClineBot → Models**:
   The per-model **Ping** button calls `POST /models/probe` and shows TTFT; **Apply visibility** calls `POST /models/visible` after choosing the visible models and plan-only filter.
+* **Per-model advanced settings**:
+  The model-row editor also exposes image input, temperature, top_p and stop sequences. Values live in `modelContextOverrides` / `customModels`, survive plan sync, apply only when DSH omits the value, and clear when the field is emptied.
 * **`lib/stats-storage.js`**:
   Persistent JSON telemetry v2: cache buckets, estimated cost, TTFT/latency, sessions and day/month/model/account aggregates. v1 files upgrade on read.
 * **`lib/account-pool.js` / `lib/session-router.js`**:
@@ -199,7 +201,14 @@ dsh-clinebot:
   customModels: []
   modelReasoningDefaults:
     your-reasoning-model: high
-  modelContextOverrides: []
+  modelContextOverrides:
+    - modelId: cline-pass/kimi-k3
+      contextLength: 1000000
+      maxTokens: 65536
+      input: [text, image]
+      temperature: 0.2
+      topP: 0.9
+      stop: ["END"]
   statsPath: ~/.dsh/clinebot-stats.json
   priceCatalogUrl: https://models.dev/api.json
   priceCatalogPath: ~/.dsh/clinebot-prices.json
@@ -225,9 +234,9 @@ dsh-clinebot:
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Environment variable / credentials key name |
 | `defaultModel` | `string` | `"cline-pass/deepseek-v4.1-flash"` | Default selected model ID for chat and smoke tests |
 | `disabledModels` | `array` | `[]` | List of model IDs hidden from the DSH chat picker (new subscription models are auto-enabled) |
-| `customModels` | `array` | `[]` | User-defined gateway models (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
+| `customModels` | `array` | `[]` | User-defined gateway models (`[{ id, name, contextLength, maxTokens, category, isReasoning, input }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | Configured default reasoning effort per model (`low`, `medium`, `high`, `max`) |
-| `modelContextOverrides` | `array` | `[]` | User-defined model context length and max token overrides |
+| `modelContextOverrides` | `array` | `[]` | Per-model context, modality and sampling overrides (`[{ modelId, contextLength, maxTokens, input, temperature, topP, stop }]`); `topP` is a plugin-level request default because DSH has no `top_p` option |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Persistent on-disk path for token usage analytics |
 | `priceCatalogUrl` | `string` | `"https://models.dev/api.json"` | Public price catalog used by the optional sync |
 | `priceCatalogPath` | `string` | `"~/.dsh/clinebot-prices.json"` | Local cache for the public price catalog |
@@ -269,7 +278,7 @@ All endpoints are registered under `/dsh-clinebot/*` and protected against untru
 * `POST /dsh-clinebot/keys/discovered/import` — Import a discovered key server-side by id; the secret never reaches the browser.
 * `POST /dsh-clinebot/models/sync` — Synchronizes models with your active subscription plan.
 * `POST /dsh-clinebot/models/toggle` — Toggles models via `disabledModels` (atomic Volatile preservation).
-* `POST /dsh-clinebot/models/context` — Set context length and max output tokens, restore defaults or vendor limits, or apply in bulk. Reset is this same route with `reset: true`; there is no `DELETE` variant.
+* `POST /dsh-clinebot/models/context` — Set context length, max output tokens, input modalities (`input`) and sampling defaults (`temperature`, `topP`, `stop`), restore defaults or vendor limits, or apply in bulk. Reset is this same route with `reset: true`; there is no `DELETE` variant.
 * `POST /dsh-clinebot/models/visible` — Set the exact subset of models exposed in the DSH picker (`visibleModels`).
 * `POST /dsh-clinebot/models/probe` — Measure TTFT for one model.
 * `GET /dsh-clinebot/stats` — Persistent token and request statistics.

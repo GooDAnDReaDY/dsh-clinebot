@@ -5,21 +5,31 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.46] - 2026-11-22
+
+### Fixed
+- **Retry policy shape (#371, GitHub #21)**: `providerRetryPolicy()` now returns a flat `ResolvedRetryPolicy` with finite `initialDelayMs`/`maxDelayMs`/`jitterRatio`. The nested `backoff` object is gone, so a recoverable upstream failure no longer produces a NaN delay and a non-JSON `llm/retry` event that aborts the turn.
+
+### Added
+- **Per-model advanced settings (#372, GitHub #22)**: model rows in Settings → ClineBot now expose image input, temperature, top_p and stop sequences; custom models can declare image support. The values live in `modelContextOverrides`/`customModels`, survive plan sync, apply as request defaults only when DSH omits the value, and clear when the field is emptied.
+
 ## [0.6.45] - 2026-11-19
 
-### Fixed
-- **Field-level validation error (#359)**: a numeric row reports its own out-of-range value and marks the input `aria-invalid`, instead of only the shared save bar complaining.
-- **Expander is a button (#348)**: the custom-model header is keyboard reachable, exposes `aria-expanded` and keeps its previous look.
-- **Structural footer rule (#358)**: the column layout no longer depends on a hashed host class name.
+Single release for the correctness batch: eight issues, one merge, one deployment.
+The intermediate `0.6.44` artifact was published briefly while the batch was still
+open and is superseded by this release, which contains all of its commits.
 
-## [0.6.44] - 2026-11-19
-
-### Fixed
+### Adapter and server
 - **HTTP-date Retry-After (#357)**: both the delta-seconds and the date form are parsed, and the immediate-retry hint 0 is no longer discarded.
 - **Filtered answers are errors (#354)**: `content_filter` and every other non-stop reason finish with `kind: error` instead of looking complete.
 - **No empty user turn (#356)**: a turn built from empty blocks is skipped instead of being sent as `content: ""`.
 - **TTFT on the JSON fallback (#360)**: `onFirstToken` fires before the first delta, so non-streaming responses report a real first-token time.
 - **Serialized settings writes (#339)**: `replace` and `update` share one promise chain, so two mutations cannot race on the same revision.
+
+### Client
+- **Field-level validation error (#359)**: a numeric row reports its own out-of-range value and marks the input `aria-invalid`.
+- **Expander is a button (#348)**: the custom-model header is keyboard reachable, exposes `aria-expanded` and keeps its previous look.
+- **Structural footer rule (#358)**: the column layout no longer depends on a hashed host class name.
 
 ## [0.6.43] - 2026-11-19
 

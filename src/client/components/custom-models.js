@@ -3,6 +3,7 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
   const [newName, setNewName] = React.useState('')
   const [newCtx, setNewCtx] = React.useState('')
   const [newMax, setNewMax] = React.useState('')
+  const [newImage, setNewImage] = React.useState(false)
   const [isExpanded, setIsExpanded] = React.useState(false)
 
   function handleAdd() {
@@ -16,6 +17,7 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
       name: trimmedName,
       contextLength: parsedCtx > 0 ? parsedCtx : 128000,
       maxTokens: parsedMax > 0 ? parsedMax : 8192,
+      input: newImage ? ['text', 'image'] : ['text'],
       category: 'general',
       isCustom: true,
     }]
@@ -26,6 +28,7 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
     setNewName('')
     setNewCtx('')
     setNewMax('')
+    setNewImage(false)
   }
 
   function handleDelete(id) {
@@ -126,6 +129,17 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
               onChange: (e) => setNewMax(e.target.value),
             }),
             React.createElement(
+              'label',
+              { style: { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+              React.createElement('input', {
+                type: 'checkbox',
+                checked: newImage,
+                disabled: !!busy,
+                onChange: (e) => setNewImage(e.target.checked),
+              }),
+              t('models.adv_image')
+            ),
+            React.createElement(
               'button',
               {
                 type: 'button',
@@ -164,15 +178,35 @@ function CustomModelsSub({ customModels = [], onConfigUpdate, busy, t }) {
                       React.createElement('span', { style: { color: 'var(--dsw-alias-label-secondary)', marginLeft: '8px', fontSize: '11px' } }, `[${cm.contextLength || 128000} / ${cm.maxTokens || 8192}]`)
                     ),
                     React.createElement(
-                      'button',
-                      {
-                        type: 'button',
-                        className: 'cb-btn',
-                        style: { padding: '2px 8px', fontSize: '11px' },
-                        disabled: !!busy,
-                        onClick: () => handleDelete(cm.id),
-                      },
-                      t('models.custom_btn_del')
+                      'div',
+                      { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+                      React.createElement(
+                        'label',
+                        { style: { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--dsw-alias-label-secondary)' } },
+                        React.createElement('input', {
+                          type: 'checkbox',
+                          checked: Boolean(cm.input?.includes('image') || cm.input?.includes('vision')),
+                          disabled: !!busy,
+                          onChange: (e) => {
+                            const nextList = customModels.map((entry) => entry.id === cm.id
+                              ? { ...entry, input: e.target.checked ? ['text', 'image'] : ['text'] }
+                              : entry)
+                            if (typeof onConfigUpdate === 'function') onConfigUpdate({ customModels: nextList })
+                          },
+                        }),
+                        t('models.adv_image')
+                      ),
+                      React.createElement(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'cb-btn',
+                          style: { padding: '2px 8px', fontSize: '11px' },
+                          disabled: !!busy,
+                          onClick: () => handleDelete(cm.id),
+                        },
+                        t('models.custom_btn_del')
+                      )
                     )
                   )
                 )

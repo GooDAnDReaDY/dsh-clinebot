@@ -11,6 +11,14 @@ function ModelRow({
   setCustomCtxVal,
   customMaxVal,
   setCustomMaxVal,
+  customImage,
+  setCustomImage,
+  customTemperature,
+  setCustomTemperature,
+  customTopP,
+  setCustomTopP,
+  customStop,
+  setCustomStop,
   formatCtx,
   handleUpdateModelContext,
   modelReasoningDefaults,
@@ -22,7 +30,17 @@ function ModelRow({
   const origMax = m.originalMaxTokens || defaultMax
   const origProv = m.originalProvider || t('models.original')
   const isOverridden = Boolean(m.isContextOverridden)
+  const isParamsOverridden = Boolean(m.isParamsOverridden)
   const isOriginal = isOverridden && (m.contextLength === origCtx && (m.maxTokens || defaultMax) === origMax)
+  const beginEdit = () => {
+    setCustomCtxVal(String(m.contextLength || defaultCtx))
+    setCustomMaxVal(String(m.maxTokens || defaultMax))
+    setCustomImage(Boolean(m.input?.includes('image') || m.input?.includes('vision')))
+    setCustomTemperature(m.temperature !== undefined && m.temperature !== null ? String(m.temperature) : '')
+    setCustomTopP(m.topP !== undefined && m.topP !== null ? String(m.topP) : '')
+    setCustomStop(Array.isArray(m.stop) ? m.stop.join(', ') : '')
+    setEditingModelId(m.id)
+  }
 
   return React.createElement(
     'tr',
@@ -123,6 +141,54 @@ function ModelRow({
                 onChange: (e) => setCustomMaxVal(e.target.value),
               }),
               React.createElement(
+                'div',
+                { style: { display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' } },
+                React.createElement(
+                  'label',
+                  { style: { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--dsw-alias-label-secondary)' } },
+                  React.createElement('input', {
+                    type: 'checkbox',
+                    checked: Boolean(customImage),
+                    onChange: (e) => setCustomImage(e.target.checked),
+                  }),
+                  t('models.adv_image')
+                ),
+                React.createElement('input', {
+                  type: 'number',
+                  step: '0.1',
+                  min: '0',
+                  max: '2',
+                  className: 'cb-input',
+                  style: { height: '24px', fontSize: '11px', padding: '0 6px', width: '78px' },
+                  placeholder: t('models.adv_temperature'),
+                  title: t('models.adv_temperature'),
+                  value: customTemperature,
+                  onChange: (e) => setCustomTemperature(e.target.value),
+                }),
+                React.createElement('input', {
+                  type: 'number',
+                  step: '0.05',
+                  min: '0',
+                  max: '1',
+                  className: 'cb-input',
+                  style: { height: '24px', fontSize: '11px', padding: '0 6px', width: '70px' },
+                  placeholder: t('models.adv_top_p'),
+                  title: t('models.adv_top_p'),
+                  value: customTopP,
+                  onChange: (e) => setCustomTopP(e.target.value),
+                }),
+                React.createElement('input', {
+                  type: 'text',
+                  className: 'cb-input',
+                  style: { height: '24px', fontSize: '11px', padding: '0 6px', flex: '1 1 130px' },
+                  placeholder: t('models.adv_stop'),
+                  title: t('models.adv_stop'),
+                  value: customStop,
+                  onChange: (e) => setCustomStop(e.target.value),
+                })
+              ),
+              React.createElement('span', { style: { fontSize: '10px', color: 'var(--dsw-alias-label-tertiary)' } }, t('models.adv_hint')),
+              React.createElement(
                 'button',
                 {
                   type: 'button',
@@ -135,6 +201,12 @@ function ModelRow({
                       const payload = { modelId: m.id }
                       if (cVal > 0) payload.contextLength = cVal
                       if (mVal > 0) payload.maxTokens = mVal
+                      payload.input = customImage ? ['text', 'image'] : ['text']
+                      const tempVal = Number(customTemperature)
+                      payload.temperature = customTemperature !== '' && Number.isFinite(tempVal) ? tempVal : null
+                      const topVal = Number(customTopP)
+                      payload.topP = customTopP !== '' && Number.isFinite(topVal) ? topVal : null
+                      payload.stop = String(customStop || '').split(',').map((entry) => entry.trim()).filter(Boolean)
                       handleUpdateModelContext(payload)
                     }
                     setEditingModelId(null)
@@ -182,11 +254,7 @@ function ModelRow({
               'span',
               {
                 style: { fontWeight: '600', cursor: 'pointer' },
-                onClick: () => {
-                  setCustomCtxVal(String(m.contextLength || defaultCtx))
-                  setCustomMaxVal(String(m.maxTokens || defaultMax))
-                  setEditingModelId(m.id)
-                },
+                onClick: beginEdit,
               },
               `${formatCtx(m.contextLength || defaultCtx)} / ${formatCtx(m.maxTokens || defaultMax)}`
             ),
@@ -196,14 +264,13 @@ function ModelRow({
                   {
                     className: isOriginal ? 'cb-badge cb-badge-ok' : 'cb-badge cb-badge-warn',
                     style: { fontSize: '10px', padding: '1px 6px', cursor: 'pointer' },
-                    onClick: () => {
-                      setCustomCtxVal(String(m.contextLength || defaultCtx))
-                      setCustomMaxVal(String(m.maxTokens || defaultMax))
-                      setEditingModelId(m.id)
-                    },
+                    onClick: beginEdit,
                   },
                   isOriginal ? t('models.ctx_tag_original') : t('models.ctx_tag_custom')
                 )
+              : null,
+            isParamsOverridden
+              ? React.createElement('span', { className: 'cb-badge', style: { fontSize: '10px', padding: '1px 6px' } }, t('models.adv_tag'))
               : null,
             React.createElement(
               'button',
@@ -212,11 +279,7 @@ function ModelRow({
                 className: 'cb-btn',
                 style: { padding: '2px 6px', fontSize: '11px', lineHeight: '1', border: 'none', background: 'transparent' },
                 title: t('models.ctx_edit'),
-                onClick: () => {
-                  setCustomCtxVal(String(m.contextLength || defaultCtx))
-                  setCustomMaxVal(String(m.maxTokens || defaultMax))
-                  setEditingModelId(m.id)
-                },
+                onClick: beginEdit,
               },
               React.createElement(CbIcon, { name: 'edit', size: 13 })
             )

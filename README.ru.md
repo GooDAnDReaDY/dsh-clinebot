@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.35</b> улучшает наблюдаемость ошибок и чистоту репозитория: заменяет тихие перехватчики ошибок в сохранении кэша и очереди мутаций на структурированные предупреждения в логе, добавляет стандартизированные AGENTS.md, index.md и deploy.sh, а также исключает служебные скрипты и тесты из публичного зеркала GitHub (#327, #328, #329). Сохраняются полная совместимость с DSH 0.2.2-rc.1 / cordis 4.1.0, приоритет роутинга по модели и нативный адаптер <code>ctx.llm</code>.</p>
+<p><b>0.6.46</b> исправляет форму политики ретраев адаптера: восстановимые сбои upstream теперь повторяются, а не обрывают ход с невалидным <code>llm/retry</code>; добавляет расширенные настройки модели — image input, temperature, top_p и stop sequences, включая поддержку изображений для custom-моделей. Сохраняются полная совместимость с DSH 0.2.2-rc.1 / cordis 4.1.0, приоритет роутинга по модели и нативный адаптер <code>ctx.llm</code>.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -109,6 +109,7 @@ graph LR
 
 * **`lib/models.js`**: динамический каталог моделей подписки и встроенных шаблонов с поддержкой уровней рассуждения (`Off` / `Low` / `Medium` / `High` / `Max`), контекстных лимитов, пользовательских моделей (`customModels`) и парсинга тарифа (`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`).
 * **Цены и модели**: кнопка **Ping** у модели вызывает `POST /models/probe` и показывает TTFT; кнопка **Применить видимость** сохраняет выбор видимых моделей и фильтр тарифа через `POST /models/visible`. Публичные цены могут автоматически подгружаться из models.dev для новых моделей; это отключается переключателем `priceAutoSync` (или `priceAutoSync: false`), ручная синхронизация остаётся доступной.
+* **Расширенные настройки модели**: редактор строки модели задаёт image input, temperature, top_p и stop sequences. Значения хранятся в `modelContextOverrides` / `customModels`, переживают синхронизацию тарифа, применяются только если DSH не передал своё значение, и очищаются пустым полем.
 * **`lib/cline-client.js`**:
   * `fetchUsageLimits`: параллельный опрос `GET /users/me/plan/usage-limits`, `GET /users/me/plan` и `GET /users/me` с кэшированием в памяти.
   * `sessionStats` / `recordSessionRequest`: счетчики сессии (запросы, токены, задержка, время).
@@ -165,7 +166,14 @@ dsh-clinebot:
   customModels: []
   modelReasoningDefaults:
     your-reasoning-model: high
-  modelContextOverrides: []
+  modelContextOverrides:
+    - modelId: cline-pass/kimi-k3
+      contextLength: 1000000
+      maxTokens: 65536
+      input: [text, image]
+      temperature: 0.2
+      topP: 0.9
+      stop: ["END"]
   statsPath: ~/.dsh/clinebot-stats.json
   statsRetentionDays: 95
   dailyBudgetUsd: 0
@@ -187,9 +195,9 @@ dsh-clinebot:
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | Имя переменной / ключа в хранилище credentials |
 | `defaultModel` | `string` | `"cline-pass/deepseek-v4.1-flash"` | Модель, выбираемая по умолчанию для чата и smoke-тестов |
 | `disabledModels` | `array` | `[]` | Список отключённых моделей (новые модели подписки включаются автоматически) |
-| `customModels` | `array` | `[]` | Пользовательские модели шлюза (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
+| `customModels` | `array` | `[]` | Пользовательские модели шлюза (`[{ id, name, contextLength, maxTokens, category, isReasoning, input }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | Значения thinking effort по умолчанию для моделей (`low`, `medium`, `high`, `max`) |
-| `modelContextOverrides` | `array` | `[]` | Пользовательские переопределения размера контекста и лимита токенов |
+| `modelContextOverrides` | `array` | `[]` | Переопределения контекста, модальностей и sampling по модели (`[{ modelId, contextLength, maxTokens, input, temperature, topP, stop }]`); `topP` — дефолт плагина, так как в DSH нет `top_p` |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | Путь к файлу персистентной аналитики использования токенов |
 | `statsRetentionDays` | `number` | `95` | Срок хранения дневной/часовой/сессионной телеметрии; 0 — хранить всё |
 | `dailyBudgetUsd` | `number` | `0` | Опциональный дневной лимит оценочных трат; 0 отключает |
@@ -227,7 +235,7 @@ dsh-clinebot:
 * `POST /dsh-clinebot/keys/discovered/import` — Серверный импорт обнаруженного ключа по id; секрет не попадает в браузер.
 * `POST /dsh-clinebot/models/sync` — Синхронизация списка моделей с официальным тарифом ClinePass.
 * `POST /dsh-clinebot/models/toggle` — Включение и отключение моделей через `disabledModels` с сохранением Volatile-ссылок.
-* `POST /dsh-clinebot/models/context` — Контекстное окно и max output токены, сброс к дефолту или вендорским лимитам, batch-применение. Сброс — этот же маршрут с `reset: true`; варианта `DELETE` нет.
+* `POST /dsh-clinebot/models/context` — Контекстное окно, max output токены, входные модальности (`input`) и sampling-дефолты (`temperature`, `topP`, `stop`), сброс к дефолту или вендорским лимитам, batch-применение. Сброс — этот же маршрут с `reset: true`; варианта `DELETE` нет.
 * `POST /dsh-clinebot/models/visible` — Точный набор моделей, видимых в picker DSH (`visibleModels`).
 * `POST /dsh-clinebot/models/probe` — Замер TTFT для одной модели.
 * `GET /dsh-clinebot/stats` — Персистентная статистика запросов и токенов.

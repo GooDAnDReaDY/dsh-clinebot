@@ -27,6 +27,10 @@ function ModelsSection({
   const [editingModelId, setEditingModelId] = React.useState(null)
   const [customCtxVal, setCustomCtxVal] = React.useState('')
   const [customMaxVal, setCustomMaxVal] = React.useState('')
+  const [customImage, setCustomImage] = React.useState(false)
+  const [customTemperature, setCustomTemperature] = React.useState('')
+  const [customTopP, setCustomTopP] = React.useState('')
+  const [customStop, setCustomStop] = React.useState('')
   function formatCtx(num) {
     num = Number(num) || 200000
     if (num >= 1000000) {
@@ -230,6 +234,14 @@ function ModelsSection({
             setCustomCtxVal,
             customMaxVal,
             setCustomMaxVal,
+            customImage,
+            setCustomImage,
+            customTemperature,
+            setCustomTemperature,
+            customTopP,
+            setCustomTopP,
+            customStop,
+            setCustomStop,
             formatCtx,
             handleUpdateModelContext,
             modelReasoningDefaults,

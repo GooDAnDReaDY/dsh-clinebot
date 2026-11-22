@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.35</b> 改进了错误可观测性与仓库规范性：将模型缓存持久化与账户变更队列中的静默异常捕获替换为结构化日志告警，补充标准化的 AGENTS.md、index.md 与 deploy.sh，并将内部构建脚本与测试排除在 GitHub 公开镜像之外（#327、#328、#329）。完整保留与 DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 的兼容性、按模型路由优先级及原生 <code>ctx.llm</code> 适配器。</p>
+<p><b>0.6.46</b> 修复适配器重试策略结构：可恢复的上游故障现在会重试，而不再因非 JSON <code>llm/retry</code> 事件中断；新增按模型高级设置：图像输入、temperature、top_p 与 stop 序列，并支持自定义模型声明图像能力。完整保留与 DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 的兼容性、按模型路由优先级及原生 <code>ctx.llm</code> 适配器。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -109,6 +109,7 @@ graph LR
 
 * **`lib/models.js`**：管理动态订阅模型目录与内置精选模板（提供完整的 `Off` / `Low` / `Medium` / `High` / `Max` 思考强度映射、上游 200k 上下文容量标注、自定义模型支持）以及套餐模型动态解析器（`parsePlanIncludedModels`, `getAllModels`, `getDynamicModels`）。
 * **价格与模型**：模型行中的 **Ping** 调用 `POST /models/probe` 并显示 TTFT；**应用可见模型** 通过 `POST /models/visible` 保存可见模型和套餐过滤。新模型缺少价格时可通过 `priceAutoSync` 开关自动从 models.dev 获取公开价格；关闭后仍可使用手动同步。
+* **按模型高级设置**：模型行编辑器现在可设置图像输入、temperature、top_p 与 stop 序列。值保存在 `modelContextOverrides` / `customModels` 中，套餐同步不会覆盖；仅当 DSH 未提供对应值时作为请求默认值，留空即清除。
 * **`lib/cline-client.js`**：
   * `fetchUsageLimits`：高效并发轮询 `GET /users/me/plan/usage-limits`、`GET /users/me/plan` 与 `GET /users/me` 并进行内存缓存。
   * `sessionStats` / `recordSessionRequest`：内存级会话度量记录器（请求次数、Token 估算、延迟、时间戳）。
@@ -167,7 +168,14 @@ dsh-clinebot:
   customModels: []
   modelReasoningDefaults:
     your-reasoning-model: high
-  modelContextOverrides: []
+  modelContextOverrides:
+    - modelId: cline-pass/kimi-k3
+      contextLength: 1000000
+      maxTokens: 65536
+      input: [text, image]
+      temperature: 0.2
+      topP: 0.9
+      stop: ["END"]
   statsPath: ~/.dsh/clinebot-stats.json
   statsRetentionDays: 95
   dailyBudgetUsd: 0
@@ -189,9 +197,9 @@ dsh-clinebot:
 | `apiKeyEnv` | `string` | `"CLINEBOT_API_KEY"` | 凭据管理系统中的密钥名称 |
 | `defaultModel` | `string` | `"cline-pass/deepseek-v4.1-flash"` | 默认选中的模型 ID（用于对话及探活） |
 | `disabledModels` | `array` | `[]` | 在选择器中隐藏的模型 ID 列表（新订阅模型默认自动启用） |
-| `customModels` | `array` | `[]` | 用户自定义网关模型 (`[{ id, name, contextLength, maxTokens, category, isReasoning }]`) |
+| `customModels` | `array` | `[]` | 用户自定义网关模型 (`[{ id, name, contextLength, maxTokens, category, isReasoning, input }]`) |
 | `modelReasoningDefaults` | `object` | `{}` | 各模型默认思考强度配置 (`low`, `medium`, `high`, `max`) |
-| `modelContextOverrides` | `array` | `[]` | 用户自定义模型上下文窗口与最大 Token 数量覆盖 |
+| `modelContextOverrides` | `array` | `[]` | 按模型的上下文、模态与采样覆盖 (`[{ modelId, contextLength, maxTokens, input, temperature, topP, stop }]`)；DSH 没有 `top_p` 选项，因此 `topP` 是插件级请求默认值 |
 | `statsPath` | `string` | `"~/.dsh/clinebot-stats.json"` | 本地持久化 Token 用量统计文件路径 |
 | `statsRetentionDays` | `number` | `95` | 日/小时/会话遥测保留天数；0 表示永久保留 |
 | `dailyBudgetUsd` | `number` | `0` | 可选的每日估算花费上限；0 表示关闭 |
@@ -229,7 +237,7 @@ dsh-clinebot:
 * `POST /dsh-clinebot/keys/discovered/import` — 按 id 在服务端导入发现的密钥，密钥不会进入浏览器。
 * `POST /dsh-clinebot/models/sync` — 手动同步官方套餐动态模型列表。
 * `POST /dsh-clinebot/models/toggle` — 批量切换模型可用性（更新 `disabledModels` 并保留 Volatile 引用）。
-* `POST /dsh-clinebot/models/context` — 设置上下文窗口与最大输出 Token、恢复默认或厂商上限、批量应用。重置使用同一路由并传入 `reset: true`，不存在 `DELETE` 变体。
+* `POST /dsh-clinebot/models/context` — 设置上下文窗口、最大输出 Token、输入模态（`input`）与采样默认值（`temperature`、`topP`、`stop`），恢复默认或厂商上限，批量应用。重置使用同一路由并传入 `reset: true`，不存在 `DELETE` 变体。
 * `POST /dsh-clinebot/models/visible` — 指定在 DSH 模型选择器中显示的确切模型集合（`visibleModels`）。
 * `POST /dsh-clinebot/models/probe` — 测量单个模型的 TTFT。
 * `GET /dsh-clinebot/stats` — 持久化的请求与 Token 统计。
