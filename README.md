@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.47</b> fixes the DSH Desktop update button: the update route accepts an admitted Desktop request without <code>Origin</code>, and installs use the bundled <code>dsh-desktop-host</code> CLI with the <code>desktop</code> profile. Builds on full DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 compatibility, the native <code>ctx.llm</code> adapter, per-model advanced settings and the flat retry policy.</p>
+<p><b>0.6.48</b> fixes web-profile update detection: <code>findDshCliEntry</code> resolves the <code>dsh</code> bin symlink before walking to the package manifest, so <code>canAutoUpdate</code> is true on the DSH web profile too. The Desktop update fix from 0.6.47 is retained. Builds on full DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 compatibility, the native <code>ctx.llm</code> adapter, per-model advanced settings and the flat retry policy.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

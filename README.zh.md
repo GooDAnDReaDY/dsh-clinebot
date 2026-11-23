@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.47</b> 修复 DSH Desktop 更新按钮：更新路由接受已准入但缺少 <code>Origin</code> 的 Desktop 请求，并通过内置 <code>dsh-desktop-host</code> CLI 与 <code>desktop</code> 配置执行安装。完整保留与 DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 的兼容性、原生 <code>ctx.llm</code> 适配器、按模型高级设置与扁平重试策略。</p>
+<p><b>0.6.48</b> 修复 web 配置的更新检测：<code>findDshCliEntry</code> 在向上查找清单前解析 <code>dsh</code> 符号链接，因此 DSH web 的 <code>canAutoUpdate</code> 也为 true。保留 0.6.47 的 Desktop 更新修复。完整保留与 DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 的兼容性、原生 <code>ctx.llm</code> 适配器、按模型高级设置与扁平重试策略。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

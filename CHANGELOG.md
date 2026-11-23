@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.48] - 2026-11-23
+
+### Fixed
+- **Web update detection (#377)**: `findDshCliEntry()` now resolves the `dsh` bin with `realpathSync` before walking to `package.json`. In an nvm install `bin/dsh` is a symlink to `.../@deepseek-ai/dsh/lib/bin.js`; the old walk stayed in `bin/`, returned no CLI, and left `canAutoUpdate: false` on the web profile. The resolved path is used for the `manifest.bin` comparison; a POSIX symlink regression test covers it.
+
 ## [0.6.47] - 2026-11-23
 
 ### Fixed
