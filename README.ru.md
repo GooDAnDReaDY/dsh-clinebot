@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.46</b> исправляет форму политики ретраев адаптера: восстановимые сбои upstream теперь повторяются, а не обрывают ход с невалидным <code>llm/retry</code>; добавляет расширенные настройки модели — image input, temperature, top_p и stop sequences, включая поддержку изображений для custom-моделей. Сохраняются полная совместимость с DSH 0.2.2-rc.1 / cordis 4.1.0, приоритет роутинга по модели и нативный адаптер <code>ctx.llm</code>.</p>
+<p><b>0.6.47</b> исправляет кнопку обновления в DSH Desktop: маршрут обновления принимает admitted-запрос Desktop без <code>Origin</code>, а установка идёт через встроенный <code>dsh-desktop-host</code> CLI с профилем <code>desktop</code>. Сохраняются полная совместимость с DSH 0.2.2-rc.1 / cordis 4.1.0, нативный адаптер <code>ctx.llm</code>, расширенные настройки моделей и плоский retry policy.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

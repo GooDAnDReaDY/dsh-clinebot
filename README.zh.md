@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.46</b> 修复适配器重试策略结构：可恢复的上游故障现在会重试，而不再因非 JSON <code>llm/retry</code> 事件中断；新增按模型高级设置：图像输入、temperature、top_p 与 stop 序列，并支持自定义模型声明图像能力。完整保留与 DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 的兼容性、按模型路由优先级及原生 <code>ctx.llm</code> 适配器。</p>
+<p><b>0.6.47</b> 修复 DSH Desktop 更新按钮：更新路由接受已准入但缺少 <code>Origin</code> 的 Desktop 请求，并通过内置 <code>dsh-desktop-host</code> CLI 与 <code>desktop</code> 配置执行安装。完整保留与 DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 的兼容性、原生 <code>ctx.llm</code> 适配器、按模型高级设置与扁平重试策略。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

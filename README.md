@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.46</b> fixes the adapter retry policy shape so recoverable upstream failures retry instead of aborting with a non-JSON <code>llm/retry</code> event, and adds per-model advanced settings: image input, temperature, top_p and stop sequences, including image support for custom models. Builds on full DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 compatibility, truncated stream handling, per-model routing priority, and native <code>ctx.llm</code> adapter.</p>
+<p><b>0.6.47</b> fixes the DSH Desktop update button: the update route accepts an admitted Desktop request without <code>Origin</code>, and installs use the bundled <code>dsh-desktop-host</code> CLI with the <code>desktop</code> profile. Builds on full DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 compatibility, the native <code>ctx.llm</code> adapter, per-model advanced settings and the flat retry policy.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

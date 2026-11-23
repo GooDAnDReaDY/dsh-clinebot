@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.47] - 2026-11-23
+
+### Fixed
+- **Desktop update button (#374, GitHub #23)**: `isTrustedUpdateRequest` now accepts a request admitted by the host connection gate even when DSH Desktop strips `Origin` and `Sec-Fetch-Site`, while still requiring a loopback peer and Host. `detectRuntime` resolves the bundled `app.asar/dsh/node_modules/@deepseek-ai/dsh-desktop-host/lib/cli.js`, so `canAutoUpdate` is true on Desktop. Installs run Electron in Node mode (`ELECTRON_RUN_AS_NODE=1`, `--expose-internals`) with the profile directory name (`desktop`) instead of `argv[2]` (`web`); `--registry` is preserved. `checkUpdateStatus` reports the effective profile name.
+
 ## [0.6.46] - 2026-11-22
 
 ### Fixed
