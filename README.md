@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.48</b> fixes web-profile update detection: <code>findDshCliEntry</code> resolves the <code>dsh</code> bin symlink before walking to the package manifest, so <code>canAutoUpdate</code> is true on the DSH web profile too. The Desktop update fix from 0.6.47 is retained. Builds on full DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 compatibility, the native <code>ctx.llm</code> adapter, per-model advanced settings and the flat retry policy.</p>
+<p><b>0.6.49</b> adds DSH 0.2.3-alpha.2 support: <code>engines.dsh</code> and all DSH peer ranges are widened to <code>&gt;=0.2.1-rc.2 &lt;0.2.4-0</code>, and the plugin was verified on an isolated DSH 0.2.3-alpha.2 / Node 24.22.3 profile (activation, settings, 11 models). The Desktop and web updater fixes from 0.6.47/0.6.48 are retained.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -83,7 +83,7 @@ graph LR
         TUI["dsh-TUI settings section"]
     end
 
-    subgraph DSHCore [DeepSeek Harness 0.2.1-rc.2 ... 0.2.2]
+    subgraph DSHCore [DeepSeek Harness 0.2.1-rc.2 ... 0.2.3]
         Llm["ctx.llm"]
         Credentials["ctx.credentials"]
         Web["ctx.web / settings / commands"]
@@ -150,7 +150,7 @@ graph LR
 dsh plugin --profile web add @goodandready/dsh-clinebot
 ```
 
-Requires **DSH `>=0.2.1-rc.2 <0.2.3-0`** (the `0.2.1` and `0.2.2` lines, including `0.2.2-rc.1`) and Node 22+. ClineBot registers directly with `ctx.llm`; there is no transport switch or loopback proxy.
+Requires **DSH `>=0.2.1-rc.2 <0.2.4-0`** (the `0.2.1`, `0.2.2` and `0.2.3` lines, including `0.2.3-alpha.2`) and Node 22+ (DSH 0.2.3-alpha.2 itself requires Node 24.22.3+). ClineBot registers directly with `ctx.llm`; there is no transport switch or loopback proxy.
 
 Restart your DeepSeek Harness instance and refresh the browser.
 
@@ -189,7 +189,7 @@ From any DSH chat session, type `/cline` to inspect quota, warning alerts, and s
 
 ## ⚙️ Configuration Reference (DSH Settings & Web UI)
 
-In DeepSeek Harness 0.2.x (this plugin supports `>=0.2.1-rc.2 <0.2.3-0`), settings are managed natively via the DSH Web UI Settings card or `PUT /dsh-clinebot/config`, with API keys persisted securely in DSH Credentials storage (`~/.dsh/.credentials.yaml`).
+In DeepSeek Harness 0.2.x (this plugin supports `>=0.2.1-rc.2 <0.2.4-0`), settings are managed natively via the DSH Web UI Settings card or `PUT /dsh-clinebot/config`, with API keys persisted securely in DSH Credentials storage (`~/.dsh/.credentials.yaml`).
 
 ```yaml
 dsh-clinebot:

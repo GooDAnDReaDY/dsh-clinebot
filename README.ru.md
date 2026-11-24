@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.48</b> исправляет определение обновлений в web-профиле: <code>findDshCliEntry</code> разворачивает symlink <code>dsh</code> до обхода манифеста, поэтому <code>canAutoUpdate</code> теперь true и в DSH web. Desktop-фикс из 0.6.47 сохранён. Сохраняются полная совместимость с DSH 0.2.2-rc.1 / cordis 4.1.0, нативный адаптер <code>ctx.llm</code>, расширенные настройки моделей и плоский retry policy.</p>
+<p><b>0.6.49</b> добавляет поддержку DSH 0.2.3-alpha.2: <code>engines.dsh</code> и все peer-диапазоны расширены до <code>&gt;=0.2.1-rc.2 &lt;0.2.4-0</code>; плагин проверен на изолированном DSH 0.2.3-alpha.2 / Node 24.22.3 (активация, настройки, 11 моделей). Desktop- и web-фиксы обновлений из 0.6.47/0.6.48 сохранены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -154,7 +154,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 
 ## ⚙️ Конфигурация (Настройки DSH и Web UI)
 
-В DeepSeek Harness 0.2.x (плагин поддерживает `>=0.2.1-rc.2 <0.2.3-0`) настройки управляются через карточку в Web UI или `PUT /dsh-clinebot/config`, а секретные ключи безопасно хранятся в DSH Credentials (`~/.dsh/.credentials.yaml`).
+В DeepSeek Harness 0.2.x (плагин поддерживает `>=0.2.1-rc.2 <0.2.4-0`) настройки управляются через карточку в Web UI или `PUT /dsh-clinebot/config`, а секретные ключи безопасно хранятся в DSH Credentials (`~/.dsh/.credentials.yaml`).
 
 ```yaml
 dsh-clinebot:

@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.48</b> 修复 web 配置的更新检测：<code>findDshCliEntry</code> 在向上查找清单前解析 <code>dsh</code> 符号链接，因此 DSH web 的 <code>canAutoUpdate</code> 也为 true。保留 0.6.47 的 Desktop 更新修复。完整保留与 DSH <code>0.2.2-rc.1</code> / cordis 4.1.0 的兼容性、原生 <code>ctx.llm</code> 适配器、按模型高级设置与扁平重试策略。</p>
+<p><b>0.6.49</b> 新增 DSH 0.2.3-alpha.2 支持：<code>engines.dsh</code> 与所有 DSH peer 范围扩展到 <code>&gt;=0.2.1-rc.2 &lt;0.2.4-0</code>；已在隔离的 DSH 0.2.3-alpha.2 / Node 24.22.3 配置中验证激活、设置页与 11 个模型。保留 0.6.47/0.6.48 的 Desktop 与 web 更新修复。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -156,7 +156,7 @@ dsh plugin --profile web add @goodandready/dsh-clinebot
 
 ## ⚙️ 配置项参考 (DSH 设置与 Web UI)
 
-在 DeepSeek Harness 0.2.x（本插件支持 `>=0.2.1-rc.2 <0.2.3-0`）中，各项配置通过 Web UI 或 `PUT /dsh-clinebot/config` 原生管理，密钥安全存储于 DSH Credentials 凭据中心 (`~/.dsh/.credentials.yaml`)。
+在 DeepSeek Harness 0.2.x（本插件支持 `>=0.2.1-rc.2 <0.2.4-0`）中，各项配置通过 Web UI 或 `PUT /dsh-clinebot/config` 原生管理，密钥安全存储于 DSH Credentials 凭据中心 (`~/.dsh/.credentials.yaml`)。
 
 ```yaml
 dsh-clinebot:

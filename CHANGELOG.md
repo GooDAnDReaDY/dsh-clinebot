@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.49] - 2026-11-24
+
+### Added
+- **DSH 0.2.3-alpha.2 support (#379, GitHub #24)**: `engines.dsh` and all DSH peer ranges are widened to `>=0.2.1-rc.2 <0.2.4-0`; `0.2.3-alpha.2` is listed in `dshReleases`. Verified on an isolated DSH 0.2.3-alpha.2 / Node 24.22.3 profile on MiniPC: the plugin activated, `/dsh-clinebot/status` returned `isRegistered: true` and 11 models, and the client bundle was served; no `incompatible-version` or activation errors. DSH 0.2.1/0.2.2 support and the updater fixes from 0.6.47/0.6.48 are retained.
+
 ## [0.6.48] - 2026-11-23
 
 ### Fixed

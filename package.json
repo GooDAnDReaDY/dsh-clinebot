@@ -1,6 +1,6 @@
 {
   "name": "@goodandready/dsh-clinebot",
-  "version": "0.6.48",
+  "version": "0.6.49",
   "description": "DeepSeek Harness companion for ClineBot / ClinePass: dynamic subscription models sync, quota exhaustion warnings, session metrics, dedicated settings page, live usage limits, and /cline slash-command.",
   "license": "MIT",
   "type": "module",
@@ -43,19 +43,20 @@
   },
   "engines": {
     "node": ">=22",
-    "dsh": ">=0.2.1-rc.2 <0.2.3-0"
+    "dsh": ">=0.2.1-rc.2 <0.2.4-0"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
     },
     "compatibility": {
-      "dsh": ">=0.2.1-rc.2 <0.2.3-0",
+      "dsh": ">=0.2.1-rc.2 <0.2.4-0",
       "dshReleases": {
         "0.2.1-rc.2": "compatible",
         "0.2.1-rc.3": "compatible",
         "0.2.1-rc.4": "compatible",
-        "0.2.2-rc.1": "compatible"
+        "0.2.2-rc.1": "compatible",
+        "0.2.3-alpha.2": "compatible"
       }
     },
     "client": {
@@ -69,13 +70,13 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.5 || ~4.1.0",
-    "@deepseek-ai/dsh-attachment": ">=0.2.1-rc.2 <0.2.3-0",
-    "@deepseek-ai/dsh-commands": ">=0.2.1-rc.2 <0.2.3-0",
-    "@deepseek-ai/dsh-credentials": ">=0.2.1-rc.2 <0.2.3-0",
-    "@deepseek-ai/dsh-host-webserver": ">=0.2.1-rc.2 <0.2.3-0",
-    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.2.3-0",
-    "@deepseek-ai/dsh-settings": ">=0.2.1-rc.2 <0.2.3-0",
-    "@deepseek-ai/dsh-web": ">=0.2.1-rc.2 <0.2.3-0",
+    "@deepseek-ai/dsh-attachment": ">=0.2.1-rc.2 <0.2.4-0",
+    "@deepseek-ai/dsh-commands": ">=0.2.1-rc.2 <0.2.4-0",
+    "@deepseek-ai/dsh-credentials": ">=0.2.1-rc.2 <0.2.4-0",
+    "@deepseek-ai/dsh-host-webserver": ">=0.2.1-rc.2 <0.2.4-0",
+    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.2.4-0",
+    "@deepseek-ai/dsh-settings": ">=0.2.1-rc.2 <0.2.4-0",
+    "@deepseek-ai/dsh-web": ">=0.2.1-rc.2 <0.2.4-0",
     "@deepseek-ai/schemastery": "~3.18.5",
     "react": "^18.2.0"
   },
