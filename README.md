@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.49</b> adds DSH 0.2.3-alpha.2 support: <code>engines.dsh</code> and all DSH peer ranges are widened to <code>&gt;=0.2.1-rc.2 &lt;0.2.4-0</code>, and the plugin was verified on an isolated DSH 0.2.3-alpha.2 / Node 24.22.3 profile (activation, settings, 11 models). The Desktop and web updater fixes from 0.6.47/0.6.48 are retained.</p>
+<p><b>0.6.50</b> is a maintenance release: the test-only <code>resetRateLimits</code> export is removed, the visual evidence is refreshed for the current Dark settings UI, the historical TZ is separated from the current contract, and stale release archives are gone. No runtime behavior, API, model catalog, or DSH compatibility changes; 0.6.49's DSH 0.2.3-alpha.2 support is retained.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -296,7 +296,7 @@ Consumer endpoints such as `/dsh-clinebot/register`, `/dsh-clinebot/unregister`,
 
 ## Visual verification
 
-Settings card in DeepSeek Harness, Dark and Light themes side by side:
+ClineBot settings in DeepSeek Harness, dark theme, v0.6.50:
 
 ![dsh-clinebot visual verification](media/visual-verification.png)
 

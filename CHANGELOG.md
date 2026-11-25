@@ -5,6 +5,11 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.50] - 2026-11-25
+
+### Changed
+- **Repository and verification hygiene (#381, #382, #383, #385)**: removed the test-only `resetRateLimits` export and isolated the rate-limit test with unique keys; refreshed `media/visual-verification.png` with the current dark-theme settings UI; clarified in `DESIGN.md`/`TZ.md` that TZ is a historical migration plan and the current contract is DESIGN/README/package; removed stale `0.6.40`/`0.6.41` `.tgz` archives from the repository root. No runtime behavior, API, model catalog, or DSH compatibility changes.
+
 ## [0.6.49] - 2026-11-24
 
 ### Added

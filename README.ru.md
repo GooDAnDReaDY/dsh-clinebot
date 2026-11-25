@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.49</b> добавляет поддержку DSH 0.2.3-alpha.2: <code>engines.dsh</code> и все peer-диапазоны расширены до <code>&gt;=0.2.1-rc.2 &lt;0.2.4-0</code>; плагин проверен на изолированном DSH 0.2.3-alpha.2 / Node 24.22.3 (активация, настройки, 11 моделей). Desktop- и web-фиксы обновлений из 0.6.47/0.6.48 сохранены.</p>
+<p><b>0.6.50</b> — maintenance-релиз: удалён test-only экспорт <code>resetRateLimits</code>, visual evidence обновлён для текущего Dark UI, исторический TZ отделён от актуального контракта, stale release-архивы удалены. Runtime/API/каталог моделей/совместимость DSH не менялись; поддержка DSH 0.2.3-alpha.2 из 0.6.49 сохранена.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>

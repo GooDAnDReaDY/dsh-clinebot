@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.49</b> 新增 DSH 0.2.3-alpha.2 支持：<code>engines.dsh</code> 与所有 DSH peer 范围扩展到 <code>&gt;=0.2.1-rc.2 &lt;0.2.4-0</code>；已在隔离的 DSH 0.2.3-alpha.2 / Node 24.22.3 配置中验证激活、设置页与 11 个模型。保留 0.6.47/0.6.48 的 Desktop 与 web 更新修复。</p>
+<p><b>0.6.50</b> 为维护版本：移除仅测试使用的 <code>resetRateLimits</code> 导出，更新当前深色设置界面的视觉证据，将历史 TZ 与现行契约区分，并清理过期 release 归档。运行时、API、模型目录与 DSH 兼容性均无变化；保留 0.6.49 的 DSH 0.2.3-alpha.2 支持。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
