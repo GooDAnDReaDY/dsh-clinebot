@@ -239,7 +239,7 @@ const zh = {
       'settings.advanced': '高级', 'settings.advanced_desc': '连接、超时和存储路径。',
       'settings.base_url': 'API 基础地址', 'settings.base_url_hint': 'ClinePass API 根地址。远程端点必须使用 https://。',
       'settings.timeout': '连接超时（毫秒）', 'settings.timeout_hint': '等待上游响应头的最大时间。', 'settings.smoke_timeout': '烟雾测试超时（毫秒）', 'settings.smoke_timeout_hint': '等待诊断聊天补全的最大时间。',
-      'settings.stream_idle': '流空闲超时（毫秒）', 'settings.stream_idle_hint': 'SSE 数据块之间的最大间隔，超过后视为断流。', 'settings.max_payload': '多模态负载上限（MB）', 'settings.max_payload_hint': '请求超过预算时会淘汰最旧的图片。',
+      'settings.stream_idle': '流空闲超时（毫秒）', 'settings.stream_idle_hint': 'SSE 数据块之间的最大间隔，超过后视为断流。', 'settings.retry_max_retries': '最大自动重试次数', 'settings.retry_max_retries_hint': '限流、传输、上游或断流失败后的重试次数；0 表示不重试。', 'settings.max_payload': '多模态负载上限（MB）', 'settings.max_payload_hint': '请求超过预算时会淘汰最旧的图片。',
       'settings.stats_retention': '统计保留天数', 'settings.stats_retention_hint': '超过该天数的日/小时/会话遥测会被清理。0 表示永久保留。',
       'settings.daily_budget': '每日预算（USD）', 'settings.daily_budget_hint': '按当前 UTC 日估算的花费上限。0 表示关闭。', 'settings.monthly_budget': '每月预算（USD）', 'settings.monthly_budget_hint': '按当前 UTC 月估算的花费上限。0 表示关闭。',
       'settings.stats_path': '统计文件路径', 'settings.stats_path_hint': '持久化 JSON 遥测路径（支持 ~/）。', 'settings.models_cache_path': '模型缓存路径', 'settings.models_cache_path_hint': '离线模型目录缓存（支持 ~/）。',

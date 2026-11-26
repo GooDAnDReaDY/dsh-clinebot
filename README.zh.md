@@ -181,6 +181,7 @@ dsh-clinebot:
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
   timeoutMs: 30000
+  retryMaxRetries: 3
   smokeTimeoutMs: 60000
   streamIdleTimeoutMs: 60000
   accounts:
@@ -207,6 +208,7 @@ dsh-clinebot:
 | `accounts` | `array` | `[]` | 额外轮转账号池 (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | 手动指定的主账号（为空时自动按最低配额消耗优先路由） |
 | `timeoutMs` | `number` | `15000` | HTTP 请求探测超时时间（毫秒） |
+| `retryMaxRetries` | `number` | `3` | 模型请求失败后的自动重试次数（0 表示不重试），适用于限流与传输类失败 |
 | `smokeTimeoutMs` | `number` | `25000` | 探活测试超时时间（毫秒） |
 | `streamIdleTimeoutMs` | `number` | `30000` | SSE 流式输出块间空闲超时时间（毫秒） |
 | `enabledModels` | `array` | *(已废弃)* | 仅在 public config 中只读提供，`PUT /config` 时禁止写入并请使用 `disabledModels` |

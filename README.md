@@ -218,6 +218,7 @@ dsh-clinebot:
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
   timeoutMs: 30000
+  retryMaxRetries: 3
   smokeTimeoutMs: 60000
   streamIdleTimeoutMs: 60000
   accounts:
@@ -248,6 +249,7 @@ dsh-clinebot:
 | `accounts` | `array` | `[]` | Additional accounts for multi-account failover and quota rotation (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | Manually pinned active account env name (empty for least-used auto routing) |
 | `timeoutMs` | `number` | `15000` | HTTP probe timeout in milliseconds |
+| `retryMaxRetries` | `number` | `3` | Automatic retries after a failed model request (0 disables); applies to rate-limit and transport failures |
 | `smokeTimeoutMs` | `number` | `25000` | Timeout for smoke test chat completions in milliseconds |
 | `streamIdleTimeoutMs` | `number` | `30000` | Idle timeout between SSE stream chunks in milliseconds |
 | `enabledModels` | `array` | *(deprecated)* | Read-only in public config; rejected on `PUT /config` in favor of `disabledModels` |

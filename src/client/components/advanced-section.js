@@ -72,6 +72,15 @@ function AdvancedSection({ draft, onStage, t }) {
       onChange: numeric('streamIdleTimeoutMs', 0),
     }),
     React.createElement(AdvancedField, {
+      id: 'cb-retry-max-retries',
+      label: t('settings.retry_max_retries'),
+      hint: t('settings.retry_max_retries_hint'),
+      value: current.retryMaxRetries,
+      type: 'number',
+      error: errorFor('retryMaxRetries', -1),
+      onChange: numeric('retryMaxRetries', -1),
+    }),
+    React.createElement(AdvancedField, {
       id: 'cb-max-payload',
       label: t('settings.max_payload'),
       hint: t('settings.max_payload_hint'),
