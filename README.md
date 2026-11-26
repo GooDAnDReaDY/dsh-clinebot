@@ -4,7 +4,7 @@
 
 <h3>Native ClineBot / ClinePass Provider Companion for DeepSeek Harness</h3>
 
-<p><b>0.6.50</b> is a maintenance release: the test-only <code>resetRateLimits</code> export is removed, the visual evidence is refreshed for the current Dark settings UI, the historical TZ is separated from the current contract, and stale release archives are gone. No runtime behavior, API, model catalog, or DSH compatibility changes; 0.6.49's DSH 0.2.3-alpha.2 support is retained.</p>
+<p><b>0.6.51</b> adds a configurable provider retry budget: <code>retryMaxRetries</code> (0–10, default 3; 0 disables retries) replaces the hardcoded single retry, applies immediately through an atomic provider-route replace, and is editable in Settings → ClineBot → Advanced and the TUI. The DSH 0.2.3-alpha.2 support and updater fixes from 0.6.49 are retained.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -218,6 +218,7 @@ dsh-clinebot:
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
   timeoutMs: 30000
+  retryMaxRetries: 3
   smokeTimeoutMs: 60000
   streamIdleTimeoutMs: 60000
   accounts:
@@ -248,6 +249,7 @@ dsh-clinebot:
 | `accounts` | `array` | `[]` | Additional accounts for multi-account failover and quota rotation (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | Manually pinned active account env name (empty for least-used auto routing) |
 | `timeoutMs` | `number` | `15000` | HTTP probe timeout in milliseconds |
+| `retryMaxRetries` | `number` | `3` | Automatic retries after a failed model request (0 disables); applies to rate-limit and transport failures |
 | `smokeTimeoutMs` | `number` | `25000` | Timeout for smoke test chat completions in milliseconds |
 | `streamIdleTimeoutMs` | `number` | `30000` | Idle timeout between SSE stream chunks in milliseconds |
 | `enabledModels` | `array` | *(deprecated)* | Read-only in public config; rejected on `PUT /config` in favor of `disabledModels` |
@@ -296,7 +298,7 @@ Consumer endpoints such as `/dsh-clinebot/register`, `/dsh-clinebot/unregister`,
 
 ## Visual verification
 
-ClineBot settings in DeepSeek Harness, dark theme, v0.6.50:
+ClineBot settings in DeepSeek Harness, dark theme, v0.6.51:
 
 ![dsh-clinebot visual verification](media/visual-verification.png)
 

@@ -4,7 +4,7 @@
 
 <h3>Нативное подключение провайдера ClineBot / ClinePass для DeepSeek Harness</h3>
 
-<p><b>0.6.50</b> — maintenance-релиз: удалён test-only экспорт <code>resetRateLimits</code>, visual evidence обновлён для текущего Dark UI, исторический TZ отделён от актуального контракта, stale release-архивы удалены. Runtime/API/каталог моделей/совместимость DSH не менялись; поддержка DSH 0.2.3-alpha.2 из 0.6.49 сохранена.</p>
+<p><b>0.6.51</b> добавляет настраиваемый бюджет повторов провайдера: <code>retryMaxRetries</code> (0–10, по умолчанию 3; 0 отключает повторы) вместо жёсткого одного повтора; применяется сразу через атомарную замену provider-route и доступен в Settings → ClineBot → Advanced и TUI. Поддержка DSH 0.2.3-alpha.2 и фиксы updater из 0.6.49 сохранены.</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -179,6 +179,7 @@ dsh-clinebot:
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
   timeoutMs: 30000
+  retryMaxRetries: 3
   smokeTimeoutMs: 60000
   streamIdleTimeoutMs: 60000
   accounts:
@@ -205,6 +206,7 @@ dsh-clinebot:
 | `accounts` | `array` | `[]` | Дополнительные аккаунты для ротации квоты и failover (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | Принудительно закреплённый аккаунт (пусто для автоматического выбора least-used) |
 | `timeoutMs` | `number` | `15000` | Таймаут HTTP-запросов (мс) |
+| `retryMaxRetries` | `number` | `3` | Автоматические повторы после ошибки запроса к модели (0 отключает); rate-limit, transport, provider и stream-idle |
 | `smokeTimeoutMs` | `number` | `25000` | Таймаут тестового пинга инференса (мс) |
 | `streamIdleTimeoutMs` | `number` | `30000` | Таймаут ожидания между чанками SSE-потока (мс) |
 | `enabledModels` | `array` | *(устарело)* | Только для чтения в public config; отклоняется при `PUT /config` в пользу `disabledModels` |

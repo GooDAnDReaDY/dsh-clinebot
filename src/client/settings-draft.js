@@ -32,6 +32,12 @@ function useStagedConfig({ status, draft, setDraft, load, t, pendingRef }) {
       const value = Number(pending[key])
       if (!Number.isFinite(value) || value <= 0) return t('settings.save_invalid_number')
     }
+    // retryMaxRetries is the one numeric field where 0 is meaningful: it turns
+    // retries off rather than being an invalid entry.
+    if (Object.hasOwn(pending, 'retryMaxRetries')) {
+      const value = Number(pending.retryMaxRetries)
+      if (!Number.isInteger(value) || value < 0 || value > 10) return t('settings.save_invalid_number')
+    }
     return ''
   }, [pending, t])
 

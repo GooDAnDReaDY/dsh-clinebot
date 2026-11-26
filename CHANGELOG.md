@@ -5,6 +5,14 @@ All notable changes to `@goodandready/dsh-clinebot` will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.51] - 2026-11-26
+
+### Added
+- **Configurable provider retries (`retryMaxRetries`) (#25, thanks @Sunev)**: `providerRetryPolicy()` no longer hardcodes `maxRetries: 1`; the value now comes from the `retryMaxRetries` setting (default 3, integer 0–10, `0` disables retries entirely and `1` reproduces the previous single-retry behavior). It applies to the retryable `RATE_LIMIT`, `TRANSPORT_ERROR`, `PROVIDER_ERROR` and `STREAM_IDLE_TIMEOUT` failures with a 500ms→5000ms exponential backoff plus 10% jitter, is editable in Settings → ClineBot → Advanced and the TUI, and takes effect immediately without restarting DSH through an atomic provider-route replace.
+
+### Fixed
+- **Transient transport failures no longer abort the turn**: an occasional upstream transport hiccup failed the whole agent turn ("fetch failed") because the retry policy allowed only one attempt.
+
 ## [0.6.50] - 2026-11-25
 
 ### Changed

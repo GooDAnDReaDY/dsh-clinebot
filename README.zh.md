@@ -4,7 +4,7 @@
 
 <h3>适用于 DeepSeek Harness 的 ClineBot / ClinePass 原生模型提供商伴侣插件</h3>
 
-<p><b>0.6.50</b> 为维护版本：移除仅测试使用的 <code>resetRateLimits</code> 导出，更新当前深色设置界面的视觉证据，将历史 TZ 与现行契约区分，并清理过期 release 归档。运行时、API、模型目录与 DSH 兼容性均无变化；保留 0.6.49 的 DSH 0.2.3-alpha.2 支持。</p>
+<p><b>0.6.51</b> 新增可配置的 provider 重试预算：<code>retryMaxRetries</code>（0–10，默认 3；0 禁用重试）取代硬编码的单次重试，通过原子替换 provider route 立即生效，可在 Settings → ClineBot → Advanced 与 TUI 中修改。保留 0.6.49 的 DSH 0.2.3-alpha.2 支持与更新修复。</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@goodandready/dsh-clinebot"><img src="https://img.shields.io/npm/v/@goodandready/dsh-clinebot.svg?style=for-the-badge&color=6366f1&labelColor=1e1b4b" alt="npm version"></a>
@@ -181,6 +181,7 @@ dsh-clinebot:
   dailyBudgetUsd: 0
   monthlyBudgetUsd: 0
   timeoutMs: 30000
+  retryMaxRetries: 3
   smokeTimeoutMs: 60000
   streamIdleTimeoutMs: 60000
   accounts:
@@ -207,6 +208,7 @@ dsh-clinebot:
 | `accounts` | `array` | `[]` | 额外轮转账号池 (`[{ label, apiKeyEnv }]`) |
 | `activeAccount` | `string` | `""` | 手动指定的主账号（为空时自动按最低配额消耗优先路由） |
 | `timeoutMs` | `number` | `15000` | HTTP 请求探测超时时间（毫秒） |
+| `retryMaxRetries` | `number` | `3` | 模型请求失败后的自动重试次数（0 表示不重试），适用于限流与传输类失败 |
 | `smokeTimeoutMs` | `number` | `25000` | 探活测试超时时间（毫秒） |
 | `streamIdleTimeoutMs` | `number` | `30000` | SSE 流式输出块间空闲超时时间（毫秒） |
 | `enabledModels` | `array` | *(已废弃)* | 仅在 public config 中只读提供，`PUT /config` 时禁止写入并请使用 `disabledModels` |
